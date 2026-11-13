@@ -7,7 +7,7 @@ import { exportInWorker, exportSupported } from './engine/exporter.js';
 
 const $ = (s) => document.querySelector(s);
 const FPS = 24; // 与对标样片一致；图文动效 24 帧足够流畅，比 30 帧少 20% 渲染量
-const IDEAS = ['成人学钢琴晚不晚', '少儿编程到底有什么用', '驾考科目二怎么一次过', '美甲新手怎么接第一单'];
+const IDEAS = ['成人学钢琴晚不晚', '少儿编程有什么用', '科目二怎么一次过', '美甲新手接第一单'];
 const VOICES = [
   { id: 'zh-CN-YunxiNeural', name: '云希', desc: '阳光男声 · 适合知识讲解', av: '希' },
   { id: 'zh-CN-XiaoxiaoNeural', name: '晓晓', desc: '温暖女声 · 适合家长沟通', av: '晓' },
@@ -57,7 +57,7 @@ let asrBase = '/models/asr/'; let asrModel = 'whisper-base'; // 听写模型的�
 // 只有两个页面：首页（一个大框）→ 看成片
 function show(view) {
   for (const v of ['gallery', 'studio']) $('#' + v).classList.toggle('hidden', v !== view);
-  if (view !== 'gallery') stopHover(); else drawCovers();
+  if (view !== 'gallery') stopHero(); else { drawCovers(); startHero(state.form); }
   if (view !== 'studio') stop();
   $('#crumb').innerHTML = view === 'gallery' ? '' : `<span>/</span><b>${state.remix ? '爆款变原创' : state.form?.name || ''}</b>`;
   window.scrollTo(0, 0);
@@ -96,7 +96,7 @@ function loadPreview(form) {
 }
 const GW = 360; const GH = 640;
 function drawPreview(ctx, form, d, t) {
-  ctx.setTransform(GW / W, 0, 0, GH / H, 0, 0);
+  ctx.setTransform(ctx.canvas.width / W, 0, 0, ctx.canvas.height / H, 0, 0);
   form.module.drawFrame(ctx, { script: d.script, tl: d.tl, planData: d.planData, t, skinId: Object.keys(form.module.skins)[0], env: null, fps: FPS, assets: d.assets });
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
@@ -104,7 +104,6 @@ const coverIdx = (form, d) => Math.min(form?.coverIdx ?? 1, d.planData.length - 
 const coverTime = (d, form) => showcaseTime(d.planData[coverIdx(form, d)]);
 const CHECK = '<svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 function renderStrip() {
-  $('#tplCount').textContent = `共 ${forms.length} 个`;
   $('#tplStrip').innerHTML = forms.map((f, i) => `
     <button class="t" data-id="${f.id}" type="button" title="${esc(f.outcome || f.tagline)}" style="--i:${i}">
       <span class="thumb"><canvas width="${GW}" height="${GH}"></canvas><span class="prog"><i></i></span><span class="ok">${CHECK}</span><span class="rec-badge">推荐</span></span>
@@ -133,47 +132,46 @@ function drawCovers() {
     loadPreview(f).then((d) => { if (hoverEl !== el) drawPreview(el.querySelector('canvas').getContext('2d'), f, d, coverTime(d, f)); });
   }
 }
-let hoverEl = null;
-async function startHover(el) {
-  cancelAnimationFrame(galleryLoop);
-  hoverEl = el;
-  const f = formOf(el.dataset.id);
+// 左边的大手机：一直放着当前选中模板的示例；鼠标移到别的缩略图上，就先放那个看看
+let hoverEl = null; // 缩略图都是静态封面，这个变量只为兼容 drawCovers
+let heroLoop = 0; let heroFor = null;
+async function startHero(f) {
+  if (!f) return;
+  cancelAnimationFrame(heroLoop); heroFor = f;
+  $('#heroName').textContent = f.name; $('#heroUse').textContent = TPL_USE[f.id] || f.category || '';
   const d = await loadPreview(f);
-  if (hoverEl !== el) return;
-  const ctx = el.querySelector('canvas').getContext('2d');
-  const bar = el.querySelector('.prog i');
+  if (heroFor !== f || $('#gallery').classList.contains('hidden')) return;
+  const ctx = $('#heroCanvas').getContext('2d'); const bar = $('#heroProg');
   const dur = Math.min(d.tl.duration, 40);
   const t0 = performance.now(); let last = 0;
+  drawPreview(ctx, f, d, coverTime(d, f)); // 先有一帧，不黑屏
   const loop = (now) => {
-    galleryLoop = requestAnimationFrame(loop);
+    heroLoop = requestAnimationFrame(loop);
     if (now - last < 1000 / 30) return;
     last = now;
     const t = ((now - t0) / 1000) % dur;
     drawPreview(ctx, f, d, t);
-    if (bar) bar.style.width = `${(t / dur) * 100}%`;
+    bar.style.width = `${(t / dur) * 100}%`;
   };
-  galleryLoop = requestAnimationFrame(loop);
+  heroLoop = requestAnimationFrame(loop);
 }
-function stopHover(el = hoverEl) {
-  cancelAnimationFrame(galleryLoop);
-  if (!el) return;
-  if (hoverEl === el) hoverEl = null;
-  const bar = el.querySelector('.prog i'); if (bar) bar.style.width = '0';
-  const f = formOf(el.dataset.id);
-  loadPreview(f).then((d) => { if (hoverEl !== el) drawPreview(el.querySelector('canvas').getContext('2d'), f, d, coverTime(d, f)); });
-}
+function stopHero() { cancelAnimationFrame(heroLoop); heroFor = null; }
+function startHover(el) { startHero(formOf(el.dataset.id)); }
+function stopHover(el) { if (!el) return stopHero(); if (heroFor !== state.form) startHero(state.form); }
 
 /** 选模板：记住选择，换示例句、照片区 */
 function selectForm(id) {
   state.form = formOf(id) || forms[0];
   prefs.formId = state.form.id; savePrefs();
   document.querySelectorAll('#tplStrip .t').forEach((el) => el.classList.toggle('on', el.dataset.id === state.form.id));
+  startHero(state.form);
   ideaSeen = new Set();
   renderIdeas(true);
   const usesPhotos = state.form.needsPhotos || state.form.photoKind === 'scenes';
   $('#photoPanel').classList.toggle('hidden', !usesPhotos);
-  $('#photoPanel .photos-head b').textContent = photoKind() === 'scenes' ? '我的现场照片（可选）' : '我的形象照（可选）';
-  $('#photoPanel .photos-head span').textContent = state.form.photoHint || '3–6 张半身照，换不同手势，会自动抠图；不传就用卡通讲师。照片只存在你自己的电脑里。';
+  $('#photoPanel .photos-head b').textContent = photoKind() === 'scenes' ? '现场照片' : '我的形象照';
+  $('#photoPanel .photos-head span').textContent = photoKind() === 'scenes' ? '可选，讲到“我们”时用' : '可选，不传就用卡通讲师';
+  $('#photoPanel').title = state.form.photoHint || '3–6 张半身照，换不同手势，会自动抠图。照片只存在你自己的电脑里。';
   renderPhotoRows();
   warmBgm(bgmOf().style, getAudioCtx().sampleRate); // 用户打字时，后台先把音乐合成好
 }
@@ -183,12 +181,13 @@ $('#tplStrip').addEventListener('click', (e) => {
   selectForm(el.dataset.id);
 });
 // 灵感句：覆盖各种培训（不只是学科），按模板的用途分组；客户刚来没想法，点一点就能出片
+// 灵感：“短标签|点了以后填进去的完整一句”。标签短，一行放得下，不显得乱
 const IDEA_POOL = {
-  'photo-talk': ['成人钢琴暑假班招生，一对一小课', '美甲培训新一期开班，零基础也能学', '驾校周末班开始报名了', '考教资冲刺班，最后 30 天怎么学', '少儿编程体验课，带孩子来试一节', '成人英语口语班，下班后也能学'],
-  'series-intro': ['每晚 10 分钟，带你学一个乐理知识', '30 天学会美甲基础', '每天一道科目一易错题', '每天 1 分钟，练一句地道英语口语', '每晚睡前讲一个数学解题思路'],
-  'deep-dive': ['为什么很多人学了半年钢琴，还弹不完一首曲子', '为什么考教资一次过的人越来越少', '为什么有的美甲学徒三年都出不了师', '为什么越来越多成年人开始学跳舞'],
-  'pixel-story': ['学习方法比努力更重要', '别等到考前才开始复习', '学手艺最怕三天打鱼两天晒网', '一个零基础学员，三个月开始接单的故事'],
-  'data-card': ['驾考科目二最常挂的 3 个点', '学美甲最容易踩的 3 个坑', '初中数学提分的 3 个真相', '成人学钢琴的 4 个误区'],
+  'photo-talk': ['钢琴暑假班招生|成人钢琴暑假班招生，一对一小课', '美甲新一期开班|美甲培训新一期开班，零基础也能学', '驾校周末班报名|驾校周末班开始报名了', '教资冲刺 30 天|考教资冲刺班，最后 30 天怎么学', '编程体验课|少儿编程体验课，带孩子来试一节', '下班学口语|成人英语口语班，下班后也能学'],
+  'series-intro': ['每晚一个乐理知识|每晚 10 分钟，带你学一个乐理知识', '30 天学会美甲|30 天学会美甲基础', '每天一道科目一题|每天一道科目一易错题', '每天练一句口语|每天 1 分钟，练一句地道英语口语', '睡前讲一道数学题|每晚睡前讲一个数学解题思路'],
+  'deep-dive': ['学半年钢琴弹不完一首|为什么很多人学了半年钢琴，还弹不完一首曲子', '教资越来越难考？|为什么考教资一次过的人越来越少', '美甲学徒为何出不了师|为什么有的美甲学徒三年都出不了师', '成年人为何爱上跳舞|为什么越来越多成年人开始学跳舞'],
+  'pixel-story': ['方法比努力重要|学习方法比努力更重要', '别等考前才复习|别等到考前才开始复习', '学手艺怕三天打鱼|学手艺最怕三天打鱼两天晒网', '零基础三个月接单|一个零基础学员，三个月开始接单的故事'],
+  'data-card': ['科目二最常挂 3 点|驾考科目二最常挂的 3 个点', '学美甲 3 个坑|学美甲最容易踩的 3 个坑', '初中数学 3 个真相|初中数学提分的 3 个真相', '成人学琴 4 个误区|成人学钢琴的 4 个误区'],
 };
 let ideaSeen = new Set();
 function pickIdeas(n = 4) {
@@ -207,9 +206,9 @@ function renderIdeas(force = false) {
   $('#ideas').classList.toggle('hidden', state.mode !== 'say');
   if (!force && ideasFor === state.form?.id && $('#ideas').children.length) return; // 切标签不重新抽
   ideasFor = state.form?.id || '';
-  $('#ideas').innerHTML = `<span class="sp-label">${SPARK}不知道说什么？点一个试试</span>`
-    + pickIdeas().map((q, i) => `<button class="sp" type="button" style="--i:${i}">${esc(q)}</button>`).join('')
-    + `<button class="sp-more" type="button" title="换一批">${SHUFFLE}换一批</button>`;
+  $('#ideas').innerHTML = `<span class="sp-label" title="不知道说什么？点一个试试">${SPARK}试试</span>`
+    + pickIdeas(3).map((q, i) => { const [label, full = label] = q.split('|'); return `<button class="sp" type="button" style="--i:${i}" data-full="${esc(full)}" title="${esc(full)}">${esc(label)}</button>`; }).join('')
+    + `<button class="sp-more" type="button" title="换一批" aria-label="换一批">${SHUFFLE}</button>`;
 }
 // 点灵感：像打字一样填进输入框（快速，不让人等）
 let typeTimer = 0;
@@ -233,7 +232,7 @@ function setMode(m) {
   $('#paneSay').classList.toggle('hidden', m !== 'say');
   $('#paneVideo').classList.toggle('hidden', m !== 'video');
   $('#sayTools').classList.toggle('hidden', m !== 'say');
-  $('#tplHint').textContent = m === 'say' ? 'AI 会按它的结构来写' : '画面用哪个模板做';
+  $('#tplHint').textContent = '';
   $('#createErr').textContent = aiReady ? '' : $('#createErr').textContent;
   renderIdeas(); updateGo();
   if (m === 'say') setTimeout(() => $('#input').focus(), 30);
@@ -274,7 +273,7 @@ $('#ideas').addEventListener('click', (e) => {
   if (more) { more.classList.remove('spin'); void more.offsetWidth; more.classList.add('spin'); setTimeout(() => renderIdeas(true), 120); return; }
   const b = e.target.closest('.sp'); if (!b) return;
   document.querySelectorAll('#ideas .sp').forEach((x) => x.classList.toggle('picked', x === b));
-  typeInto(b.textContent);
+  typeInto(b.dataset.full || b.textContent);
 });
 $('#input').addEventListener('input', (e) => { autoGrow(e.target); $('#createErr').textContent = ''; });
 $('#input').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) generate(); });
@@ -284,6 +283,7 @@ $('#minutes').addEventListener('click', (e) => {
   prefs.minutes = Number(b.dataset.v); savePrefs(); setSeg('#minutes', b.dataset.v);
 });
 $('#btnGo').addEventListener('click', () => ensureLogin(state.mode === 'video' ? '登录后就能用这条爆款做视频' : '登录后就能生成视频').then(() => (state.mode === 'video' ? goRemix() : (state.remix = null, generate()))).catch(() => {}));
+$('#heroPhone').addEventListener('click', () => $('#btnSample').click());
 $('#btnSample').addEventListener('click', async () => {
   primeAudio();
   enterStudio();
@@ -424,8 +424,8 @@ function renderRemixPlan() {
   $('#rmPlan').innerHTML = `
     <div class="rp-k">这条为什么火</div>
     <p class="rp-why">${esc(p.why)}</p>
-    ${p.moves.length ? `<div class="rp-k">它的文案套路，我们照着写</div><ol class="rp-moves">${p.moves.map((m) => `<li>${esc(m)}</li>`).join('')}</ol>` : ''}
-    <details class="rp-src"><summary>看原视频说了什么</summary><p>${esc(rm.text)}</p></details>`;
+    ${p.moves.length ? `<div class="rp-k">照着它的套路写</div><ol class="rp-moves">${p.moves.map((m) => `<li>${esc(m)}</li>`).join('')}</ol>` : ''}
+    <details class="rp-src"><summary>原视频说了什么</summary><p>${esc(rm.text)}</p></details>`;
 }
 function pickRemixFile(file) {
   if (!/^(video|audio)\//.test(file.type) && !/\.(mp4|mov|m4v|webm|mkv|avi|mp3|m4a|wav|aac)$/i.test(file.name)) {
