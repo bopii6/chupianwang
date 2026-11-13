@@ -1,50 +1,348 @@
 {
-  "title": "别人的错题，是你的捷径",
-  "account": "启明数学课堂",
-  "sections": [
-    { "tag": "开场", "scene": "field",
-      "actors": [{ "who": "hero", "pos": "center", "enter": true, "action": "think", "at": 0 }],
-      "props": [{ "type": "flag", "pos": "farright" }],
-      "lines": ["孩子做题，为什么总在同一个地方摔跤？"] },
-    { "tag": "第一次", "scene": "field",
-      "actors": [{ "who": "hero", "pos": "center", "enter": true, "action": "fall", "at": 1 }],
-      "props": [{ "type": "pit", "pos": "center" }],
-      "lines": ["第一次，他掉进了一个坑。", "爬出来，订正了答案。"] },
-    { "tag": "又掉了", "scene": "field",
-      "actors": [{ "who": "hero", "pos": "center", "enter": true, "action": "fall", "at": 0 }],
-      "props": [{ "type": "pit", "pos": "center" }, { "type": "board", "pos": "farright", "text": "换个数" }],
-      "lines": ["第二次，还是同一个坑。", "题目换了个数字，他就不认识了。"] },
-    { "tag": "撞墙", "scene": "street",
-      "actors": [{ "who": "hero", "pos": "center", "action": "bump", "at": 0, "facing": "right" }],
-      "props": [{ "type": "wall", "pos": "right" }, { "type": "snake", "pos": "farleft" }],
-      "lines": ["每一堵墙，都要亲自撞一遍；", "每一个坑，都要亲自摔一次。"] },
-    { "tag": "考砸了", "scene": "exam",
-      "actors": [{ "who": "hero", "pos": "center", "action": "sad", "at": 1 }],
-      "props": [{ "type": "clock", "pos": "right" }],
-      "lines": ["他每天写到很晚，", "可一进考场，分数就是上不去。"] },
-    { "tag": "转折", "scene": "classroom", "boardText": "错题 = 经验",
-      "actors": [{ "who": "teacher", "pos": "right", "action": "point", "at": 0 }, { "who": "hero", "pos": "left", "action": "think", "at": 0 }],
-      "props": [],
-      "lines": ["其实，错题本不是用来抄的。", "每一道错题，都是一次试错。"] },
-    { "tag": "一张地图", "scene": "room",
-      "actors": [{ "who": "teacher", "pos": "right", "hold": "map", "action": "talk", "at": 0 }, { "who": "hero", "pos": "left", "action": "shocked", "at": 1 }],
-      "props": [],
-      "lines": ["老师把全班踩过的坑，", "整理成了一张地图。"] },
-    { "tag": "看懂了", "scene": "room",
-      "actors": [{ "who": "hero", "pos": "left", "action": "read", "at": 0, "bubble": "idea" }, { "who": "classmate", "pos": "right", "hold": "board", "text": "易错点", "action": "talk", "at": 1 }],
-      "props": [],
-      "lines": ["哪里有坑，哪里有墙，", "同学们踩过的，一目了然。"] },
-    { "tag": "跳过去", "scene": "field",
-      "actors": [{ "who": "hero", "pos": "left", "enter": true, "action": "jump", "at": 1 }],
-      "props": [{ "type": "pit", "pos": "center" }, { "type": "flag", "pos": "farright" }],
-      "lines": ["再遇到这个坑，", "他轻轻一跳，就过去了。"] },
-    { "tag": "回到家", "scene": "home",
-      "actors": [{ "who": "hero", "pos": "center", "hold": "trophy", "action": "happy", "at": 0 }, { "who": "parent", "pos": "right", "action": "happy", "at": 1, "bubble": "heart" }],
-      "props": [],
-      "lines": ["不是他突然变聪明了，", "是他站在了别人的经验上。"] },
-    { "tag": "最后", "scene": "classroom", "boardText": "卡在哪个坑？",
-      "actors": [{ "who": "hero", "pos": "center", "action": "think", "at": 1 }],
-      "props": [{ "type": "ladder", "pos": "farright" }],
-      "lines": ["所以，别让孩子一个人撞墙。", "你家孩子，正卡在哪个坑里？"] }
+ "title": "烘焙小白逆袭记",
+ "theme": {
+  "key": "cooking",
+  "emoji": [
+   "🍰",
+   "🎂",
+   "👩‍🍳"
   ]
+ },
+ "sections": [
+  {
+   "tag": "撞墙开场",
+   "scene": "studio",
+   "boardText": "",
+   "actors": [
+    {
+     "who": "hero",
+     "pos": "center",
+     "enter": true,
+     "action": "bump",
+     "at": 0,
+     "bubble": "!",
+     "hold": null,
+     "text": "",
+     "facing": "right"
+    }
+   ],
+   "props": [
+    {
+     "type": "wall",
+     "pos": "right",
+     "text": ""
+    }
+   ],
+   "lines": [
+    "学烘焙，最怕什么？",
+    "三天打鱼两天晒网！"
+   ]
+  },
+  {
+   "tag": "第一次放弃",
+   "scene": "studio",
+   "boardText": "",
+   "actors": [
+    {
+     "who": "hero",
+     "pos": "center",
+     "enter": false,
+     "action": "sad",
+     "at": 0,
+     "bubble": "...",
+     "hold": null,
+     "text": "",
+     "facing": null
+    }
+   ],
+   "props": [
+    {
+     "type": "cake",
+     "pos": "left",
+     "text": ""
+    }
+   ],
+   "lines": [
+    "今天累了，明天再练。",
+    "结果蛋糕烤糊了。"
+   ]
+  },
+  {
+   "tag": "三天打鱼",
+   "scene": "studio",
+   "boardText": "",
+   "actors": [
+    {
+     "who": "hero",
+     "pos": "center",
+     "enter": true,
+     "action": "leave",
+     "at": 0,
+     "bubble": null,
+     "hold": null,
+     "text": "",
+     "facing": "left"
+    }
+   ],
+   "props": [
+    {
+     "type": "cake",
+     "pos": "farleft",
+     "text": ""
+    }
+   ],
+   "lines": [
+    "三天打鱼，两天晒网。",
+    "手艺越来越生。"
+   ]
+  },
+  {
+   "tag": "掉进坑里",
+   "scene": "studio",
+   "boardText": "",
+   "actors": [
+    {
+     "who": "hero",
+     "pos": "center",
+     "enter": false,
+     "action": "fall",
+     "at": 0,
+     "bubble": "!",
+     "hold": null,
+     "text": "",
+     "facing": null
+    }
+   ],
+   "props": [
+    {
+     "type": "pit",
+     "pos": "center",
+     "text": ""
+    }
+   ],
+   "lines": [
+    "越不练，越怕失败。",
+    "直接掉进坑里。"
+   ]
+  },
+  {
+   "tag": "老师出现",
+   "scene": "studio",
+   "boardText": "",
+   "actors": [
+    {
+     "who": "teacher",
+     "pos": "right",
+     "enter": true,
+     "action": "talk",
+     "at": 0,
+     "bubble": "idea",
+     "hold": "map",
+     "text": "",
+     "facing": null
+    },
+    {
+     "who": "hero",
+     "pos": "left",
+     "enter": false,
+     "action": "think",
+     "at": 1,
+     "bubble": "?",
+     "hold": null,
+     "text": "",
+     "facing": null
+    }
+   ],
+   "props": [],
+   "lines": [
+    "老师递来一张地图：",
+    "每天练一点，比突击强。"
+   ]
+  },
+  {
+   "tag": "恍然大悟",
+   "scene": "studio",
+   "boardText": "",
+   "actors": [
+    {
+     "who": "hero",
+     "pos": "center",
+     "enter": false,
+     "action": "happy",
+     "at": 0,
+     "bubble": "!",
+     "hold": "map",
+     "text": "",
+     "facing": null
+    }
+   ],
+   "props": [
+    {
+     "type": "book",
+     "pos": "left",
+     "text": ""
+    }
+   ],
+   "lines": [
+    "原来如此！",
+    "每天练一点，不贪多。"
+   ]
+  },
+  {
+   "tag": "开始坚持",
+   "scene": "studio",
+   "boardText": "",
+   "actors": [
+    {
+     "who": "hero",
+     "pos": "center",
+     "enter": true,
+     "action": "happy",
+     "at": 0,
+     "bubble": null,
+     "hold": null,
+     "text": "",
+     "facing": null
+    }
+   ],
+   "props": [
+    {
+     "type": "cake",
+     "pos": "left",
+     "text": ""
+    },
+    {
+     "type": "clock",
+     "pos": "right",
+     "text": ""
+    }
+   ],
+   "lines": [
+    "每天固定时间练。",
+    "哪怕只练一小会儿。"
+   ]
+  },
+  {
+   "tag": "慢慢进步",
+   "scene": "studio",
+   "boardText": "",
+   "actors": [
+    {
+     "who": "hero",
+     "pos": "center",
+     "enter": false,
+     "action": "jump",
+     "at": 0,
+     "bubble": "heart",
+     "hold": null,
+     "text": "",
+     "facing": null
+    }
+   ],
+   "props": [
+    {
+     "type": "pit",
+     "pos": "left",
+     "text": ""
+    },
+    {
+     "type": "ladder",
+     "pos": "right",
+     "text": ""
+    }
+   ],
+   "lines": [
+    "坑越跳越轻松。",
+    "手艺越来越稳。"
+   ]
+  },
+  {
+   "tag": "小有成果",
+   "scene": "studio",
+   "boardText": "",
+   "actors": [
+    {
+     "who": "hero",
+     "pos": "center",
+     "enter": false,
+     "action": "happy",
+     "at": 0,
+     "bubble": "star",
+     "hold": "trophy",
+     "text": "",
+     "facing": null
+    }
+   ],
+   "props": [
+    {
+     "type": "cake",
+     "pos": "left",
+     "text": ""
+    }
+   ],
+   "lines": [
+    "现在蛋糕做得有模有样。",
+    "坚持真的有用。"
+   ]
+  },
+  {
+   "tag": "道理升华",
+   "scene": "studio",
+   "boardText": "",
+   "actors": [
+    {
+     "who": "hero",
+     "pos": "center",
+     "enter": false,
+     "action": "talk",
+     "at": 0,
+     "bubble": "idea",
+     "hold": null,
+     "text": "",
+     "facing": null
+    }
+   ],
+   "props": [
+    {
+     "type": "book",
+     "pos": "right",
+     "text": ""
+    }
+   ],
+   "lines": [
+    "学烘焙没有捷径。",
+    "就是每天练一点。"
+   ]
+  },
+  {
+   "tag": "互动收尾",
+   "scene": "studio",
+   "boardText": "",
+   "actors": [
+    {
+     "who": "hero",
+     "pos": "center",
+     "enter": false,
+     "action": "point",
+     "at": 0,
+     "bubble": "?",
+     "hold": null,
+     "text": "",
+     "facing": null
+    }
+   ],
+   "props": [
+    {
+     "type": "cake",
+     "pos": "left",
+     "text": ""
+    }
+   ],
+   "lines": [
+    "你学烘焙，坚持了多久？",
+    "评论区聊聊。"
+   ]
+  }
+ ],
+ "account": "阿麦烘焙"
 }

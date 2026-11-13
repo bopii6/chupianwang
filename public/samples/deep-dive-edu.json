@@ -1,247 +1,288 @@
 {
-  "title": "刷题多成绩不涨",
-  "headline": [
-    "为什么孩子刷了很多题",
-    "成绩还是上不去？"
-  ],
-  "account": "王老师讲学习",
-  "sections": [
-    {
-      "label": "堆成山的练习册",
-      "kw": "stack of workbooks desk",
-      "ours": false,
-      "visual": {
-        "type": "question",
-        "lines": [
-          "练习册越堆越高",
-          "分数却纹丝不动？"
-        ]
-      },
-      "lines": [
-        "练习册越买越多，题越刷越晚，",
-        "可分数就是不动。"
-      ],
-      "src": "https://images.pexels.com/photos/272980/pexels-photo-272980.jpeg?auto=compress&cs=tinysrgb&w=1440",
-      "by": "Pixabay"
-    },
-    {
-      "label": "深夜写作业",
-      "kw": "asian student homework night desk",
-      "ours": false,
-      "visual": {
-        "type": "shot"
-      },
-      "lines": [
-        "很多家长第一反应是：",
-        "孩子还不够努力。"
-      ],
-      "src": "https://images.pexels.com/photos/8921700/pexels-photo-8921700.jpeg?auto=compress&cs=tinysrgb&w=1440",
-      "by": "Bikram Bezbaruah"
-    },
-    {
-      "label": "深夜写作业",
-      "kw": "asian student homework night desk",
-      "ours": false,
-      "visual": {
-        "type": "chips",
-        "items": [
-          "加作业",
-          "报补习",
-          "盯得更紧"
-        ]
-      },
-      "lines": [
-        "于是加作业、报补习、盯得更紧。"
-      ],
-      "src": "https://images.pexels.com/photos/33940743/pexels-photo-33940743.jpeg?auto=compress&cs=tinysrgb&w=1440",
-      "by": "MT photography 😊📸📸"
-    },
-    {
-      "label": "疲惫的孩子",
-      "kw": "student tired desk books",
-      "ours": false,
-      "visual": {
-        "type": "shot"
-      },
-      "lines": [
-        "结果孩子越来越累，",
-        "成绩还是原地打转。"
-      ],
-      "src": "https://images.pexels.com/photos/5877583/pexels-photo-5877583.jpeg?auto=compress&cs=tinysrgb&w=1440",
-      "by": "https://kaboompics.com/"
-    },
-    {
-      "label": "试卷特写",
-      "kw": "exam paper pencil close up",
-      "ours": false,
-      "visual": {
-        "type": "big",
-        "lines": [
-          "问题不在努力",
-          "而在刷题的方式"
-        ]
-      },
-      "lines": [
-        "但真正的原因，",
-        "往往不在努力，而在刷题的方式。"
-      ],
-      "src": "https://images.pexels.com/photos/6683394/pexels-photo-6683394.jpeg?auto=compress&cs=tinysrgb&w=1440",
-      "by": "Andy Barbour"
-    },
-    {
-      "label": "红笔订正",
-      "kw": "red pen correcting paper",
-      "ours": false,
-      "visual": {
-        "type": "shot"
-      },
-      "lines": [
-        "第一个原因：错题只订正，不复盘。"
-      ],
-      "src": "https://images.pexels.com/photos/6684373/pexels-photo-6684373.jpeg?auto=compress&cs=tinysrgb&w=1440",
-      "by": "Andy Barbour"
-    },
-    {
-      "label": "红笔订正",
-      "kw": "red pen correcting paper",
-      "ours": false,
-      "visual": {
-        "type": "shot"
-      },
-      "lines": [
-        "抄一遍正确答案，",
-        "下次换个数字，照样错。"
-      ],
-      "src": "https://images.pexels.com/photos/7596911/pexels-photo-7596911.jpeg?auto=compress&cs=tinysrgb&w=1440",
-      "by": "cottonbro studio"
-    },
-    {
-      "label": "翻书查概念",
-      "kw": "student reading textbook library",
-      "ours": false,
-      "visual": {
-        "type": "chips",
-        "items": [
-          "概念",
-          "方法",
-          "题型"
-        ]
-      },
-      "lines": [
-        "第二个原因：概念没吃透，",
-        "只记住了题型。"
-      ],
-      "src": "https://images.pexels.com/photos/16420457/pexels-photo-16420457.jpeg?auto=compress&cs=tinysrgb&w=1440",
-      "by": "Ludovic Delot"
-    },
-    {
-      "label": "翻书查概念",
-      "kw": "student reading textbook library",
-      "ours": false,
-      "visual": {
-        "type": "shot"
-      },
-      "lines": [
-        "题目稍微一变形，",
-        "孩子就不知道从哪下手。"
-      ],
-      "src": "https://images.pexels.com/photos/256455/pexels-photo-256455.jpeg?auto=compress&cs=tinysrgb&w=1440",
-      "by": "Pixabay"
-    },
-    {
-      "label": "计时考试",
-      "kw": "clock exam classroom",
-      "ours": false,
-      "visual": {
-        "type": "shot"
-      },
-      "lines": [
-        "第三个原因：平时不计时，",
-        "考场上时间根本不够用。"
-      ],
-      "src": "https://images.pexels.com/photos/40490251/pexels-photo-40490251.jpeg?auto=compress&cs=tinysrgb&w=1440",
-      "by": "This And No Internet 25"
-    },
-    {
-      "label": "思考的学生",
-      "kw": "asian student thinking classroom",
-      "ours": false,
-      "visual": {
-        "type": "quote",
-        "text": "学而不思则罔，思而不学则殆。",
-        "by": "孔子"
-      },
-      "lines": [
-        "说到底，刷题只是“学”，",
-        "复盘才是“思”。"
-      ],
-      "src": "https://images.pexels.com/photos/37354083/pexels-photo-37354083.jpeg?auto=compress&cs=tinysrgb&w=1440",
-      "by": "TBD Tuyên"
-    },
-    {
-      "label": "课堂讲解",
-      "kw": "teacher explaining whiteboard",
-      "ours": true,
-      "visual": {
-        "type": "shot"
-      },
-      "lines": [
-        "所以在我们的课上，",
-        "每节课都留时间做复盘。"
-      ],
-      "src": "https://images.pexels.com/photos/5905484/pexels-photo-5905484.jpeg?auto=compress&cs=tinysrgb&w=1440",
-      "by": "Katerina Holmes"
-    },
-    {
-      "label": "错题本",
-      "kw": "notebook writing study desk",
-      "ours": true,
-      "visual": {
-        "type": "chips",
-        "items": [
-          "错题二刷",
-          "母题讲透",
-          "限时训练"
-        ]
-      },
-      "lines": [
-        "错题一周后重做，",
-        "母题讲透，再限时训练。"
-      ],
-      "src": "https://images.pexels.com/photos/37627847/pexels-photo-37627847.jpeg?auto=compress&cs=tinysrgb&w=1440",
-      "by": "Pavel Mudarra"
-    },
-    {
-      "label": "专注学习",
-      "kw": "asian student studying focused",
-      "ours": false,
-      "visual": {
-        "type": "big",
-        "lines": [
-          "少刷一点",
-          "多想一步"
-        ]
-      },
-      "lines": [
-        "少刷一点，多想一步，",
-        "成绩才会真正动起来。"
-      ],
-      "src": "https://images.pexels.com/photos/5537488/pexels-photo-5537488.jpeg?auto=compress&cs=tinysrgb&w=1440",
-      "by": "Zen Chung"
-    },
-    {
-      "label": "放学路上",
-      "kw": "students walking school sunset",
-      "ours": false,
-      "visual": {
-        "type": "shot"
-      },
-      "lines": [
-        "你家孩子是哪种情况？",
-        "评论区聊聊，关注我，下期接着讲。"
-      ],
-      "src": "https://images.pexels.com/photos/12719358/pexels-photo-12719358.jpeg?auto=compress&cs=tinysrgb&w=1440",
-      "by": "ROMAN ODINTSOV"
-    }
+ "title": "学了半年美甲为何不敢上手",
+ "headline": [
+  "为什么学了半年美甲",
+  "还是不敢给客人做？"
+ ],
+ "theme": {
+  "key": "beauty",
+  "emoji": [
+   "💅",
+   "✨",
+   "🎨"
   ]
+ },
+ "sections": [
+  {
+   "label": "美甲学员练习",
+   "kw": "nail art practice hand",
+   "ours": false,
+   "visual": {
+    "type": "poll",
+    "q": "你学美甲多久了？",
+    "options": [
+     "刚入门",
+     "半年左右"
+    ]
+   },
+   "lines": [
+    "学了半年美甲，还是不敢给客人做。",
+    "这是不是你现在的状态？"
+   ],
+   "src": "https://images.pexels.com/photos/37538884/pexels-photo-37538884.jpeg?auto=compress&cs=tinysrgb&w=1440",
+   "by": "Zulfugar Karimov"
+  },
+  {
+   "label": "美甲作品展示",
+   "kw": "nail art design closeup",
+   "ours": false,
+   "visual": {
+    "type": "shot"
+   },
+   "lines": [
+    "看别人做得又快又好看。",
+    "自己一上手就手忙脚乱。"
+   ],
+   "src": "https://images.pexels.com/photos/18730147/pexels-photo-18730147.jpeg?auto=compress&cs=tinysrgb&w=1440",
+   "by": "honggyu kim"
+  },
+  {
+   "label": "美甲练习场景",
+   "kw": "nail art practice hand",
+   "ours": false,
+   "visual": {
+    "type": "magnifier",
+    "label": "练习时的小动作"
+   },
+   "lines": [
+    "很多人以为多练就行。",
+    "于是天天在假手上画。"
+   ],
+   "src": "https://images.pexels.com/photos/14267567/pexels-photo-14267567.jpeg?auto=compress&cs=tinysrgb&w=1440",
+   "by": "Viktorya  Sergeeva 🫂"
+  },
+  {
+   "label": "美甲工具特写",
+   "kw": "nail art tools closeup",
+   "ours": false,
+   "visual": {
+    "type": "shot"
+   },
+   "lines": [
+    "可一到真人手上，全乱了。",
+    "问题到底出在哪？"
+   ],
+   "src": "https://images.pexels.com/photos/5238012/pexels-photo-5238012.jpeg?auto=compress&cs=tinysrgb&w=1440",
+   "by": "https://kaboompics.com/"
+  },
+  {
+   "label": "美甲师工作",
+   "kw": "nail technician working",
+   "ours": false,
+   "visual": {
+    "type": "big",
+    "lines": [
+     "真正的原因",
+     "是练习方式错了"
+    ]
+   },
+   "lines": [
+    "但真正的原因，其实是练习方式错了。",
+    "你一直在练手，没在练客人。"
+   ],
+   "src": "https://images.pexels.com/photos/7446915/pexels-photo-7446915.jpeg?auto=compress&cs=tinysrgb&w=1440",
+   "by": "Gustavo Fring"
+  },
+  {
+   "label": "真人手模练习",
+   "kw": "nail art model hand",
+   "ours": false,
+   "visual": {
+    "type": "compare",
+    "left": {
+     "label": "假手练习",
+     "items": [
+      "固定姿势",
+      "没有反馈",
+      "重复动作"
+     ]
+    },
+    "right": {
+     "label": "真人练习",
+     "items": [
+      "手会动",
+      "需要沟通",
+      "应对变化"
+     ]
+    }
+   },
+   "lines": [
+    "假手是固定的，真人的手会动。",
+    "你要学会边做边沟通。"
+   ],
+   "src": "https://images.pexels.com/photos/20758445/pexels-photo-20758445.jpeg?auto=compress&cs=tinysrgb&w=1440",
+   "by": "mehrab zahedbeigi"
+  },
+  {
+   "label": "美甲课堂指导",
+   "kw": "nail class teacher student",
+   "ours": true,
+   "visual": {
+    "type": "nametag",
+    "name": "Lily美甲课堂",
+    "role": "美甲教学老师"
+   },
+   "lines": [
+    "在Lily美甲课堂，我们会让学员直接上手真人。",
+    "从第一节课就适应真实的手感。"
+   ],
+   "src": "https://images.pexels.com/photos/35745592/pexels-photo-35745592.jpeg?auto=compress&cs=tinysrgb&w=1440",
+   "by": "Ahmet Kurt"
+  },
+  {
+   "label": "美甲步骤分解",
+   "kw": "nail art steps",
+   "ours": false,
+   "visual": {
+    "type": "chips",
+    "items": [
+     "前置处理",
+     "涂色",
+     "款式",
+     "保养"
+    ]
+   },
+   "lines": [
+    "客人要的是完整流程。",
+    "不是只会涂个颜色。"
+   ],
+   "src": "https://images.pexels.com/photos/33992168/pexels-photo-33992168.jpeg?auto=compress&cs=tinysrgb&w=1440",
+   "by": "Mert Coşkun"
+  },
+  {
+   "label": "美甲细节处理",
+   "kw": "nail art detail",
+   "ours": false,
+   "visual": {
+    "type": "magnifier",
+    "label": "死皮处理细节"
+   },
+   "lines": [
+    "比如死皮处理，差一点感觉就不好。",
+    "这些细节，假手练不出来。"
+   ],
+   "src": "https://images.pexels.com/photos/37888903/pexels-photo-37888903.jpeg?auto=compress&cs=tinysrgb&w=1440",
+   "by": "aksinfo7 universe"
+  },
+  {
+   "label": "美甲师与客人",
+   "kw": "nail salon customer",
+   "ours": false,
+   "visual": {
+    "type": "sticky",
+    "items": [
+     "怕做不好",
+     "怕客人不满意",
+     "怕速度太慢"
+    ]
+   },
+   "lines": [
+    "你怕的其实不是技术。",
+    "是怕客人不满意。"
+   ],
+   "src": "https://images.pexels.com/photos/18112333/pexels-photo-18112333.jpeg?auto=compress&cs=tinysrgb&w=1440",
+   "by": "Maxi  Leiva"
+  },
+  {
+   "label": "美甲师自信",
+   "kw": "confident nail artist",
+   "ours": false,
+   "visual": {
+    "type": "quote",
+    "text": "技术是练出来的，胆量是做出来的。",
+    "by": "Lily美甲课堂"
+   },
+   "lines": [
+    "技术是练出来的，胆量是做出来的。",
+    "不真实操作，永远不敢。"
+   ],
+   "src": "https://images.pexels.com/photos/7755237/pexels-photo-7755237.jpeg?auto=compress&cs=tinysrgb&w=1440",
+   "by": "RDNE Stock project"
+  },
+  {
+   "label": "美甲学员实操",
+   "kw": "nail student practicing",
+   "ours": true,
+   "visual": {
+    "type": "steps",
+    "items": [
+     "先做简单款",
+     "再练复杂款",
+     "最后独立完成"
+    ]
+   },
+   "lines": [
+    "我们带学员，都是从简单款开始。",
+    "一步步建立信心。"
+   ],
+   "src": "https://images.pexels.com/photos/7755153/pexels-photo-7755153.jpeg?auto=compress&cs=tinysrgb&w=1440",
+   "by": "RDNE Stock project"
+  },
+  {
+   "label": "美甲作品完成",
+   "kw": "finished nail art",
+   "ours": false,
+   "visual": {
+    "type": "shot"
+   },
+   "lines": [
+    "等你独立完成第一个客人。",
+    "那种成就感，会让你上瘾。"
+   ],
+   "src": "https://images.pexels.com/photos/7705849/pexels-photo-7705849.jpeg?auto=compress&cs=tinysrgb&w=1440",
+   "by": "cottonbro studio"
+  },
+  {
+   "label": "美甲师工作日常",
+   "kw": "nail technician working",
+   "ours": false,
+   "visual": {
+    "type": "cinema",
+    "text": "敢做，比会做更重要。",
+    "sub": "美甲师成长记"
+   },
+   "lines": [
+    "所以，别再只练假手了。",
+    "敢做，比会做更重要。"
+   ],
+   "src": "https://images.pexels.com/photos/3997357/pexels-photo-3997357.jpeg?auto=compress&cs=tinysrgb&w=1440",
+   "by": "cottonbro studio"
+  },
+  {
+   "label": "评论区互动",
+   "kw": "nail art community",
+   "ours": false,
+   "visual": {
+    "type": "chat",
+    "who": "学员",
+    "msgs": [
+     {
+      "from": "them",
+      "text": "老师，我也不敢上手"
+     },
+     {
+      "from": "me",
+      "text": "评论区留下你的关键词"
+     }
+    ]
+   },
+   "lines": [
+    "你学美甲卡在哪一步？",
+    "评论区留下“不敢做”，我挨个回复。"
+   ],
+   "src": "https://images.pexels.com/photos/8809259/pexels-photo-8809259.jpeg?auto=compress&cs=tinysrgb&w=1440",
+   "by": "Egor Komarov"
+  }
+ ],
+ "account": "Lily美甲课堂"
 }

@@ -1,28 +1,184 @@
 {
-  "title": "半日营学业规划模式",
-  "slogan": "下一波机会，藏在学业规划里",
-  "account": "启明教育",
-  "sections": [
-    { "tag": "开场", "visual": { "type": "title", "title": "教培新机会", "sub": "家长最愿意花钱的地方变了" },
-      "lines": ["这两年教培行业，", "家长最愿意花钱的地方，变了。"],
-      "en": ["In education these two years,", "where parents spend has changed."] },
-    { "tag": "新模式", "visual": { "type": "emoji", "title": "半日营模式", "emoji": ["🏫", "👨‍👩‍👧", "📋"], "labels": ["社区门店", "周边家长", "学业规划"] },
-      "lines": ["一种新模式正在兴起：", "半日营加学业规划，", "开在家门口，服务周边家长。"],
-      "en": ["A new model is rising:", "half-day camps plus academic planning,", "right next door to families."] },
-    { "tag": "怎么做", "visual": { "type": "tags", "title": "先做学业诊断", "tags": ["学习短板", "能力优势", "年龄", "学情", "兴趣"], "highlight": "量身规划成长方向" },
-      "lines": ["具体怎么做？", "先给孩子做一次学业诊断，", "找到短板和优势，量身规划方向。"],
-      "en": ["So how does it work?", "Start with an academic diagnosis,", "find gaps and strengths, then plan."] },
-    { "tag": "交付", "visual": { "type": "table", "title": "学业规划报告", "head": ["模块", "写什么"], "rows": [["一页结论", "1个主要困扰、2个优势"], ["学习现状", "学习时间、作业、复盘"], ["能力与兴趣", "孩子做过什么、愿意做什么"], ["成长路径", "7天启动、30天目标"], ["家长分工", "谁提醒、谁记录"]] },
-      "lines": ["然后交付一份完整的报告，", "从现状到路径，写得清清楚楚。"],
-      "en": ["Then deliver a full report,", "from current state to growth path."] },
-    { "tag": "长期陪跑", "visual": { "type": "list", "title": "长期跟踪服务", "items": ["每日学习计划", "每周复盘反馈", "每月成长报告", "家长同步沟通"] },
-      "lines": ["报告不是终点，", "后面还有长期的跟踪服务，", "家长看得见孩子的变化。"],
-      "en": ["The report isn't the end,", "long-term tracking follows,", "so parents can see the progress."] },
-    { "tag": "为什么好", "visual": { "type": "stat", "title": "家长为什么愿意买单", "big": "1对1", "label": "看得见的个性化方案" },
-      "lines": ["家长买的不是课时，", "是一套看得见的个性化方案。"],
-      "en": ["Parents aren't buying class hours,", "they're buying a visible personal plan."] },
-    { "tag": "行动", "visual": { "type": "title", "title": "评论区留言 888", "sub": "完整方案直接分享给你" },
-      "lines": ["想了解这套模式的老师，", "评论区留言888，", "我把完整方案分享给你。"],
-      "en": ["Teachers who want to learn more,", "comment 888 below,", "and I'll share the full plan."] }
+ "title": "成人钢琴周末班招生",
+ "slogan": "下班后，来弹一首",
+ "theme": {
+  "key": "music",
+  "emoji": [
+   "🎹",
+   "🎵"
   ]
+ },
+ "sections": [
+  {
+   "tag": "开场",
+   "visual": {
+    "type": "rank",
+    "title": "成人学琴三大顾虑",
+    "items": [
+     "没基础",
+     "没时间",
+     "怕学不会"
+    ]
+   },
+   "lines": [
+    "成人学钢琴，最怕这三件事。",
+    "没基础，没时间，怕学不会。"
+   ],
+   "en": [
+    "Adults learning piano fear three things.",
+    "No basics, no time, afraid of failing."
+   ]
+  },
+  {
+   "tag": "零基础",
+   "visual": {
+    "type": "list",
+    "title": "零基础怎么学",
+    "items": [
+     "从认识键盘开始",
+     "学会看简谱",
+     "掌握基础指法",
+     "弹会简单曲子"
+    ]
+   },
+   "lines": [
+    "在我们这儿，零基础就从认识键盘开始。",
+    "学会看简谱，掌握基础指法。",
+    "几节课就能弹会简单曲子。"
+   ],
+   "en": [
+    "Here, we start from the keyboard.",
+    "Learn numbered notation and basic fingering.",
+    "You'll play simple songs in a few lessons."
+   ]
+  },
+  {
+   "tag": "周末班",
+   "visual": {
+    "type": "compare",
+    "title": "周末班 vs 自学",
+    "left": {
+     "label": "自学",
+     "items": [
+      "手型容易错",
+      "节奏不稳",
+      "容易放弃"
+     ]
+    },
+    "right": {
+     "label": "周末班",
+     "items": [
+      "老师纠正手型",
+      "跟节拍器练节奏",
+      "同学一起坚持"
+     ]
+    }
+   },
+   "lines": [
+    "自己在家练，手型错了没人纠。",
+    "周末班有老师盯着，进步更快。",
+    "还能和同学一起坚持。"
+   ],
+   "en": [
+    "Practicing alone, no one corrects your hands.",
+    "In weekend class, teachers guide you to improve faster.",
+    "And you stay motivated with classmates."
+   ]
+  },
+  {
+   "tag": "下班放松",
+   "visual": {
+    "type": "emoji",
+    "title": "下班后的选择",
+    "emoji": [
+     "🎹",
+     "🎵",
+     "☕"
+    ],
+    "labels": [
+     "弹琴",
+     "放松",
+     "交友"
+    ]
+   },
+   "lines": [
+    "下班后别只刷手机。",
+    "来弹弹琴，放松一下。",
+    "还能认识喜欢音乐的朋友。"
+   ],
+   "en": [
+    "Don't just scroll after work.",
+    "Come play piano and relax.",
+    "Meet friends who love music too."
+   ]
+  },
+  {
+   "tag": "课程安排",
+   "visual": {
+    "type": "ticket",
+    "kind": "周末班",
+    "name": "成人钢琴零基础班",
+    "info": [
+     "周末上课",
+     "零基础可学",
+     "下班后练习"
+    ],
+    "cta": "私信咨询"
+   },
+   "lines": [
+    "我们的成人钢琴周末班开始招生了。",
+    "零基础也能学，周末上课。",
+    "下班后来练一练，刚好。"
+   ],
+   "en": [
+    "Our adult weekend piano class is enrolling.",
+    "No experience needed, classes on weekends.",
+    "Perfect for after-work practice."
+   ]
+  },
+  {
+   "tag": "行动",
+   "visual": {
+    "type": "keywords",
+    "words": [
+     "零基础",
+     "周末班",
+     "下班练"
+    ],
+    "sub": "林老师钢琴等你来"
+   },
+   "lines": [
+    "别再说自己没天赋。",
+    "零基础，周末班，下班练。",
+    "给自己一个开始的机会。"
+   ],
+   "en": [
+    "Stop saying you have no talent.",
+    "Zero basics, weekend class, after work.",
+    "Give yourself a chance to start."
+   ]
+  },
+  {
+   "tag": "互动",
+   "visual": {
+    "type": "ask",
+    "q": "你学琴最大的障碍是什么？",
+    "options": [
+     "没基础",
+     "没时间",
+     "怕学不会",
+     "其他"
+    ]
+   },
+   "lines": [
+    "你是哪一种？",
+    "评论区说说你的情况。"
+   ],
+   "en": [
+    "Which one are you?",
+    "Tell us in the comments."
+   ]
+  }
+ ],
+ "account": "林老师钢琴"
 }

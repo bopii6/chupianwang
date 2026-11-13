@@ -30,16 +30,25 @@ export function fitFont(ctx, text, size, maxWidth, weight = 900, spacing = 0) {
 export function wrap(ctx, text, maxWidth, maxLines = 2) {
   const lines = [];
   let cur = '';
+  let cut = false;
   for (const ch of String(text)) {
-    if (ctx.measureText(cur + ch).width > maxWidth && cur) {
+    // 句末标点不放到行首：宁可这一行略超一点
+    if (ctx.measureText(cur + ch).width > maxWidth && cur && !NO_HEAD.includes(ch)) {
       lines.push(cur);
       cur = ch;
-      if (lines.length === maxLines) break;
+      if (lines.length === maxLines) { cut = true; break; }
     } else cur += ch;
   }
   if (lines.length < maxLines && cur) lines.push(cur);
+  // 最后一行只剩一个字：从上一行挪一个字下来，看着不那么孤零零
+  const n = lines.length;
+  if (!cut && n >= 2 && [...lines[n - 1]].length === 1) {
+    const prev = [...lines[n - 2]];
+    if (prev.length >= 3 && !NO_HEAD.includes(prev[prev.length - 1])) { lines[n - 1] = prev.pop() + lines[n - 1]; lines[n - 2] = prev.join(''); }
+  }
   return lines;
 }
+const NO_HEAD = '，。！？、；：,.!?;:）)」』”’…%';
 
 /** 字幕断行：优先在标点处分成两行 */
 export function splitSubtitle(text, maxChars = 15) {

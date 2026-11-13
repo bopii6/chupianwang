@@ -24,7 +24,7 @@
     <div class="home">
       <section class="hero">
         <div class="eyebrow">教培老师的视频获客工具</div>
-        <h1>已被验证<em>能火、能获客</em>的视频套路</h1>
+        <h1>已被验证<em>能火、能获客</em><br class="m-br">的视频套路</h1>
       </section>
 
       <div class="box" id="box">
@@ -52,7 +52,7 @@
             <div class="rm-drop" id="rmDrop">
               <div class="rm-empty" id="rmEmpty">
                 <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-4.5 4.5M12 4l4.5 4.5M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                <b>把别人的爆款视频拖到这里，或点击选择</b>
+                <b><span class="d-only">把别人的爆款视频拖到这里，或点击选择</span><span class="m-only">点这里，从相册选一条别人的爆款视频</span></b>
                 <span>抖音里点「分享 → 保存本地」就能存下视频；保存不了的，录屏也行</span>
               </div>
               <div class="rm-file hidden" id="rmFile">
@@ -115,6 +115,7 @@
   <!-- ③ 看成片 -->
   <main id="studio" class="view hidden">
     <section class="stage">
+      <button class="back-btn" data-nav="gallery" type="button"><svg viewBox="0 0 24 24"><path d="M19 12H6m5-6-6 6 6 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>返回修改</button>
       <div class="phone">
         <canvas id="preview" width="1080" height="1920"></canvas>
         <button class="tap" id="tap" aria-label="播放/暂停"></button>
@@ -145,7 +146,7 @@
         <button data-tab="script" class="on">文案</button><button data-tab="style">风格</button><button data-tab="voice">声音</button>
       </nav>
       <div class="tab-body">
-        <div class="tab" id="tab-script"><div class="rm-note hidden" id="rmNote"></div><div id="editor" class="editor"></div></div>
+        <div class="tab" id="tab-script"><div class="rm-note hidden" id="rmNote"></div><div class="flag-note hidden" id="flagNote"></div><div id="editor" class="editor"></div></div>
         <div class="tab hidden" id="tab-style">
           <div class="skin-grid" id="skins"></div>
           <div class="photos hidden" id="photoPanel2">

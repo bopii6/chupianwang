@@ -7,7 +7,7 @@ import { exportInWorker, exportSupported } from './engine/exporter.js';
 
 const $ = (s) => document.querySelector(s);
 const FPS = 24; // 与对标样片一致；图文动效 24 帧足够流畅，比 30 帧少 20% 渲染量
-const IDEAS = ['孩子数学卡在70分怎么办', '少儿编程到底有什么用', '中考英语听说怎么提分', '暑假班招生，6人小班'];
+const IDEAS = ['成人学钢琴晚不晚', '少儿编程到底有什么用', '驾考科目二怎么一次过', '美甲新手怎么接第一单'];
 const VOICES = [
   { id: 'zh-CN-YunxiNeural', name: '云希', desc: '阳光男声 · 适合知识讲解', av: '希' },
   { id: 'zh-CN-XiaoxiaoNeural', name: '晓晓', desc: '温暖女声 · 适合家长沟通', av: '晓' },
@@ -15,13 +15,27 @@ const VOICES = [
   { id: 'zh-CN-XiaoyiNeural', name: '晓伊', desc: '活泼女声 · 适合低龄课程', av: '伊' },
   { id: 'zh-CN-YunjianNeural', name: '云健', desc: '激情男声 · 适合招生促单', av: '健' },
 ];
-const SCENE_NAMES = { field: '野外', room: '书房', classroom: '教室', exam: '考场', home: '客厅', street: '街市', river: '河边' };
+/** 客户没自己挑过配音时，按行业和模板自动配一个声音 */
+function autoVoice(script) {
+  const key = script?.theme?.key || '';
+  const kid = /少儿|孩子|幼儿|小朋友|宝宝|宝贝/.test(state.input + (script?.title || ''));
+  if (kid && ['coding', 'art', 'music', 'dance', 'language', 'k12'].includes(key)) return 'zh-CN-XiaoyiNeural'; // 活泼女声
+  if (['driving', 'fitness'].includes(key)) return 'zh-CN-YunjianNeural'; // 激情男声
+  if (['beauty', 'cooking', 'music', 'dance', 'art'].includes(key)) return 'zh-CN-XiaoxiaoNeural'; // 温暖女声
+  if (state.form?.id === 'deep-dive' || state.form?.id === 'data-card' || key === 'business') return 'zh-CN-YunyangNeural'; // 播音腔
+  return 'zh-CN-YunxiNeural';
+}
+const SCENE_NAMES = { field: '野外', room: '书房', classroom: '教室', exam: '考场', home: '客厅', street: '街市', river: '河边', studio: '练习室', lab: '电脑教室', road: '练车场' };
 /** 每个形式记住自己的皮肤 */
 const skinOf = () => { const ks = Object.keys(state.form.module.skins); const v = prefs.skins?.[state.form.id]; return ks.includes(v) ? v : ks[0]; };
 /** 用来展示一段“完整搭好”样子的时间点 */
 const showcaseTime = (p) => (p.conclusion != null ? Math.min(p.end - 0.05, p.conclusion + 1.2) : Math.max(p.start + 0.3, Math.min(p.end - 0.1, (p.lineEnd ?? p.end) - 0.3)));
-const MOD_NAMES = { compare: '对比', stats: '数据卡', grid: '清单', flow: '流程', list: '要点', none: '标题' };
-const VIS_NAMES = { shot: '画面', chips: '蓝标签', quote: '引语', question: '提问', title: '大标题', tags: '标签', table: '表格', stat: '大数字', emoji: '贴纸', list: '清单', type: '打字', icons: '图标', avatar: '人设', tree: '路线图', big: '大字', cards: '资料卡', follow: '关注' };
+const MOD_NAMES = { compare: '对比', stats: '数据卡', grid: '清单', flow: '流程', list: '要点', none: '标题', matrix: '四象限', timeline: '时间轴', pyramid: '金字塔', myth: '误区正解', quote: '金句', formula: '公式', cycle: '循环图', bars: '程度条', venn: '韦恩图', checks: '打勾清单', scale: '天平', stairs: '台阶', funnel: '漏斗', iceberg: '冰山', gauge: '仪表盘', schedule: '安排表', qa: '问答', mindmap: '导图', checkmatrix: '对比表', keyword: '关键词', roadmap: '路线图', donut: '环形构成' };
+const VIS_NAMES = { shot: '画面', chips: '标签', quote: '金句', question: '提问', title: '大标题', tags: '标签', table: '表格', stat: '大数字', emoji: '贴纸', list: '清单', type: '打字', icons: '图标', avatar: '人设', tree: '路线图', big: '大字', cards: '资料卡', follow: '关注',
+  compare: '对比', steps: '步骤', chat: '聊天', offer: '课程卡', ask: '提问', checktest: '自测', verdict: '判对错', warning: '警示', formula: '公式', pyramid: '金字塔', rank: '排行', timeline: '时间轴', keywords: '关键词', ticket: '门票', certificate: '喜报', map: '地址', notify: '通知',
+  countdown: '倒计时', checklist: '清单', vs: '对决', calendar: '日历', episodes: '剧集', marker: '划重点', nametag: '名牌', poll: '投票', ticker: '新闻条',
+  progress: '进度条', quest: '闯关', levelup: '升级', lockscreen: '锁屏', grid4: '四宫格', gift: '礼包', neon: '霓虹', bedtime: '睡前', pledge: '承诺书', quiz: '小测验', notebook: '笔记', top3: '前三名', spotlight: '聚光灯', faq: '问答',
+  caption: '解说卡', magnifier: '放大镜', qa: '问答', breaking: '快讯', polaroid: '拍立得', chain: '因果链', stamp: '盖章', sticky: '便利贴', cinema: '电影感', location: '地点', tape: '警戒线', tug: '拔河' };
 
 // ---------- 偏好记忆（只是方便，读写失败也不影响使用） ----------
 const prefs = Object.assign({ account: '', skinId: 'blackGold', voice: VOICES[0].id, rate: '+8%', minutes: 2 }, (() => {
@@ -246,11 +260,13 @@ home.addEventListener('drop', (e) => {
   const files = [...(e.dataTransfer?.files || [])]; if (!files.length) return;
   e.preventDefault(); $('#box').classList.remove('drop');
   const vid = files.find(isVideoFile); const docs = files.filter((f) => !isVideoFile(f));
-  if (vid) { setMode('video'); pickRemixFile(vid); } else { setMode('say');
-loadMe();
-// 字体加载完再摆好滑块的位置，然后才打开过渡动画（避免一进来滑块乱飞）
-document.fonts.ready.then(() => { moveTabInd(); moveSegThumb($('#minutes')); updateTplNav(); requestAnimationFrame(() => document.body.classList.add('ready')); }); addFiles(docs); }
+  if (vid) { setMode('video'); pickRemixFile(vid); } else { setMode('say'); addFiles(docs); }
 });
+// 大框比屏幕高时，底部工具栏（含“生成”按钮）贴在屏幕底部，不用滚下去找；贴住时加阴影
+function updateBarStuck() { const r = $('#box').getBoundingClientRect(); $('#box').classList.toggle('bar-stuck', r.bottom > innerHeight + 2 && r.top < innerHeight - 160); }
+window.addEventListener('scroll', updateBarStuck, { passive: true });
+window.addEventListener('resize', updateBarStuck);
+new ResizeObserver(updateBarStuck).observe($('#box'));
 
 // ================= 说一句话 =================
 $('#ideas').addEventListener('click', (e) => {
@@ -366,6 +382,8 @@ async function generate(input = $('#input').value.trim()) {
     onAuthFail(r);
     if (!r.ok) throw new Error(data.error || '生成失败');
     data.account = prefs.account || data.account || '';
+    state.flags = Array.isArray(data._flags) ? data._flags : [];
+    onQuota(data);
     await startWithScript(state.form.module.normalize ? state.form.module.normalize(data, splitLongLine) : normalize(data));
   } catch (err) {
     overlayMessage('没写成功', err.message, [
@@ -548,6 +566,8 @@ async function replicate() {
     onAuthFail(r);
     if (!r.ok) throw new Error(data.error || '生成失败');
     data.account = prefs.account || data.account || '';
+    state.flags = Array.isArray(data._flags) ? data._flags : [];
+    onQuota(data);
     await startWithScript(prepScript(state.form, data));
   } catch (err) {
     overlayMessage('没写成功', err.message, [
@@ -567,15 +587,17 @@ function renderRemixNote() {
 // ================= 登录（邮箱验证码） =================
 // 随便看、随便点不用登录；点“生成”或上传别人的爆款视频时才要求登录，登录完自动接着做
 let me = null;
+let authRequired = false; // 登录开关：服务端 .env 里 AUTH_REQUIRED=1 才要求登录（测试阶段先关着）
 let loginWaiters = [];
 async function loadMe() {
   try { const d = await (await fetch('/api/auth/me')).json(); me = d.user; } catch { me = null; }
   renderAcct();
 }
 function renderAcct() {
+  if (!me && !authRequired) { $('#acctArea').innerHTML = '<span class="trial">新用户免费试做 3 条</span>'; return; } // 登录没开：不显示登录按钮
   $('#acctArea').innerHTML = me
     ? `<button class="me" id="btnMe" type="button"><i>${esc(me.email[0].toUpperCase())}</i><span>${esc(me.email)}</span><svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-       <div class="me-menu" id="meMenu"><div class="me-head">${esc(me.email)}<small>${me.plan === 'trial' ? '免费试用中' : '已开通'}</small></div><button type="button" id="btnLogout">退出登录</button></div>`
+       <div class="me-menu" id="meMenu"><div class="me-head">${esc(me.email)}<small>${me.plan === 'trial' ? `免费试用 · 还剩 ${me.trialLeft ?? 0} 条` : '已开通 · 不限条数'}</small></div><button type="button" id="btnLogout">退出登录</button></div>`
     : '<span class="trial">新用户免费试做 3 条</span><button class="btn-login" id="btnLogin" type="button">登录</button>';
 }
 $('#acctArea').addEventListener('click', async (e) => {
@@ -590,7 +612,7 @@ document.addEventListener('click', (e) => { if (!e.target.closest('#acctArea')) 
 
 /** 已登录直接继续；没登录弹出登录框，登录成功后继续（关掉框就算了） */
 function ensureLogin(reason) {
-  if (me) return Promise.resolve(me);
+  if (me || !authRequired) return Promise.resolve(me);
   return new Promise((resolve, reject) => { loginWaiters.push({ resolve, reject }); openLogin(reason); });
 }
 const dlg = $('#loginDlg');
@@ -667,15 +689,18 @@ $('#lgBack').addEventListener('click', () => lgStep(1));
 $('#lgResend').addEventListener('click', () => { $('#lgCode').value = ''; sendCode(); });
 /** 接口说没登录（比如登录过期）：清掉登录状态 */
 function onAuthFail(r) { if (r.status === 401) { me = null; renderAcct(); } }
+/** 生成成功：更新剩余试用条数 */
+function onQuota(data) { if (me && typeof data._trialLeft === 'number') { me.trialLeft = data._trialLeft; renderAcct(); if (me.plan === 'trial') toast(data._trialLeft ? `免费试做还剩 ${data._trialLeft} 条` : '免费试做已用完'); } }
 
 // ================= ③ 看成片 =================
 function enterStudio() {
   stop();
-  state.script = null;
+  state.script = null; state.flags = [];
   state.master = null; state.voiceMix = null; state.buffers = null; state.env = null; state.audioKey = ''; state.mixKey = '';
   const ctx = $('#preview').getContext('2d');
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
-  $('#editor').innerHTML = '';
+  // AI 写文案的这十几秒，右边先放骨架占位，不留一片空白
+  $('#editor').innerHTML = Array.from({ length: 5 }, (_, i) => `<div class="sec-skel" style="--i:${i}"><i></i><i></i><i class="short"></i></div>`).join('');
   $('#title').value = '';
   $('#footNote').textContent = '';
   renderRemixNote();
@@ -694,6 +719,7 @@ async function startWithScript(script) {
   $('#photoPanel2 .group-title span').textContent = photoKind() === 'scenes' ? '讲到“我们”时优先用；改完点镜头上的「换图」' : '每个镜头轮流换一张';
   $('#account2').value = script.account || '';
   await state.form.module.preloadFonts(script);
+  if (!prefs.voicePicked) prefs.voice = autoVoice(script);
   state.assets.media = [];
   renderEditor();
   refresh();
@@ -733,7 +759,7 @@ $('#sideTabs').addEventListener('click', (e) => { const b = e.target.closest('bu
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function renderEditor() {
   $('#editor').innerHTML = state.script.sections.map((x, i) => `
-    <div class="sec" data-i="${i}">
+    <div class="sec" data-i="${i}" style="--i:${i}">
       <div class="sec-top"><span class="no">${String(i + 1).padStart(2, '0')}</span>
         <input class="bare tag" data-k="tag" value="${esc(x.tag)}" maxlength="8" spellcheck="false" />
         <span class="mod">${x.scene ? SCENE_NAMES[x.scene] || '' : x.visual ? VIS_NAMES[x.visual.type] || '' : MOD_NAMES[x.module?.type] || '标题'}</span>${state.form.needsStock ? '<button class="swap" data-swap title="给这个镜头换一张画面">换图</button>' : ''}</div>
@@ -741,8 +767,24 @@ function renderEditor() {
       ${x.headline ? `<input class="bare h2" data-k="h1" value="${esc(x.headline[1])}" maxlength="14" placeholder="金色副标题" spellcheck="false" />` : ''}
       <textarea class="bare lines" data-k="lines" rows="2" spellcheck="false">${esc(x.lines.join('\n'))}</textarea>
       ${x.headline ? `<input class="bare concl" data-k="conclusion" value="${esc(x.conclusion)}" maxlength="20" placeholder="金色结论句" spellcheck="false" />` : ''}
+      <div class="sec-flag hidden"></div>
     </div>`).join('');
   document.querySelectorAll('.bare.lines').forEach(autoGrow);
+  updateFlags();
+}
+// AI 可能编的内容（占位词、客户没给过的数字和服务）：标黄，改掉之后自动消失
+const flagsOf = (x) => { const t = JSON.stringify(x); return (state.flags || []).filter((f) => f.word && t.includes(f.word)); };
+function updateFlags() {
+  if (!state.script) return;
+  let n = 0;
+  document.querySelectorAll('#editor .sec').forEach((el) => {
+    const fs = flagsOf(state.script.sections[Number(el.dataset.i)]); n += fs.length;
+    el.classList.toggle('flagged', fs.length > 0);
+    const box = el.querySelector('.sec-flag'); box.classList.toggle('hidden', !fs.length);
+    box.innerHTML = fs.map((f) => `<span><b>「${esc(f.word)}」</b>${esc(f.why)}</span>`).join('');
+  });
+  const note = $('#flagNote'); note.classList.toggle('hidden', !n);
+  if (n) note.innerHTML = `<b>有 ${n} 处请你核对</b><span>AI 可能写了你没提供的内容，发之前在标黄的段落里改成真实情况，或者删掉。</span>`;
 }
 let redrawTimer = 0;
 $('#editor').addEventListener('input', (e) => {
@@ -753,7 +795,8 @@ $('#editor').addEventListener('input', (e) => {
   else if (k === 'h0') x.headline[0] = v;
   else if (k === 'h1') x.headline[1] = v;
   else if (k === 'conclusion') x.conclusion = v;
-  else if (k === 'lines') { autoGrow(e.target); x.lines = v.split('\n').map((l) => l.trim()).filter(Boolean); scheduleRevoice(); }
+  if (k !== 'lines') updateFlags();
+  else if (k === 'lines') { autoGrow(e.target); x.lines = v.split('\n').map((l) => l.trim()).filter(Boolean); scheduleRevoice(); updateFlags(); }
   clearTimeout(redrawTimer);
   redrawTimer = setTimeout(async () => { await state.form.module.preloadFonts(state.script); refresh(); drawNow(); }, 200);
 });
@@ -809,7 +852,7 @@ $('#account2').addEventListener('input', (e) => {
 
 // ---------- 声音 ----------
 function renderVoices() {
-  $('#voices').innerHTML = VOICES.map((v) => `
+  $('#voices').innerHTML = (prefs.voicePicked ? '' : '<div class="voice-auto">已按你的行业自动配了声音，点一个就能换</div>') + VOICES.map((v) => `
     <div class="voice ${v.id === prefs.voice ? 'on' : ''}" data-v="${v.id}" role="button" tabindex="0">
       <span class="av">${v.av}</span>
       <span><div class="vn">${v.name}</div><div class="vd">${v.desc}</div></span>
@@ -844,7 +887,8 @@ $('#voices').addEventListener('click', async (e) => {
     return;
   }
   const v = e.target.closest('.voice'); if (!v) return;
-  prefs.voice = v.dataset.v; savePrefs();
+  prefs.voice = v.dataset.v; prefs.voicePicked = true; savePrefs(); // 客户自己挑过，以后就不按行业自动换了
+  $('#voices .voice-auto')?.remove();
   document.querySelectorAll('.voice').forEach((x) => x.classList.toggle('on', x === v));
   scheduleRevoice(0);
 });
@@ -948,7 +992,7 @@ function refresh() {
 // ---------- 导出 ----------
 $('#btnExport').addEventListener('click', async () => {
   if (!state.script || state.exporting) return;
-  if (!exportSupported()) { toast('当前浏览器不支持本地出片，请用电脑上最新版 Chrome 或 Edge'); return; }
+  if (!exportSupported()) { toast(matchMedia('(pointer: coarse)').matches ? '这个手机浏览器还不能出片，请用电脑上的 Chrome 或 Edge 打开' : '当前浏览器不支持本地出片，请用最新版 Chrome 或 Edge'); return; }
   stop();
   const signal = { cancelled: false };
   state.exporting = signal;
@@ -966,8 +1010,12 @@ $('#btnExport').addEventListener('click', async () => {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = name; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 60000);
-    overlayDone('视频已导出', `${name} · ${(blob.size / 1048576).toFixed(0)} MB · 已保存到下载文件夹`, [
-      { label: '再做一条', primary: true, fn: () => { hideOverlay(); show('gallery'); } },
+    // 手机上：下载的文件不好找，给一个“存到手机”按钮（系统分享面板里能存相册、发微信）
+    const file = new File([blob], name, { type: 'video/mp4' });
+    const canShare = matchMedia('(pointer: coarse)').matches && navigator.canShare?.({ files: [file] });
+    overlayDone('视频已导出', `${name} · ${(blob.size / 1048576).toFixed(0)} MB · ${canShare ? '点下面按钮存到相册或发给微信' : '已保存到下载文件夹'}`, [
+      ...(canShare ? [{ label: '存到手机 / 分享', primary: true, fn: () => navigator.share({ files: [file], title: state.script?.title || '' }).catch(() => {}) }] : []),
+      { label: '再做一条', primary: !canShare, fn: () => { hideOverlay(); show('gallery'); } },
       { label: '继续修改', fn: hideOverlay },
     ]);
   } catch (err) {
@@ -1081,6 +1129,7 @@ function updateTime() {
   if (!state.tl) return;
   $('#time').textContent = `${fmt(state.t)} / ${fmt(state.tl.duration)}`;
   $('#scrub').value = String(Math.round((state.t / state.tl.duration) * 1000));
+  $('#scrub').style.setProperty('--p', `${(state.t / state.tl.duration) * 100}%`); // 进度条已播放部分的颜色
 }
 function setSeg(sel, v) { $(sel).querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === String(v))); moveSegThumb($(sel)); }
 function moveSegThumb(seg) {
@@ -1225,6 +1274,9 @@ $('#account').value = prefs.account;
 setSeg('#minutes', String(prefs.minutes));
 $('#rmIndustry').value = prefs.industry || '';
 setMode('say');
+loadMe(); // 刷新页面后恢复登录状态
+// 字体加载完再摆好滑块的位置，然后才打开过渡动画（避免一进来滑块乱飞）
+document.fonts.ready.then(() => { moveTabInd(); moveSegThumb($('#minutes')); updateTplNav(); updateBarStuck(); requestAnimationFrame(() => document.body.classList.add('ready')); });
 loadPhotos('photos').catch(() => {});
 loadPhotos('scenes').catch(() => {});
-fetch('/api/status').then((r) => r.json()).then((d) => { aiReady = !!d.ai; if (!aiReady) $('#createErr').textContent = '服务端还没配置 AI 密钥，可以先看示例。'; if (d.asrBase) asrBase = d.asrBase; if (d.asrModel) asrModel = d.asrModel; }).catch(() => { aiReady = false; });
+fetch('/api/status').then((r) => r.json()).then((d) => { aiReady = !!d.ai; if (!aiReady) $('#createErr').textContent = '服务端还没配置 AI 密钥，可以先看示例。'; if (d.asrBase) asrBase = d.asrBase; if (d.asrModel) asrModel = d.asrModel; authRequired = !!d.authRequired; renderAcct(); }).catch(() => { aiReady = false; });

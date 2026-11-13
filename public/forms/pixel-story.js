@@ -2,6 +2,7 @@
 // 灵魂：把道理“演”成一个比喻小故事。像素小人在场景里撞墙、掉坑、拿到一本书，观众看着就懂了。
 // 全部美术由代码绘制（原创）。三层画面：场景层（×6）→ 角色/特效层（×9，人物更醒目）→ 前景层（×6）。
 import { W, H, clamp, easeOut, hash, splitSubtitle } from '../engine/draw.js';
+import { THEMES, normalizeTheme } from './themes.js';
 
 export const meta = {
   id: 'pixel-story',
@@ -59,9 +60,10 @@ const CPX = 9; const CW = 112; const CH = 75; const K = PX / CPX;  // 角色层
 const SX = 36; const SY = 440;                                    // 舞台左上角（1008×672）
 const STW = SW * PX; const STH = SH * PX;
 const POS = { farleft: 18, left: 44, center: 84, right: 124, farright: 150 };
-const GROUND = { field: 96, room: 100, classroom: 100, exam: 100, home: 100, street: 98, river: 92 };
+// studio 练习室（镜墙+把杆，音乐/舞蹈/健身/美业都能用）、lab 电脑教室、road 驾校练车场
+const GROUND = { field: 96, room: 100, classroom: 100, exam: 100, home: 100, street: 98, river: 92, studio: 100, lab: 100, road: 98 };
 export const SCENES = Object.keys(GROUND);
-const OUTDOOR = new Set(['field', 'street', 'river']);
+const OUTDOOR = new Set(['field', 'street', 'river', 'road']);
 
 export const CAST = {
   hero: { style: 'cap', hair: '#3a2f2a', hat: '#4a7fb5', hatHi: '#6b9fd0', hatDark: '#35628f', clothes: '#ee7d3e', clothesDark: '#c9612a', pants: '#3f4f6e', shoes: '#2a2522', pack: true, stripe: '#ffffff' },
@@ -72,7 +74,9 @@ export const CAST = {
   passerby: { style: 'beanie', hair: '#5a4a3a', hairHi: '#7a6a5a', hairDark: '#3e3227', hat: '#8d8a84', hatHi: '#a9a6a0', hatDark: '#6e6b66', clothes: '#8b9bb0', clothesDark: '#6e7d91', pants: '#4a4a52', shoes: '#2a2522' },
 };
 export const ACTIONS = ['idle', 'jump', 'fall', 'bump', 'happy', 'sad', 'shocked', 'think', 'read', 'talk', 'point', 'leave'];
-export const PROPS = ['board', 'wall', 'pit', 'snake', 'coin', 'book', 'box', 'clock', 'phone', 'trophy', 'cart', 'desk', 'flag', 'ladder'];
+export const PROPS = ['board', 'wall', 'pit', 'snake', 'coin', 'book', 'box', 'clock', 'phone', 'trophy', 'cart', 'desk', 'flag', 'ladder',
+  // 行业道具：让钢琴、驾校、编程、美甲……的故事一眼看得出是哪个行业
+  'piano', 'car', 'computer', 'easel', 'dumbbell', 'cake', 'mic', 'polish', 'cone'];
 export const BUBBLES = ['!', '?', 'idea', 'heart', '...', 'angry', 'money', 'star'];
 const HOLDS = ['book', 'coin', 'phone', 'trophy', 'board', 'map'];
 
@@ -269,6 +273,24 @@ function drawScene(scene, p) {
       windowAt(g, p, 14, 20, 18, 18); windowAt(g, p, 136, 20, 18, 18);
       for (const dx of [32, 84, 136]) { deskShape(g, p, dx, ft - 1, 26); R(g, dx - 6, ft - 16, 9, 3, p.white); R(g, dx - 5, ft - 15, 6, 1, p.gray); }
       lightBeam(g, p, 14, 38, 18, ft);
+    } else if (scene === 'studio') { // 练习室：整面镜子 + 把杆 + 顶灯
+      R(g, 18, 10, 132, ft - 30, p.frame); R(g, 20, 12, 128, ft - 34, p.glass);
+      for (let i = 0; i < 4; i++) { const x0 = 30 + i * 34; for (let k = 0; k < 14; k++) R(g, x0 + k, 14 + k * 2, 2, 2, p.glassHi); }
+      for (let x = 50; x < 140; x += 30) R(g, x - 1, 12, 2, ft - 34, p.frame);
+      R(g, 10, ft - 22, SW - 20, 2, p.woodLight); R(g, 10, ft - 20, SW - 20, 1, p.woodDark);
+      for (const bx of [16, 84, 150]) R(g, bx, ft - 20, 2, 12, p.woodDark);
+      for (const lx of [40, 84, 128]) { R(g, lx - 4, 4, 9, 3, p.outline); R(g, lx - 3, 7, 7, 1, p.goldLight); }
+      lightBeam(g, p, 34, 8, 14, ft); lightBeam(g, p, 120, 8, 14, ft);
+    } else if (scene === 'lab') { // 电脑教室：白板写代码 + 一排电脑
+      R(g, 50, 10, 70, 28, p.frame); R(g, 51, 11, 68, 26, p.white);
+      [[55, 15, 20, p.blue], [59, 19, 30, p.green], [59, 23, 24, p.red], [55, 27, 14, p.blue], [59, 31, 36, p.purple]].forEach(([x, y, w, c]) => R(g, x, y, w, 2, c));
+      windowAt(g, p, 10, 16, 20, 18); windowAt(g, p, 138, 16, 20, 18);
+      for (const dx of [26, 84, 142]) {
+        deskShape(g, p, dx, ft - 1, 34);
+        R(g, dx - 9, ft - 28, 18, 13, p.outline); R(g, dx - 8, ft - 27, 16, 10, '#2b3d5c');
+        R(g, dx - 6, ft - 25, 8, 1, '#7fd3ff'); R(g, dx - 6, ft - 23, 11, 1, '#9be59b'); R(g, dx - 6, ft - 21, 6, 1, '#7fd3ff');
+        R(g, dx - 1, ft - 15, 2, 2, p.outline);
+      }
     } else if (scene === 'home') {
       windowAt(g, p, 72, 16, 26, 22);
       lightBeam(g, p, 72, 38, 26, ft);
@@ -294,6 +316,14 @@ function drawScene(scene, p) {
       R(g, 0, gy - 12, SW, 1, p.pathDark);
       for (let row = 0; row < 6; row++) for (let x = (row % 2) * 5; x < SW; x += 10) R(g, x, gy - 8 + row * 4, 8, 1, p.pathDark);
       R(g, 56, gy - 40, 2, 28, p.outline); R(g, 52, gy - 44, 10, 4, p.outline); R(g, 53, gy - 43, 8, 2, p.goldLight);
+    } else if (scene === 'road') { // 驾校练车场：柏油路 + 车道线 + 路沿 + 红绿灯杆
+      roundTree(g, p, 14, 66, 0.9); pine(g, p, 38, 66, 0.7); roundTree(g, p, 132, 66, 1);
+      R(g, 0, 64, SW, 6, p.grass); R(g, 0, 64, SW, 1, p.grassDark);
+      R(g, 0, 70, SW, 3, p.gray); R(g, 0, 70, SW, 1, p.white);
+      R(g, 0, 73, SW, SH - 73, '#5d6066'); R(g, 0, 73, SW, 2, '#4c4f55');
+      for (let x = 2; x < SW; x += 20) R(g, x, gy + 4, 10, 2, p.white);
+      R(g, 0, SH - 6, SW, 2, p.gold);
+      R(g, 156, 26, 2, 44, p.outline); R(g, 150, 18, 14, 12, p.outline);
     } else if (scene === 'river') {
       roundTree(g, p, 14, 70, 1); pine(g, p, 40, 70, 0.8); roundTree(g, p, 134, 70, 1.1); pine(g, p, 160, 70, 0.8);
       R(g, 0, 68, SW, 6, p.grass); R(g, 0, 68, SW, 1, p.grassDark);
@@ -347,6 +377,8 @@ function sceneDynamic(g, scene, p, t) {
     }
   }
   if (scene === 'room') { g.fillStyle = 'rgba(255,230,160,0.12)'; g.fillRect(70, 19, 29, 30 + Math.round(Math.sin(t * 3))); }
+  if (scene === 'road') { const ph = Math.floor(t / 1.6) % 3; [p.red, p.gold, p.green].forEach((c, i) => R(g, 152 + i * 4, 22, 3, 3, i === ph ? c : '#3a3a3a')); }
+  if (scene === 'lab') { for (const dx of [26, 84, 142]) if (Math.sin(t * 4 + dx) > 0) R(g, dx + 1, GROUND.lab - 8 - 23, 2, 1, '#ffffff'); }
 }
 function foreground(g, scene, p, t) {
   if (scene === 'field') {
@@ -472,6 +504,65 @@ function drawProp(g, pr, p, gy, t, texts) {
         if (i < 15) R(g, x + 2 + i, gy - 38 + dy, 1, 1, '#f08a84');
       }
       R(g, x - 4, gy - 2, 10, 2, p.woodDark);
+      break;
+    }
+    case 'piano': { // 立式钢琴：琴身 + 黑白键 + 谱架上的乐谱
+      R(g, x - 16, gy - 26, 32, 26, p.outline); R(g, x - 15, gy - 25, 30, 24, '#3b2f2a'); R(g, x - 15, gy - 25, 30, 1, '#5a4840');
+      R(g, x - 15, gy - 12, 30, 4, p.white); for (let i = 0; i < 7; i++) if (i !== 2 && i !== 6) R(g, x - 14 + i * 4 + 2, gy - 12, 2, 2, p.outline);
+      R(g, x - 15, gy - 8, 30, 1, p.outline); R(g, x - 14, gy - 7, 2, 7, p.outline); R(g, x + 12, gy - 7, 2, 7, p.outline);
+      R(g, x - 6, gy - 22, 12, 8, p.white); R(g, x - 5, gy - 20, 10, 1, p.gray); R(g, x - 5, gy - 17, 8, 1, p.gray);
+      if (Math.sin(t * 3) > 0.3) { R(g, x + 12, gy - 34, 1, 5, p.outline); R(g, x + 9, gy - 31, 3, 3, p.outline); }
+      break;
+    }
+    case 'car': { // 小汽车（练车用）
+      const bob = Math.sin(t * 6) > 0.6 ? 1 : 0;
+      R(g, x - 20, gy - 14 - bob, 40, 9, p.outline); R(g, x - 19, gy - 13 - bob, 38, 7, p.blue); R(g, x - 19, gy - 13 - bob, 38, 1, '#6b9fd0');
+      R(g, x - 11, gy - 21 - bob, 22, 8, p.outline); R(g, x - 10, gy - 20 - bob, 20, 7, p.blue); R(g, x - 9, gy - 19 - bob, 8, 5, p.glassHi); R(g, x + 1, gy - 19 - bob, 8, 5, p.glassHi);
+      R(g, x + 17, gy - 11 - bob, 2, 2, p.goldLight); R(g, x - 19, gy - 11 - bob, 2, 2, p.red);
+      R(g, x - 6, gy - 25 - bob, 12, 4, p.gold); R(g, x - 5, gy - 24 - bob, 10, 2, p.goldLight); // 车顶“教练车”牌
+      for (const wx of [x - 11, x + 11]) { disc(g, wx, gy - 4, 4, p.outline); disc(g, wx, gy - 4, 2, p.gray); }
+      break;
+    }
+    case 'computer': { // 电脑：屏幕上代码一行行冒出来
+      R(g, x - 13, gy - 30, 26, 19, p.outline); R(g, x - 12, gy - 29, 24, 16, '#2b3d5c');
+      const n = Math.floor(t * 3) % 6; ['#7fd3ff', '#9be59b', '#f6d365', '#7fd3ff', '#f28b8b'].forEach((c, i) => { if (i <= n) R(g, x - 10 + (i % 2) * 2, gy - 27 + i * 3, 8 + ((i * 5) % 10), 1, c); });
+      R(g, x - 2, gy - 11, 4, 4, p.outline); R(g, x - 8, gy - 7, 16, 2, p.outline);
+      R(g, x - 14, gy - 3, 28, 3, p.gray); R(g, x - 14, gy - 3, 28, 1, p.white);
+      break;
+    }
+    case 'easel': { // 画架 + 画布
+      R(g, x - 10, gy - 34, 2, 34, p.woodDark); R(g, x + 8, gy - 34, 2, 34, p.woodDark); R(g, x - 1, gy - 30, 2, 30, p.wood);
+      R(g, x - 12, gy - 36, 24, 20, p.woodDark); R(g, x - 11, gy - 35, 22, 18, p.white);
+      R(g, x - 8, gy - 30, 7, 5, p.flower1); R(g, x - 2, gy - 27, 8, 6, p.blue); R(g, x + 3, gy - 32, 5, 4, p.flower2); R(g, x - 9, gy - 22, 18, 2, p.green);
+      R(g, x - 12, gy - 16, 24, 2, p.wood);
+      break;
+    }
+    case 'dumbbell': { // 哑铃
+      const lift = Math.sin(t * 4) > 0.5 ? 2 : 0;
+      R(g, x - 10, gy - 5 - lift, 20, 2, p.gray);
+      for (const dx of [-12, 8]) { R(g, x + dx, gy - 9 - lift, 4, 10, p.outline); R(g, x + dx + 1, gy - 8 - lift, 2, 8, '#55585e'); }
+      break;
+    }
+    case 'cake': { // 蛋糕：两层奶油 + 蜡烛火苗跳动
+      R(g, x - 12, gy - 2, 24, 2, p.white); R(g, x - 10, gy - 10, 20, 8, '#f6c1cf'); R(g, x - 10, gy - 10, 20, 2, p.white);
+      R(g, x - 7, gy - 16, 14, 6, '#fbe3c8'); R(g, x - 7, gy - 16, 14, 1, p.white); R(g, x - 8, gy - 6, 2, 2, p.red); R(g, x + 4, gy - 7, 2, 2, p.red);
+      R(g, x, gy - 21, 1, 5, p.blue); R(g, x, gy - 23 - (Math.sin(t * 9) > 0 ? 1 : 0), 1, 2, p.gold);
+      break;
+    }
+    case 'mic': { // 立式话筒
+      R(g, x, gy - 30, 1, 30, p.gray); R(g, x - 5, gy - 2, 11, 2, p.outline);
+      disc(g, x, gy - 33, 3, p.outline); disc(g, x, gy - 33, 2, p.gray);
+      if (Math.sin(t * 5) > 0.2) { R(g, x + 5, gy - 37, 1, 3, p.ink2 || p.gray); R(g, x + 7, gy - 38, 1, 5, p.ink2 || p.gray); }
+      break;
+    }
+    case 'polish': { // 指甲油两瓶 + 闪光
+      for (const [dx, c] of [[-5, p.flower1], [5, p.purple]]) { R(g, x + dx - 3, gy - 9, 6, 9, p.outline); R(g, x + dx - 2, gy - 8, 4, 7, c); R(g, x + dx - 1, gy - 7, 1, 3, p.white); R(g, x + dx - 2, gy - 14, 4, 5, p.outline); }
+      if (Math.sin(t * 6) > 0.4) { R(g, x + 9, gy - 18, 1, 3, p.goldLight); R(g, x + 8, gy - 17, 3, 1, p.goldLight); }
+      break;
+    }
+    case 'cone': { // 路锥
+      for (let i = 0; i < 12; i++) R(g, x - 1 - Math.floor(i / 2), gy - 14 + i, 3 + Math.floor(i / 2) * 2, 1, i === 4 || i === 5 || i === 9 ? p.white : '#f08a2a');
+      R(g, x - 8, gy - 2, 17, 2, p.outline);
       break;
     }
     case 'ladder': {
@@ -843,7 +934,9 @@ function pixelBox(ctx, x, y, w, h, fill, border, b) {
 }
 
 export function drawFrame(ctx, { script, tl, planData, t, skinId = 'warm' }) {
-  const p = skins[skinId] || skins.warm;
+  const baseSkin = skins[skinId] || skins.warm;
+  const th = THEMES[normalizeTheme(script.theme)?.key];
+  const p = th && !baseSkin.night ? { ...baseSkin, accent: th.red } : baseSkin;
   const cpu = !!ctx.getContextAttributes?.().willReadFrequently;
   ctx.save();
   ctx.fillStyle = p.paper;
@@ -973,6 +1066,7 @@ export function normalize(s, splitLine) {
   const strip = (v) => String(v || '').trim().replace(/[。.！!]+$/, '');
   const posOk = (v) => (POS[v] !== undefined ? v : 'center');
   s.title = strip(s.title) || '未命名';
+  s.theme = normalizeTheme(s.theme);
   s.sections = (s.sections || []).filter(Boolean).map((x) => ({
     tag: strip(x.tag),
     scene: SCENES.includes(x.scene) ? x.scene : 'field',
