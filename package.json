@@ -1,0 +1,21 @@
+{
+  "name": "yijian-chupian",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@fontsource/noto-sans-sc": "^5.3.1",
+    "@huggingface/transformers": "^4.3.2",
+    "@mediapipe/tasks-vision": "^1.2.3",
+    "fflate": "^0.8.3",
+    "mp4-muxer": "^5.2.2",
+    "mp4box": "^2.5.0",
+    "nodemailer": "^6.9.16",
+    "opencc-js": "^1.4.2",
+    "pdfjs-dist": "^6.5.438",
+    "qrcode": "^1.5.4"
+  }
+}

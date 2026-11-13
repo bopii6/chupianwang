@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>文案库 · 出片王</title>
+  <link rel="stylesheet" href="/vendor/noto-sans-sc/400.css" />
+  <link rel="stylesheet" href="/vendor/noto-sans-sc/500.css" />
+  <link rel="stylesheet" href="/vendor/noto-sans-sc/700.css" />
+  <link rel="stylesheet" href="/vendor/noto-sans-sc/900.css" />
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/admin/copy.css" />
+</head>
+<body class="cl">
+  <header class="topbar">
+    <a class="brand" href="/"><span class="logo"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg></span>出片王</a>
+    <nav class="cl-tabs" id="tabs">
+      <button data-view="add" class="on">收录</button>
+      <button data-view="lib">文案库 <b id="libCount">0</b></button>
+    </nav>
+  </header>
+
+  <!-- ① 收录：一个输入框 -->
+  <main id="vAdd" class="cl-page">
+    <h1>收录一条爆款文案</h1>
+    <p class="lead">粘贴文案或拖入视频，AI 自动拆成套路、检查风险、存进文案库。</p>
+
+    <div class="composer cl-drop" id="drop">
+      <textarea id="text" rows="7" placeholder="粘贴口播文案，或者把视频拖进来"></textarea>
+      <input id="note" class="cl-note" placeholder="补充一句（选填）：链接、点赞评论数、评论区问价多不多、你为什么觉得好" />
+      <div class="composer-bar">
+        <button class="add" id="pickFile" type="button"><svg viewBox="0 0 24 24" width="16" height="16"><path d="M4 7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM16 10l4-2.5v9L16 14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>视频</button>
+        <span class="cl-status" id="status"></span>
+        <button class="go" id="go" type="button">拆解入库<svg viewBox="0 0 24 24" width="18" height="18"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </div>
+      <input type="file" id="file" accept="video/*,audio/*" hidden />
+      <div class="cl-drop-mask">松开，自动转成文字</div>
+    </div>
+    <p class="err" id="err"></p>
+
+    <div id="result"></div>
+  </main>
+
+  <!-- ② 文案库 -->
+  <main id="vLib" class="cl-page cl-wide hidden">
+    <div class="cl-lib-head">
+      <h1>文案库 <span id="libTotal"></span></h1>
+      <input class="cl-search" id="q" placeholder="搜文案，比如：数学  家长  评论区" />
+    </div>
+    <div class="cl-chips" id="chips"></div>
+    <div class="cl-cards" id="cards"></div>
+  </main>
+
+  <dialog class="cl-modal" id="modal"><div id="modalBody"></div></dialog>
+  <div class="toast" id="toast"></div>
+  <script type="module" src="/admin/copy.js"></script>
+</body>
+</html>

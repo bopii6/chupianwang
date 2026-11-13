@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>出片王 · 教培老师的视频获客工具</title>
+  <link rel="stylesheet" href="/vendor/noto-sans-sc/400.css" />
+  <link rel="stylesheet" href="/vendor/noto-sans-sc/500.css" />
+  <link rel="stylesheet" href="/vendor/noto-sans-sc/700.css" />
+  <link rel="stylesheet" href="/vendor/noto-sans-sc/900.css" />
+  <link rel="stylesheet" href="/fonts/fusion-pixel-12/font.css" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" data-nav="gallery"><span class="logo"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg></span>出片王</a>
+    <span class="brand-sub">教培老师的视频获客工具</span>
+    <div class="crumb" id="crumb"></div>
+    <div class="acct-area" id="acctArea"><span class="trial">新用户免费试做 3 条</span></div>
+  </header>
+
+  <!-- ① 首页：一个大框，说一句话 / 用别人的爆款，选模板，生成 -->
+  <main id="gallery" class="view">
+    <div class="home">
+      <section class="hero">
+        <div class="eyebrow">教培老师的视频获客工具</div>
+        <h1>已被验证<em>能火、能获客</em>的视频套路</h1>
+      </section>
+
+      <div class="box" id="box">
+        <div class="box-tabs" id="modeTabs"><i class="tab-ind" id="tabInd"></i>
+          <button data-mode="say" class="on" type="button"><svg viewBox="0 0 24 24"><path d="M5 18.5V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H8.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>说一句你要讲什么</button>
+          <button data-mode="video" type="button"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M10.5 9.5v5l4-2.5z" fill="currentColor"/></svg>用别人的爆款做</button>
+        </div>
+        <div class="box-panel">
+          <!-- 说一句话 -->
+          <div id="paneSay">
+            <div class="say-input">
+              <textarea id="input" rows="3" placeholder=""></textarea>
+              <div class="attachments hidden" id="attachments"></div>
+              <div class="link-row hidden" id="linkRow">
+                <input id="linkInput" placeholder="粘贴公众号文章、机构官网等网页链接" spellcheck="false" />
+                <button id="linkAdd" type="button">添加</button>
+              </div>
+            </div>
+            <!-- 灵感：不知道说什么，点一个就填进去 -->
+            <div class="sparks" id="ideas"></div>
+          </div>
+          <!-- 用别人的爆款：别人的爆款文案 + 你的行业 + 获客模板 = 你的原创视频 -->
+          <div id="paneVideo" class="hidden">
+            <p class="pane-eq">别人的爆款文案<em>+</em>你的行业<em>+</em>获客模板<em>=</em><b>你的原创视频</b></p>
+            <div class="rm-drop" id="rmDrop">
+              <div class="rm-empty" id="rmEmpty">
+                <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-4.5 4.5M12 4l4.5 4.5M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <b>把别人的爆款视频拖到这里，或点击选择</b>
+                <span>抖音里点「分享 → 保存本地」就能存下视频；保存不了的，录屏也行</span>
+              </div>
+              <div class="rm-file hidden" id="rmFile">
+                <span class="rm-name" id="rmName"></span>
+                <span class="rm-status" id="rmStatus"></span>
+                <button class="link quiet" id="rmChange" type="button">换一条</button>
+                <div class="rm-bar"><i id="rmBar"></i></div>
+              </div>
+              <input type="file" id="rmInput" accept="video/*,audio/*" hidden />
+            </div>
+            <button class="rm-alt" id="rmQrBtn" type="button"><svg viewBox="0 0 24 24"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10.5 18.5h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>视频在手机上？扫码传过来</button>
+            <div class="rm-qr hidden" id="rmQr">
+              <img id="rmQrImg" alt="扫码上传视频" width="148" height="148" />
+              <div class="rm-qr-txt">
+                <b>用手机微信或相机扫一扫</b>
+                <span id="rmQrSt">在手机上选好视频，会自动传到这里</span>
+                <span class="rm-qr-tip" id="rmQrTip"></span>
+                <button class="link quiet" id="rmQrClose" type="button">不用了</button>
+              </div>
+            </div>
+            <div class="rm-plan hidden" id="rmPlan"></div>
+            <div class="rm-ask">
+              <label for="rmIndustry">你是做什么培训的？</label>
+              <input id="rmIndustry" maxlength="40" placeholder="比如：成人钢琴、美甲培训、驾校、考教资、初中数学" />
+            </div>
+          </div>
+
+          <div class="tpl-head"><b>选个套路</b><span id="tplHint">AI 会按它的结构来写</span><em id="tplCount"></em></div>
+          <div class="tpl-wrap" id="tplWrap">
+            <button class="tpl-nav prev" id="tplPrev" type="button" aria-label="往左"><svg viewBox="0 0 24 24"><path d="m14.5 6-6 6 6 6" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <div class="tpl-strip" id="tplStrip"></div>
+            <button class="tpl-nav next" id="tplNext" type="button" aria-label="往右"><svg viewBox="0 0 24 24"><path d="m9.5 6 6 6-6 6" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          </div>
+          <div class="photos hidden" id="photoPanel">
+            <div class="photos-head"><b>我的形象照</b><span></span></div>
+            <div class="photo-row" data-photo-row></div>
+          </div>
+        </div>
+        <div class="box-bar">
+          <div class="bar-group" id="sayTools">
+            <button class="tool" id="btnAttach" type="button" title="PPT、Word、PDF、TXT 都行，也可以直接拖进来"><svg viewBox="0 0 24 24"><path d="M14.5 4H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5zM14 4v5h5M12 12v5m-2.5-2.5h5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span>PPT / 文档</span></button>
+            <button class="tool" id="btnLink" type="button" title="公众号文章、机构官网等网页"><svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg><span>网页链接</span></button>
+            <span class="bar-sep"></span>
+          </div>
+          <div class="bar-dur">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5V12l3 2" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+            <div class="seg dur" id="minutes"><i class="seg-thumb"></i><button data-v="1" type="button">1 分钟</button><button data-v="2" type="button">2 分钟</button><button data-v="3" type="button">3 分钟</button></div>
+          </div>
+          <label class="acct"><span>@</span><input id="account" placeholder="你的账号名" maxlength="16" /></label>
+          <button class="go" id="btnGo" type="button"><span>生成视频</span><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+      </div>
+      <p class="err" id="createErr"></p>
+      <button class="link quiet home-sample" id="btnSample" type="button">先看一条做好的示例 →</button>
+    </div>
+    <input type="file" id="photoInput" accept="image/*" multiple hidden />
+    <input type="file" id="docInput" accept=".pptx,.docx,.pdf,.txt,.md,.ppt,.doc" multiple hidden />
+  </main>
+
+  <!-- ③ 看成片 -->
+  <main id="studio" class="view hidden">
+    <section class="stage">
+      <div class="phone">
+        <canvas id="preview" width="1080" height="1920"></canvas>
+        <button class="tap" id="tap" aria-label="播放/暂停"></button>
+        <div class="badge hidden" id="voiceBadge"><i></i>配音更新中</div>
+        <div class="overlay hidden" id="overlay">
+          <div class="ov">
+            <svg class="ring" viewBox="0 0 80 80"><circle cx="40" cy="40" r="34" class="track" /><circle cx="40" cy="40" r="34" class="fill" id="ringFill" /></svg>
+            <div class="ov-pct" id="ovPct"></div>
+            <div class="ov-title" id="ovTitle"></div>
+            <div class="ov-sub" id="ovSub"></div>
+            <div class="ov-actions" id="ovActions"></div>
+          </div>
+        </div>
+      </div>
+      <div class="transport">
+        <button class="play" id="btnPlay" aria-label="播放/暂停"><svg viewBox="0 0 24 24" id="playIcon"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg></button>
+        <div class="scrub"><input type="range" id="scrub" min="0" max="1000" value="0" /></div>
+        <span class="time" id="time">0:00</span>
+      </div>
+    </section>
+
+    <aside class="side">
+      <div class="side-head">
+        <input id="title" class="title-input" maxlength="16" spellcheck="false" />
+        <button class="link" id="btnRedo" title="用同样的话再写一版">换一版</button>
+      </div>
+      <nav class="seg tabs" id="sideTabs">
+        <button data-tab="script" class="on">文案</button><button data-tab="style">风格</button><button data-tab="voice">声音</button>
+      </nav>
+      <div class="tab-body">
+        <div class="tab" id="tab-script"><div class="rm-note hidden" id="rmNote"></div><div id="editor" class="editor"></div></div>
+        <div class="tab hidden" id="tab-style">
+          <div class="skin-grid" id="skins"></div>
+          <div class="photos hidden" id="photoPanel2">
+            <div class="group-title">形象照 <span>每个镜头轮流换一张</span></div>
+            <div class="photo-row" data-photo-row></div>
+          </div>
+          <div class="field"><label>背景大字</label><input id="glyph" maxlength="1" class="glyph-input" /><span class="hint">挑一个和主题有关的字</span></div>
+          <div class="field"><label>账号名</label><input id="account2" maxlength="16" /></div>
+        </div>
+        <div class="tab hidden" id="tab-voice">
+          <div class="voice-list" id="voices"></div>
+          <div class="field"><label>语速</label>
+            <div class="seg small" id="rate"><button data-v="+0%">正常</button><button data-v="+8%">稍快</button><button data-v="+16%">快</button></div>
+          </div>
+          <div class="group-title">背景音乐 <span>原创配乐，可放心商用</span></div>
+          <div class="voice-list" id="bgms"></div>
+          <p class="tip-line">想用抖音热门歌？这里选「不要音乐」导出，发布时在抖音里挑热门音乐：平台已获授权，还能蹭热门流量。</p>
+          <div class="field"><label>音乐音量</label>
+            <div class="seg small" id="bgmVol"><button data-v="low">轻</button><button data-v="mid">适中</button><button data-v="high">明显</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="side-foot">
+        <button class="primary" id="btnExport"><svg viewBox="0 0 24 24"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>导出视频</button>
+        <div class="foot-note" id="footNote"></div>
+        <div class="credits" id="credits"></div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- 邮箱验证码登录 -->
+  <dialog class="login" id="loginDlg">
+    <div class="lg-card">
+      <button class="lg-x" id="lgClose" type="button" aria-label="关闭">×</button>
+      <span class="logo lg-logo"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg></span>
+      <h3>登录出片王</h3>
+      <p class="lg-sub" id="lgSub">新用户免费试做 3 条</p>
+      <div class="lg-step" id="lgStep1">
+        <input type="email" id="lgEmail" placeholder="输入你的邮箱" autocomplete="email" spellcheck="false" />
+        <button class="go lg-go" id="lgSend" type="button"><span>获取验证码</span></button>
+      </div>
+      <div class="lg-step hidden" id="lgStep2">
+        <p class="lg-sent">验证码已发到 <b id="lgTo"></b><button class="link" id="lgBack" type="button">改邮箱</button></p>
+        <input id="lgCode" class="lg-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="······" />
+        <div class="lg-row"><button class="link quiet" id="lgResend" type="button" disabled></button></div>
+        <p class="lg-dev hidden" id="lgDev"></p>
+      </div>
+      <p class="lg-err" id="lgErr"></p>
+      <p class="lg-note">没收到邮件？看看垃圾邮件箱。我们不会给你发广告。</p>
+    </div>
+  </dialog>
+  <div class="toast" id="toast"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

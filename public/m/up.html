@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>传视频到电脑 · 出片王</title>
+  <style>
+    :root { --bg: #f6f5f2; --surface: #fff; --surface-2: #f3f2ee; --surface-3: #e9e7e2; --text: #141310; --text-2: #57544e; --text-3: #908c84; --accent: #ff5a1f; --accent-soft: rgba(255, 90, 31, .09); --danger: #e5484d; --ok: #16803c; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    main { max-width: 480px; margin: 0 auto; padding: 28px 20px calc(40px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; min-height: 100vh; }
+    .brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 16px; }
+    .logo { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, #ff7a2e, #ff5a1f); color: #fff; display: grid; place-items: center; }
+    .logo svg { width: 14px; height: 14px; }
+    h1 { font-size: 26px; font-weight: 900; margin: 36px 0 8px; }
+    .lead { margin: 0 0 28px; color: var(--text-2); font-size: 15px; line-height: 1.7; }
+    .pick { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 60px; border: none; border-radius: 999px; background: var(--accent); color: #fff; font-size: 18px; font-weight: 700; box-shadow: 0 12px 24px -10px rgba(255, 90, 31, .7); }
+    .pick:disabled { opacity: .5; box-shadow: none; }
+    .pick svg { width: 22px; height: 22px; }
+    .card { margin-top: 20px; background: var(--surface); border-radius: 20px; padding: 18px; box-shadow: 0 1px 2px rgba(20, 18, 14, .04), 0 10px 30px -12px rgba(20, 18, 14, .14); }
+    .name { font-weight: 700; font-size: 15px; word-break: break-all; }
+    .st { margin-top: 6px; color: var(--text-2); font-size: 14px; }
+    .st.ok { color: var(--ok); font-weight: 700; font-size: 16px; }
+    .st.bad { color: var(--danger); }
+    .bar { margin-top: 12px; height: 6px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+    .bar i { display: block; height: 100%; width: 3%; background: var(--accent); border-radius: inherit; transition: width .4s; }
+    .tips { margin-top: auto; padding-top: 32px; color: var(--text-3); font-size: 13px; line-height: 1.8; }
+    .tips b { color: var(--text-2); }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="brand"><span class="logo"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg></span>出片王</div>
+    <h1>选一条要复刻的视频</h1>
+    <p class="lead">选好后会自动传到电脑上。<br>只传视频里的声音，几秒钟就好。</p>
+    <button class="pick" id="pick" type="button"><svg viewBox="0 0 24 24"><path d="M4 7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM16 10l4-2.5v9L16 14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg>从相册选视频</button>
+    <input type="file" id="file" accept="video/*" hidden />
+    <div class="card hidden" id="card">
+      <div class="name" id="name"></div>
+      <div class="st" id="st"></div>
+      <div class="bar" id="barWrap"><i id="bar"></i></div>
+    </div>
+    <div class="tips">
+      <b>视频还没存到相册？</b><br>
+      抖音：点右下角「分享」→「保存本地」<br>
+      视频号、快手等保存不了的：用手机录屏，录完再选
+    </div>
+  </main>
+  <script type="module">
+    const $ = (s) => document.querySelector(s);
+    const q = new URLSearchParams(location.hash.slice(1));
+    const id = q.get('id'); const k = q.get('k');
+    const api = (sub = '') => `/api/relay/${encodeURIComponent(id)}${sub}?k=${encodeURIComponent(k)}`;
+    const report = (state, name) => fetch(api('/state'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ state, name }) }).catch(() => {});
+    function status(text, pct = null, cls = '') {
+      $('#card').classList.remove('hidden');
+      $('#st').textContent = text; $('#st').className = 'st ' + cls;
+      $('#barWrap').classList.toggle('hidden', pct == null);
+      if (pct != null) $('#bar').style.width = Math.max(3, pct) + '%';
+    }
+    if (!id || !k) { $('#pick').disabled = true; status('二维码不完整，请在电脑上重新扫码', null, 'bad'); }
+    $('#pick').addEventListener('click', () => $('#file').click());
+    $('#file').addEventListener('change', async (e) => {
+      const file = e.target.files[0]; e.target.value = '';
+      if (!file) return;
+      $('#pick').disabled = true;
+      $('#name').textContent = file.name || '视频';
+      report('picked', file.name);
+      try {
+        status('正在读取视频里的声音…', 10);
+        report('decoding');
+        const { decodeAudio, toPcm16 } = await import('/engine/asr.js');
+        const { audio, duration } = await decodeAudio(file);
+        const pcm = toPcm16(audio);
+        status(`正在传到电脑…（${Math.round(duration)} 秒的声音）`, 40);
+        report('uploading');
+        await new Promise((resolve, reject) => {
+          const x = new XMLHttpRequest();
+          x.open('PUT', api('/audio') + '&name=' + encodeURIComponent(file.name || '手机上的视频'));
+          x.upload.onprogress = (ev) => { if (ev.lengthComputable) status(`正在传到电脑… ${Math.round((ev.loaded / ev.total) * 100)}%`, 40 + (ev.loaded / ev.total) * 60); };
+          x.onload = () => { if (x.status === 200) resolve(); else { let m = '上传失败'; try { m = JSON.parse(x.responseText).error || m; } catch {} reject(new Error(m)); } };
+          x.onerror = () => reject(new Error('网络断了，再试一次'));
+          x.send(new Blob([pcm.buffer]));
+        });
+        status('✓ 已经传好了，回到电脑上继续', null, 'ok');
+      } catch (err) {
+        report('failed');
+        status(err.message || '没传成功，再试一次', null, 'bad');
+        $('#pick').disabled = false;
+        $('#pick').lastChild.textContent = '重新选一条';
+      }
+    });
+  </script>
+</body>
+</html>

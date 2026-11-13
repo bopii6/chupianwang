@@ -1,0 +1,9 @@
+node_modules/
+.env
+.cache/
+*.mp4
+# 用户账号、登录密钥：只在服务器上，不进仓库
+data/
+# 本机个人设置
+.claude/settings.local.json
+*.log
