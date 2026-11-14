@@ -39,6 +39,9 @@ button { cursor: pointer; }
 svg { display: block; }
 .hidden { display: none !important; }
 ::selection { background: rgba(255, 90, 31, .2); }
+/* 不显示整页滚动条：滚轮、触控板、方向键照常滚动，只是那条灰槽不画出来 */
+html { scrollbar-width: none; -ms-overflow-style: none; }
+html::-webkit-scrollbar, body::-webkit-scrollbar { width: 0 !important; height: 0 !important; display: none; }
 
 /* ---------- 顶栏 ---------- */
 .topbar {
