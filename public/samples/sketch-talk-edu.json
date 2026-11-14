@@ -1,33 +1,298 @@
 {
-  "title": "新手学琴4个错",
-  "account": "林老师钢琴",
-  "theme": { "key": "music", "emoji": ["🎹", "🎼"] },
-  "sections": [
-    { "hl": ["不差"], "visual": { "type": "badge", "emoji": "🎹", "stamp": "不差", "note": "你的天赋" }, "lines": ["你的天赋不差。"] },
-    { "hl": ["方法"], "visual": { "type": "spotlight", "emoji": "🎹", "label": "你的练法", "side": "问题在这" }, "lines": ["问题出在练琴的方法上。"] },
-    { "hl": ["4个"], "visual": { "type": "count", "n": 4, "label": "个错" }, "lines": ["新手最常犯4个错。"] },
-    { "visual": { "type": "flash", "text": "第一" }, "lines": ["第一个。"] },
-    { "sign": { "num": "01", "text": "只练整首" }, "hl": ["分段"], "visual": { "type": "phones", "left": "整首硬弹", "right": "分段慢练", "win": "right", "crowd": "老师们" }, "lines": ["整首硬弹，不如分段慢练。"] },
-    { "sign": { "num": "01", "text": "只练整首" }, "visual": { "type": "crowd", "mood": "confused", "label": "听的人" }, "lines": ["听的人都一头雾水。"] },
-    { "sign": { "num": "02", "text": "练太久" }, "hl": ["点上"], "visual": { "type": "target", "label": "每天练", "count": "3小时", "hit": false, "result": "偏了" }, "lines": ["练得久，不等于练在点上。"] },
-    { "visual": { "type": "calendar", "label": "练琴日", "from": "今天", "to": "明天" }, "lines": ["今天不练，就拖到明天。"] },
-    { "visual": { "type": "stack", "items": ["认键盘", "单手练", "双手合", "弹整首"] }, "lines": ["一步步来，才稳。"] },
-    { "visual": { "type": "gauge", "label": "练琴焦虑", "level": 0.85, "low": "轻松", "high": "崩溃" }, "lines": ["越急越焦虑。"] },
-    { "sign": { "num": "03", "text": "太早放弃" }, "hl": ["第3周"], "visual": { "type": "weeks", "items": ["第1周", "第2周", "第3周"], "stamp": "放弃", "hit": "开窍", "label": "前三周" }, "lines": ["很多人倒在第2周，其实第3周就开窍。"] },
-    { "hl": ["坚持"], "visual": { "type": "word", "word": "坚持", "sub": "比天赋更重要" }, "lines": ["所以关键词是坚持。"] },
-    { "visual": { "type": "grid", "n": 16, "label": "16 首练习曲" }, "lines": ["一首变十六首。"] },
-    { "visual": { "type": "brand", "emoji": "🎹", "name": "林老师钢琴", "sub": "成人零基础" }, "lines": ["我是林老师。"] },
-    { "visual": { "type": "button", "text": "来试一节", "sub": "周末班" }, "lines": ["来试一节就知道。"] },
-    { "visual": { "type": "checklist", "title": "练琴自查", "items": ["手腕放松", "先慢后快", "每天固定时间"], "mark": "check", "badge": "3" }, "lines": ["三条自查，对照看看。"] },
-    { "visual": { "type": "follow", "emoji": "🎹", "text": "下期讲识谱" }, "lines": ["关注我，下期讲识谱。"] },
-    { "visual": { "type": "chat", "msgs": [{ "from": "them", "text": "老师我手太笨了能学吗" }, { "from": "me", "text": "先慢后快，都能学会" }] }, "lines": ["常有人这样问我。"] },
-    { "visual": { "type": "bars", "items": [{ "label": "硬弹", "level": 0.3 }, { "label": "慢练", "level": 0.9 }, { "label": "听录音", "level": 0.5 }] }, "lines": ["哪种方法最有效？"] },
-    { "visual": { "type": "versus", "left": "天赋", "right": "方法", "win": "right", "note": "方法更重要" }, "lines": ["天赋和方法，方法赢。"] },
-    { "visual": { "type": "timer", "text": "20分钟", "label": "每天就够" }, "lines": ["每天二十分钟就够。"] },
-    { "visual": { "type": "path", "stops": ["识谱", "指法", "曲子", "演奏"] }, "lines": ["这是一条完整的路线。"] },
-    { "visual": { "type": "quote", "text": "慢就是快，稳就是好", "by": "林老师" }, "lines": ["慢就是快。"] },
-    { "visual": { "type": "mystery", "label": "秘诀是", "reveal": "分段练", "emoji": "🎯" }, "lines": ["秘诀就是分段练。"] },
-    { "visual": { "type": "progress", "label": "从零到弹整首", "from": "零基础", "to": "弹整首" }, "lines": ["从零基础到弹整首。"] },
-    { "visual": { "type": "bulb", "text": "每天固定一个时间" }, "lines": ["最好的办法，是固定时间。"] }
+ "title": "减脂光跑步没用？3个误区",
+ "theme": {
+  "key": "fitness",
+  "emoji": [
+   "💪",
+   "🏃",
+   "🔥"
   ]
+ },
+ "sections": [
+  {
+   "hl": [
+    "减脂",
+    "跑步"
+   ],
+   "visual": {
+    "type": "word",
+    "word": "减脂",
+    "sub": "光靠跑步，为什么没用？"
+   },
+   "lines": [
+    "减脂光靠跑步，为什么没用？"
+   ]
+  },
+  {
+   "hl": [
+    "误区"
+   ],
+   "visual": {
+    "type": "count",
+    "n": 3,
+    "label": "个误区"
+   },
+   "lines": [
+    "我总结了3个常见误区。"
+   ]
+  },
+  {
+   "sign": {
+    "num": "01",
+    "text": "只看体重"
+   },
+   "hl": [
+    "体重"
+   ],
+   "visual": {
+    "type": "badge",
+    "emoji": "⚖️",
+    "stamp": "误区",
+    "note": "只看体重"
+   },
+   "lines": [
+    "第一个误区，只看体重。"
+   ]
+  },
+  {
+   "sign": {
+    "num": "01",
+    "text": "只看体重"
+   },
+   "hl": [
+    "掉的是水",
+    "肌肉"
+   ],
+   "visual": {
+    "type": "mystery",
+    "label": "体重掉了",
+    "reveal": "掉的是水",
+    "emoji": "💧"
+   },
+   "lines": [
+    "体重掉了，掉的是水和肌肉。"
+   ]
+  },
+  {
+   "sign": {
+    "num": "01",
+    "text": "只看体重"
+   },
+   "hl": [
+    "脂肪"
+   ],
+   "visual": {
+    "type": "versus",
+    "left": "体重",
+    "right": "脂肪",
+    "win": "right",
+    "note": "关注脂肪，不是体重"
+   },
+   "lines": [
+    "脂肪没少，体型就不会变。"
+   ]
+  },
+  {
+   "sign": {
+    "num": "02",
+    "text": "跑步太久"
+   },
+   "hl": [
+    "跑太久",
+    "掉肌肉"
+   ],
+   "visual": {
+    "type": "timer",
+    "text": "1小时",
+    "label": "跑步时长"
+   },
+   "lines": [
+    "第二个误区，跑步跑太久。"
+   ]
+  },
+  {
+   "sign": {
+    "num": "02",
+    "text": "跑步太久"
+   },
+   "hl": [
+    "皮质醇",
+    "肌肉"
+   ],
+   "visual": {
+    "type": "gauge",
+    "label": "皮质醇水平",
+    "level": 0.8,
+    "low": "低",
+    "high": "高"
+   },
+   "lines": [
+    "跑太久，皮质醇升高，肌肉会掉。"
+   ]
+  },
+  {
+   "sign": {
+    "num": "02",
+    "text": "跑步太久"
+   },
+   "hl": [
+    "代谢"
+   ],
+   "visual": {
+    "type": "progress",
+    "label": "基础代谢下降",
+    "from": "正常",
+    "to": "降低"
+   },
+   "lines": [
+    "肌肉少了，基础代谢就降了。"
+   ]
+  },
+  {
+   "sign": {
+    "num": "03",
+    "text": "忽略力量"
+   },
+   "hl": [
+    "力量训练"
+   ],
+   "visual": {
+    "type": "versus",
+    "left": "跑步",
+    "right": "力量",
+    "win": "right",
+    "note": "力量训练不能少"
+   },
+   "lines": [
+    "第三个误区，忽略力量训练。"
+   ]
+  },
+  {
+   "sign": {
+    "num": "03",
+    "text": "忽略力量"
+   },
+   "hl": [
+    "肌肉",
+    "代谢"
+   ],
+   "visual": {
+    "type": "stack",
+    "items": [
+     "增加肌肉",
+     "提高代谢",
+     "持续燃脂"
+    ]
+   },
+   "lines": [
+    "力量训练能增加肌肉，提高代谢。"
+   ]
+  },
+  {
+   "sign": {
+    "num": "03",
+    "text": "忽略力量"
+   },
+   "hl": [
+    "休息",
+    "燃脂"
+   ],
+   "visual": {
+    "type": "weeks",
+    "items": [
+     "第1周",
+     "第2周",
+     "第3周"
+    ],
+    "stamp": "坚持",
+    "hit": "见效",
+    "label": "坚持力量训练"
+   },
+   "lines": [
+    "哪怕休息时，肌肉也在帮你燃脂。"
+   ]
+  },
+  {
+   "hl": [
+    "3个误区"
+   ],
+   "visual": {
+    "type": "flash",
+    "text": "3个误区"
+   },
+   "lines": [
+    "这3个误区，你中了几个？"
+   ]
+  },
+  {
+   "hl": [
+    "跑步",
+    "力量",
+    "饮食"
+   ],
+   "visual": {
+    "type": "checklist",
+    "title": "减脂正确做法",
+    "items": [
+     "跑步适度",
+     "加入力量训练",
+     "控制饮食"
+    ],
+    "mark": "check",
+    "badge": "3"
+   },
+   "lines": [
+    "减脂，跑步要适度，力量不能少，饮食要控制。"
+   ]
+  },
+  {
+   "hl": [
+    "阿杰健身"
+   ],
+   "visual": {
+    "type": "brand",
+    "emoji": "🏋️",
+    "name": "阿杰健身",
+    "sub": "科学减脂，少走弯路"
+   },
+   "lines": [
+    "我是阿杰，带你科学减脂。"
+   ]
+  },
+  {
+   "hl": [
+    "踩过的坑"
+   ],
+   "visual": {
+    "type": "chat",
+    "msgs": [
+     {
+      "from": "them",
+      "text": "我天天跑步也没瘦"
+     },
+     {
+      "from": "me",
+      "text": "可能踩了误区"
+     }
+    ]
+   },
+   "lines": [
+    "你在减脂路上踩过哪些坑？"
+   ]
+  },
+  {
+   "hl": [
+    "评论区"
+   ],
+   "visual": {
+    "type": "button",
+    "text": "评论区说说",
+    "sub": "下期挑着讲"
+   },
+   "lines": [
+    "评论区说说，下期挑着讲。"
+   ]
+  }
+ ],
+ "account": "阿杰健身"
 }

@@ -567,7 +567,7 @@ function drawVisual(ctx, v, p, t, S, top, idx) {
 // ---------------------------------------------------------------------
 // 字幕：一个字一个字出来，关键词变色
 // ---------------------------------------------------------------------
-function drawCaption(ctx, sec, s, t, S, light) {
+function drawCaption(ctx, sec, s, t, S, light, hotColor = S.acc) {
   if (!sec) return;
   let ln = sec.lines.find((l) => t >= l.start - 0.05 && t < l.end + 0.25);
   if (!ln && t >= sec.lines[sec.lines.length - 1].end) ln = sec.lines[sec.lines.length - 1];
@@ -586,7 +586,7 @@ function drawCaption(ctx, sec, s, t, S, light) {
     let x = CAP.x;
     for (const c of r) {
       const k = clamp(prog - c.i);
-      if (k > 0) { ctx.globalAlpha = k; ctx.fillStyle = hot[c.i] ? S.acc : (light ? '#ffffff' : S.text); ctx.fillText(c.ch, x, CAP.y + ri * CAP.lh + (1 - k) * 16); }
+      if (k > 0) { ctx.globalAlpha = k; ctx.fillStyle = hot[c.i] ? hotColor : (light ? '#ffffff' : S.text); ctx.fillText(c.ch, x, CAP.y + ri * CAP.lh + (1 - k) * 16); }
       x += c.w;
     }
   });
@@ -658,7 +658,7 @@ export function drawFrame(ctx, { script, tl, planData, t, skinId = 'paper', asse
 
   if (s && p) drawVisual(ctx, v, p, t, S, top, idx);
   if (v.type !== 'flash') drawNarrator(ctx, idx, p, t, assets);
-  drawCaption(ctx, sec, s || {}, t, S, FULL.has(v.type) || skinId === 'night');
+  drawCaption(ctx, sec, s || {}, t, S, FULL.has(v.type) || skinId === 'night', v.type === 'flash' ? S.gold : S.acc); // 整屏品牌色上，关键词换成黄色，不然看不见
   // 右上角小小的账号名
   if (script.account) { ctx.font = `600 26px ui-monospace, Consolas, "Noto Sans SC", monospace`; ctx.fillStyle = FULL.has(v.type) ? '#ffffff99' : S.text2; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillText('@' + script.account, W - 60, 70); }
   ctx.restore();
