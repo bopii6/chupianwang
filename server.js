@@ -509,7 +509,8 @@ http.createServer(async (req, res) => {
     if (req.method === 'POST' && pathname === '/api/debug-file' && process.env.NODE_ENV !== 'production') {
       const dir = path.join(ROOT, '.cache', 'frames');
       await fsp.mkdir(dir, { recursive: true });
-      const out = fs.createWriteStream(path.join(dir, 'export.mp4'));
+      const fname = (new URL(req.url, 'http://x').searchParams.get('name') || 'export').replace(/[^\w.-]/g, '');
+      const out = fs.createWriteStream(path.join(dir, fname + '.mp4'));
       req.pipe(out);
       return out.on('finish', () => sendJson(res, 200, { ok: true }));
     }
