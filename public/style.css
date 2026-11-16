@@ -1,5 +1,5 @@
 /* =====================================================================
-   出片王 · 设计系统
+   微信出片 · 设计系统
    浅色、干净、只用一个品牌色（活力橙红）；视频预览保持深色，让成片最突出
    ===================================================================== */
 :root {
@@ -54,6 +54,14 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { width: 0 !important; height: 
 .logo { width: 30px; height: 30px; border-radius: 9px; background: linear-gradient(135deg, var(--accent-2), var(--accent)); color: #fff; display: grid; place-items: center; box-shadow: 0 6px 14px -6px rgba(255, 90, 31, .7); }
 .logo svg { width: 15px; height: 15px; margin-left: 1px; }
 .brand-sub { color: var(--text-3); font-size: 13px; padding-left: 14px; border-left: 1px solid var(--hair-2); }
+
+/* 顶栏中间的页面入口：制作台 / 作品墙 */
+.topnav { display: flex; align-items: center; gap: 4px; }
+.topnav a { color: var(--ink-text-2); text-decoration: none; font-size: 13.5px; font-weight: 500; padding: 7px 12px; border-radius: 9px; transition: color .2s, background .2s; }
+.topnav a:hover { color: var(--ink-text); background: rgba(255, 255, 255, .08); }
+.topnav a.on { color: #fff; background: rgba(255, 255, 255, .14); }
+@media (max-width: 760px) { .topnav { display: none; } }
+
 .crumb { color: var(--text-3); font-size: 13px; display: flex; align-items: center; gap: 8px; }
 .crumb b { color: var(--text); font-weight: 500; }
 .trial { margin-left: auto; font-size: 13px; font-weight: 500; color: var(--accent); padding: 7px 14px; border-radius: 999px; background: var(--accent-soft); }
@@ -949,6 +957,8 @@ body { background: var(--surface); }
 
 /* ---------- 首页：两栏 ---------- */
 #gallery { display: grid; grid-template-columns: minmax(0, 1fr) var(--work-w); min-height: calc(100vh - 60px); background: var(--surface); overflow: visible; }
+/* 工作台右边距：模板横滑区是 -40px 出血，不给右边距就顶到窗口边，看着没有留白 */
+#gallery { padding-right: 32px; }
 #gallery.hidden { display: none; }
 #gallery::before, #gallery::after { display: none; }
 
@@ -1024,7 +1034,7 @@ body { background: var(--surface); }
 /* ---------- 手机 / 窄窗口：放映区变成顶上一条，工作台像一张纸盖上来 ---------- */
 @media (max-width: 760px) {
   :root { --pad: 16px; }
-  #gallery { display: block; }
+  #gallery { display: block; padding-right: 0; }
   .show { position: relative; top: auto; height: 236px; justify-content: flex-start; padding: 20px 16px 0; }
   .show-phone { height: 330px; border-radius: 22px; }
   .show-cap, .show-sample { display: none; }

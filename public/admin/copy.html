@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>文案库 · 出片王</title>
+  <title>文案库 · 微信出片</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="/vendor/noto-sans-sc/400.css" />
   <link rel="stylesheet" href="/vendor/noto-sans-sc/500.css" />
   <link rel="stylesheet" href="/vendor/noto-sans-sc/700.css" />
@@ -13,21 +14,20 @@
 </head>
 <body class="cl">
   <header class="topbar">
-    <a class="brand" href="/"><span class="logo"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg></span>出片王</a>
+    <a class="brand" href="/"><span class="logo"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg></span>微信出片</a>
     <nav class="cl-tabs" id="tabs">
       <button data-view="add" class="on">收录</button>
       <button data-view="lib">文案库 <b id="libCount">0</b></button>
     </nav>
   </header>
 
-  <!-- ① 收录：一个输入框 -->
+  <!-- ① 收录：一个框，链接和文案都能放 -->
   <main id="vAdd" class="cl-page">
     <h1>收录一条爆款文案</h1>
-    <p class="lead">粘贴文案或拖入视频，AI 自动拆成套路、检查风险、存进文案库。</p>
+    <p class="lead">把视频号链接或口播文案丢进去，AI 拆出套路、查一遍风险，然后入库。</p>
 
     <div class="composer cl-drop" id="drop">
-      <textarea id="text" rows="7" placeholder="粘贴口播文案，或者把视频拖进来"></textarea>
-      <input id="note" class="cl-note" placeholder="补充一句（选填）：链接、点赞评论数、评论区问价多不多、你为什么觉得好" />
+      <textarea id="text" rows="6" placeholder="粘贴视频号链接，或直接粘贴口播文案 —— 也可以把视频拖进来"></textarea>
       <div class="composer-bar">
         <button class="add" id="pickFile" type="button"><svg viewBox="0 0 24 24" width="16" height="16"><path d="M4 7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM16 10l4-2.5v9L16 14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>视频</button>
         <span class="cl-status" id="status"></span>
@@ -36,8 +36,13 @@
       <input type="file" id="file" accept="video/*,audio/*" hidden />
       <div class="cl-drop-mask">松开，自动转成文字</div>
     </div>
-    <p class="err" id="err"></p>
 
+    <details class="cl-more">
+      <summary>补一句背景（选填）</summary>
+      <input id="note" class="cl-note" placeholder="比如：这条 3 万赞、评论区问价的多、你觉得好在开头" />
+    </details>
+
+    <p class="err" id="err"></p>
     <div id="result"></div>
   </main>
 

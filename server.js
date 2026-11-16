@@ -1,4 +1,4 @@
-// 一键出片 - 轻量服务端
+// 微信出片 - 轻量服务端
 // 只做三件事：静态文件、AI 文案代理（密钥留在服务端）、配音。
 // 渲染全部在用户浏览器里完成，不占服务器算力。
 import http from 'node:http';
@@ -14,8 +14,11 @@ import https from 'node:https';
 import { handleCopyApi, scanRisks } from './lib/copylib.js';
 import { handleRelay } from './lib/relay.js';
 import { handleAuth, currentUser, hasQuota, useQuota } from './lib/auth.js';
+import { handleWorks, serveWorkFile } from './lib/works.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
+const WORKS = path.join(ROOT, 'works'); // 作品墙：导出的成片存这里
+fs.mkdirSync(WORKS, { recursive: true });
 const portArg = process.argv.indexOf('--port');
 const PORT = Number((portArg > 0 && process.argv[portArg + 1]) || process.env.PORT || 5173);
 
@@ -509,6 +512,8 @@ http.createServer(async (req, res) => {
       req.pipe(out);
       return out.on('finish', () => sendJson(res, 200, { ok: true }));
     }
+    if (pathname.startsWith('/api/works')) return await handleWorks(req, res, pathname, WORKS, new URL(req.url, 'http://x').searchParams); // 作品墙
+    if (pathname.startsWith('/works/')) return await serveWorkFile(req, res, pathname, WORKS); // 作品墙视频（支持 Range）
     if (req.method === 'GET' && pathname === '/api/status') { if (!process.env.PEXELS_API_KEY) loadEnv(); return sendJson(res, 200, { ai: !!process.env.DEEPSEEK_API_KEY, stock: !!process.env.PEXELS_API_KEY, asrBase: process.env.ASR_MODEL_BASE || '/models/asr/', asrModel: process.env.ASR_MODEL || 'whisper-base', authRequired: process.env.AUTH_REQUIRED === '1' }); }
     if (req.method === 'GET' && (await serveStatic(req, res, pathname))) return;
     res.writeHead(404); res.end('not found');
@@ -516,4 +521,4 @@ http.createServer(async (req, res) => {
     console.error(e);
     if (!res.headersSent) sendJson(res, 500, { error: String(e.message || e) });
   }
-}).listen(PORT, () => console.log(`一键出片 已启动: http://localhost:${PORT}`));
+}).listen(PORT, () => console.log(`微信出片 已启动: http://localhost:${PORT}`));

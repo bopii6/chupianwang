@@ -1,0 +1,117 @@
+/* 作品墙：只补这个页面要用的样式，颜色沿用 style.css 里的变量（顶栏的 .topnav 在 style.css） */
+.works-page { background: #f6f5f2; min-height: 100vh; }
+
+.wk-head-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+.wk-btn {
+  height: 36px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--ink-line);
+  background: rgba(255, 255, 255, .06); color: var(--ink-text); font-size: 13.5px; font-weight: 600;
+  cursor: pointer; transition: background .2s, border-color .2s;
+}
+.wk-btn:hover { background: rgba(255, 255, 255, .14); border-color: rgba(255, 255, 255, .25); }
+.wk-btn.primary { background: var(--accent); border-color: transparent; color: #fff; }
+.wk-btn.primary:hover { background: #e8500f; }
+.wk-btn:disabled { opacity: .5; cursor: default; }
+
+.wk-main { max-width: 1440px; margin: 0 auto; padding: 34px 32px 80px; }
+
+.wk-head { display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap; margin-bottom: 26px; }
+.wk-head h1 { margin: 0; font-size: 26px; font-weight: 900; letter-spacing: -.5px; }
+.wk-head p { margin: 6px 0 0; color: #6b675f; font-size: 13px; }
+.wk-tools { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+.wk-tools input, .wk-tools select {
+  height: 38px; border-radius: 10px; border: 1px solid rgba(20, 18, 14, .12);
+  background: #fff; color: #141310; font-size: 13.5px; padding: 0 12px; outline: none;
+}
+.wk-tools input { width: 200px; }
+.wk-tools input:focus, .wk-tools select:focus { border-color: rgba(255, 90, 31, .55); box-shadow: 0 0 0 3px rgba(255, 90, 31, .12); }
+
+/* 卡片 */
+.wk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(172px, 1fr)); gap: 20px; }
+.wk-card {
+  background: #fff; border-radius: 16px; padding: 8px 8px 10px;
+  box-shadow: 0 1px 2px rgba(20, 18, 14, .05), 0 10px 24px -18px rgba(20, 18, 14, .3);
+  border: 1px solid rgba(20, 18, 14, .06);
+  transition: transform .22s ease, box-shadow .22s ease;
+}
+.wk-card:hover { transform: translateY(-3px); box-shadow: 0 2px 4px rgba(20, 18, 14, .06), 0 18px 34px -20px rgba(20, 18, 14, .35); }
+.wk-thumb {
+  position: relative; display: block; width: 100%; aspect-ratio: 9 / 16; padding: 0; border: none;
+  border-radius: 11px; overflow: hidden; background: #0e0d0c; cursor: pointer;
+}
+.wk-thumb video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.wk-dur {
+  position: absolute; right: 8px; bottom: 8px; padding: 2px 7px; border-radius: 6px;
+  background: rgba(0, 0, 0, .62); color: #fff; font-size: 11.5px; font-variant-numeric: tabular-nums;
+}
+.wk-play {
+  position: absolute; inset: 0; display: grid; place-items: center; opacity: 0;
+  background: rgba(0, 0, 0, .3); transition: opacity .2s; color: #fff;
+}
+.wk-play svg { width: 42px; height: 42px; padding: 11px 10px 11px 14px; border-radius: 50%; background: #fff; color: #141310; }
+.wk-thumb:hover .wk-play { opacity: 1; }
+.wk-meta { padding: 10px 4px 0; }
+.wk-meta b { display: block; font-size: 13.5px; font-weight: 600; line-height: 1.4; color: #141310;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.wk-meta span { display: block; margin-top: 4px; font-size: 11.5px; color: #908c84; }
+.wk-ops { display: flex; gap: 6px; padding: 8px 4px 0; }
+.wk-ops button {
+  flex: 1; height: 30px; border-radius: 8px; border: 1px solid rgba(20, 18, 14, .1);
+  background: #f6f5f2; color: #57544e; font-size: 12.5px; cursor: pointer; transition: background .18s, color .18s;
+}
+.wk-ops button:hover { background: #ffefe8; color: #c2410c; border-color: rgba(255, 90, 31, .35); }
+
+/* 空状态 */
+.wk-empty {
+  border: 1px dashed rgba(20, 18, 14, .16); border-radius: 20px; padding: 64px 24px; text-align: center;
+  background: #fff;
+}
+.wk-empty h2 { margin: 0 0 10px; font-size: 19px; font-weight: 800; }
+.wk-empty p { margin: 0 auto 22px; max-width: 520px; color: #6b675f; font-size: 13.5px; line-height: 1.8; }
+.hidden { display: none !important; }
+
+/* 播放 / 直播 浮层 */
+.wk-player, .wk-live {
+  position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
+  background: rgba(8, 7, 6, .93); backdrop-filter: blur(6px);
+}
+.wk-player-box { display: flex; flex-direction: column; align-items: center; gap: 14px; max-width: 92vw; }
+.wk-player video { max-height: 78vh; max-width: 92vw; border-radius: 14px; background: #000; }
+.wk-player-bar, .wk-live-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.wk-player-bar b, .wk-live-bar b { color: #f4f2ee; font-size: 14px; font-weight: 600; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wk-close {
+  position: absolute; top: 18px; right: 20px; width: 38px; height: 38px; border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, .2); background: rgba(255, 255, 255, .08); color: #fff;
+  font-size: 20px; line-height: 1; cursor: pointer;
+}
+.wk-close:hover { background: rgba(255, 255, 255, .18); }
+.wk-live video { max-height: 84vh; max-width: 96vw; border-radius: 16px; background: #000; }
+.wk-live-idx { color: rgba(244, 242, 238, .6); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+
+/* 拖拽导入 */
+.wk-drop {
+  position: fixed; inset: 0; z-index: 70; display: grid; place-items: center;
+  background: rgba(255, 90, 31, .12); border: 3px dashed rgba(255, 90, 31, .6); pointer-events: none;
+}
+.wk-drop b { background: #141310; color: #fff; padding: 14px 26px; border-radius: 12px; font-size: 15px; }
+
+/* 轻提示 */
+.wk-toast {
+  position: fixed; left: 50%; bottom: 32px; transform: translate(-50%, 12px); z-index: 80;
+  background: #141310; color: #fff; padding: 11px 18px; border-radius: 11px; font-size: 13.5px;
+  opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; max-width: 80vw;
+}
+.wk-toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (max-width: 760px) {
+  .wk-main { padding: 22px 14px 60px; }
+  .wk-head { align-items: flex-start; }
+  .wk-tools { margin-left: 0; width: 100%; }
+  .wk-tools input { flex: 1; width: auto; }
+  .wk-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  .topnav { display: none; }
+}
+
+.wk-filters { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 18px; }
+.wk-filters button { font: inherit; font-size: 14px; font-weight: 600; border: 1px solid #e2d9c8; background: #fff; color: #1b2430; border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.wk-filters button.on { background: #1b2430; color: #f7f2e6; border-color: #1b2430; }

@@ -1010,12 +1010,17 @@ $('#btnExport').addEventListener('click', async () => {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = name; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    // 作品墙：顺手在本机 works/ 存一份，直播时直接在作品墙里放
+    fetch('/api/works?title=' + encodeURIComponent(state.script?.title || name.replace(/\.mp4$/, '')), {
+      method: 'POST', headers: { 'content-type': 'video/mp4' }, body: blob,
+    }).catch(() => {});
     // 手机上：下载的文件不好找，给一个“存到手机”按钮（系统分享面板里能存相册、发微信）
     const file = new File([blob], name, { type: 'video/mp4' });
     const canShare = matchMedia('(pointer: coarse)').matches && navigator.canShare?.({ files: [file] });
-    overlayDone('视频已导出', `${name} · ${(blob.size / 1048576).toFixed(0)} MB · ${canShare ? '点下面按钮存到相册或发给微信' : '已保存到下载文件夹'}`, [
+    overlayDone('视频已导出', `${name} · ${(blob.size / 1048576).toFixed(0)} MB · ${canShare ? '点下面按钮存到相册或发给微信' : '已保存到下载文件夹，也存进了作品墙'}`, [
       ...(canShare ? [{ label: '存到手机 / 分享', primary: true, fn: () => navigator.share({ files: [file], title: state.script?.title || '' }).catch(() => {}) }] : []),
       { label: '再做一条', primary: !canShare, fn: () => { hideOverlay(); show('gallery'); } },
+      { label: '去作品墙', fn: () => { location.href = '/works.html'; } },
       { label: '继续修改', fn: hideOverlay },
     ]);
   } catch (err) {
@@ -1280,3 +1285,26 @@ document.fonts.ready.then(() => { moveTabInd(); moveSegThumb($('#minutes')); upd
 loadPhotos('photos').catch(() => {});
 loadPhotos('scenes').catch(() => {});
 fetch('/api/status').then((r) => r.json()).then((d) => { aiReady = !!d.ai; if (!aiReady) $('#createErr').textContent = '服务端还没配置 AI 密钥，可以先看示例。'; if (d.asrBase) asrBase = d.asrBase; if (d.asrModel) asrModel = d.asrModel; authRequired = !!d.authRequired; renderAcct(); }).catch(() => { aiReady = false; });
+
+// 从外部（选题雷达 / 微信出片）带主题进来：?topic=...&form=...
+;(() => {
+  const q = new URLSearchParams(location.search)
+  const topic = q.get('topic')
+  const formName = q.get('form')
+  if (!topic && !formName) return
+  const apply = () => {
+    if (formName && typeof forms !== 'undefined') {
+      const hit = forms.find((f) => f.name === formName || f.id === formName)
+      if (hit) selectForm(hit.id)
+    }
+    if (topic) {
+      const input = $('#input')
+      if (!input) return
+      input.value = topic
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      input.focus()
+    }
+  }
+  if (document.querySelector('#tplStrip .t')) apply()
+  else setTimeout(apply, 400)
+})()

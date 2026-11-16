@@ -1,9 +1,21 @@
 node_modules/
 .env
+.env.*
 .cache/
 *.mp4
-# 用户账号、登录密钥：只在服务器上，不进仓库
+*.mov
+*.webm
 data/
-# 本机个人设置
 .claude/settings.local.json
 *.log
+.DS_Store
+Thumbs.db
+
+# 文案库里的客户文案属于私人内容，只把说明书和词表放进仓库
+文案库/样本/
+文案库/回收站/
+
+# 本地跑出来的临时文件
+tmp/
+.chrome-dump/
+.chrome-shot2/

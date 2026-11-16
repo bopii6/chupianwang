@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>作品墙 · 微信出片</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/vendor/noto-sans-sc/400.css" />
+  <link rel="stylesheet" href="/vendor/noto-sans-sc/500.css" />
+  <link rel="stylesheet" href="/vendor/noto-sans-sc/700.css" />
+  <link rel="stylesheet" href="/vendor/noto-sans-sc/900.css" />
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/works.css" />
+</head>
+<body class="works-page">
+  <header class="topbar">
+    <a class="brand" href="/"><span class="logo"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg></span>微信出片</a>
+    <nav class="topnav">
+      <a href="/">制作台</a>
+      <a href="/works.html" class="on">作品墙</a>
+    </nav>
+    <div class="wk-head-actions">
+      <button class="wk-btn primary" id="btnImport" type="button">导入视频</button>
+      <button class="wk-btn" id="btnLive" type="button">直播模式</button>
+      <input type="file" id="fileInput" accept="video/mp4" multiple hidden />
+    </div>
+  </header>
+
+  <main class="wk-main">
+    <div class="wk-head">
+      <div>
+        <h1>作品墙</h1>
+        <p id="wkSub">正在读取…</p>
+      </div>
+      <div class="wk-tools">
+        <input type="search" id="search" placeholder="搜标题…" autocomplete="off" />
+        <select id="sort">
+          <option value="new">最新在前</option>
+          <option value="old">最早在前</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="wk-empty hidden" id="empty">
+      <h2>作品墙还是空的</h2>
+      <p>
+        以前导出的视频不会自动留在电脑上——成片只在浏览器里生成后下载，服务端没有存。<br />
+        从现在起，每次点「生成视频」都会自动存进这里。<br />
+        手里已有的 MP4，可以直接拖到这个页面上，或者点右上角「导入视频」。
+      </p>
+      <button class="wk-btn primary" id="btnImport2" type="button">选视频导入</button>
+    </div>
+
+    <div class="wk-filters" id="wkFilters"></div>
+
+    <div class="wk-grid" id="grid"></div>
+  </main>
+
+  <!-- 单条播放 -->
+  <div class="wk-player hidden" id="player">
+    <button class="wk-close" id="playerClose" type="button" aria-label="关闭">×</button>
+    <div class="wk-player-box">
+      <video id="playerVideo" controls playsinline></video>
+      <div class="wk-player-bar">
+        <b id="playerTitle"></b>
+        <button class="wk-btn" id="playerPrev" type="button">上一条</button>
+        <button class="wk-btn" id="playerNext" type="button">下一条</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 直播模式：整屏轮播 -->
+  <div class="wk-live hidden" id="live">
+    <button class="wk-close" id="liveClose" type="button" aria-label="退出直播模式">×</button>
+    <div class="wk-player-box">
+      <video id="liveVideo" playsinline></video>
+      <div class="wk-live-bar">
+        <b id="liveTitle"></b>
+        <span class="wk-live-idx" id="liveIdx"></span>
+        <button class="wk-btn" id="livePrev" type="button">上一条</button>
+        <button class="wk-btn" id="liveNext" type="button">下一条</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="wk-toast" id="toast"></div>
+
+  <script src="/works.js"></script>
+</body>
+</html>
