@@ -15,11 +15,20 @@
 <body class="cl">
   <header class="topbar">
     <a class="brand" href="/"><span class="logo"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg></span>微信出片</a>
+    <nav class="topnav">
+      <a href="/">制作台</a>
+      <a href="/admin/copy.html">文案库</a>
+      <a href="/works.html">作品墙</a>
+    </nav>
+  </header>
+
+  <!-- 页内切换：收录 / 文案库 -->
+  <div class="cl-switch">
     <nav class="cl-tabs" id="tabs">
       <button data-view="add" class="on">收录</button>
       <button data-view="lib">文案库 <b id="libCount">0</b></button>
     </nav>
-  </header>
+  </div>
 
   <!-- ① 收录：一个框，链接和文案都能放 -->
   <main id="vAdd" class="cl-page">
@@ -58,6 +67,7 @@
 
   <dialog class="cl-modal" id="modal"><div id="modalBody"></div></dialog>
   <div class="toast" id="toast"></div>
+  <script type="module" src="/nav.js"></script>
   <script type="module" src="/admin/copy.js"></script>
 </body>
 </html>

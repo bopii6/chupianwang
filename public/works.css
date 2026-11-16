@@ -109,7 +109,9 @@
   .wk-tools { margin-left: 0; width: 100%; }
   .wk-tools input { flex: 1; width: auto; }
   .wk-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
-  .topnav { display: none; }
+  .works-page .brand { font-size: 0; gap: 0; }
+  .wk-head-actions { gap: 6px; }
+  .wk-btn { white-space: nowrap; padding-left: 10px; padding-right: 10px; }
 }
 
 .wk-filters { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 18px; }

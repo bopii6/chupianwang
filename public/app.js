@@ -439,16 +439,19 @@ function pickRemixFile(file) {
 function pickRemixAudio(name, audio) {
   ensureLogin('登录后就能拆解这条爆款视频').then(() => runRemix(name, async (opts) => (await loadAsr()).transcribeAudio(audio, opts))).catch(() => {});
 }
+// listen 是听写函数；从文案库来的已经是文字，传 { text } 直接跳过听写
 async function runRemix(name, listen) {
-  closeQr();
+  closeQr(); closeLib();
   const job = ++rm.job;
+  const given = typeof listen === 'object' ? listen : null;
   Object.assign(rm, { file: { name }, text: '', plan: null, error: '', busy: true, userPicked: false });
   $('#createErr').textContent = '';
   $('#rmEmpty').classList.add('hidden'); $('#rmFile').classList.remove('hidden');
   $('#rmName').textContent = name;
   renderRemixPlan(); renderRemixForms(); updateGo();
+  if (given) listen = async () => given;
   try {
-    remixStatus('正在读取视频里的声音…', 4);
+    remixStatus(given ? '正在拆它为什么火…' : '正在读取视频里的声音…', given ? 50 : 4);
     const t0 = performance.now();
     const { text } = await listen({
       base: asrBase, model: asrModel,
@@ -463,7 +466,7 @@ async function runRemix(name, listen) {
     });
     if (job !== rm.job) return;
     rm.text = text;
-    remixStatus('听完了，正在拆它为什么火…', 90);
+    if (!given) remixStatus('听完了，正在拆它为什么火…', 90);
     const r = await fetch('/api/remix-plan', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reference: text, forms: forms.map((f) => ({ id: f.id, name: f.name, fit: f.fits || f.outcome || f.tagline })) }),
@@ -492,7 +495,7 @@ function closeQr() {
   $('#rmQr').classList.add('hidden'); $('#rmQrBtn').classList.remove('hidden');
 }
 async function openQr() {
-  closeQr();
+  closeQr(); closeLib();
   $('#rmQrBtn').classList.add('hidden'); $('#rmQr').classList.remove('hidden');
   $('#rmQrSt').textContent = '正在生成二维码…'; $('#rmQrTip').textContent = ''; $('#rmQrImg').removeAttribute('src');
   try {
@@ -536,6 +539,39 @@ async function openQr() {
   }
 }
 $('#rmQrBtn').addEventListener('click', openQr);
+
+// ---------- 从我的文案库选：文案库里存的已经是文字，跳过上传和听写，直接拆解 ----------
+/** 先登录再做：没登录就弹登录框，登录完接着做 */
+function loginThen(reason, fn) {
+  return new Promise((resolve, reject) => { loginWaiters.push({ resolve, reject }); openLogin(reason); }).then(fn).catch(() => {});
+}
+function closeLib() { $('#rmLib').classList.add('hidden'); $('#rmLib').replaceChildren(); }
+function useCopy(s) {
+  const a = s.analysis || {};
+  openRemix();
+  runRemix(a.hook?.text || a.title || '文案库里的一条', { text: s.text });
+}
+async function openLib() {
+  const box = $('#rmLib');
+  if (!box.classList.contains('hidden')) return closeLib();
+  closeQr();
+  box.classList.remove('hidden');
+  box.innerHTML = '<p class="rm-lib-tip">正在打开你的文案库…</p>';
+  const r = await fetch('/api/copy/list', { cache: 'no-store' }).catch(() => null);
+  if (r?.status === 401) { closeLib(); return loginThen('登录后就能用你的文案库', openLib); }
+  const items = r?.ok ? (await r.json()).items || [] : null;
+  if (!items) { box.innerHTML = '<p class="rm-lib-tip">文案库打不开，稍后再试</p>'; return; }
+  if (!items.length) { box.innerHTML = '<p class="rm-lib-tip">文案库还是空的。<a href="/admin/copy.html">去收录第一条</a></p>'; return; }
+  box.replaceChildren(...items.slice(0, 30).map((s) => {
+    const a = s.analysis || {};
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'rm-lib-item';
+    b.innerHTML = `<b>${esc(a.hook?.text || a.title || '')}</b><span>${esc([a.subject || a.category, a.audience].filter(Boolean).join(' · '))}</span>`;
+    b.addEventListener('click', () => useCopy(s));
+    return b;
+  }));
+}
+$('#rmLibBtn').addEventListener('click', () => openLib());
 $('#rmQrClose').addEventListener('click', closeQr);
 $('#rmQr').addEventListener('click', (e) => { if (e.target.id === 'rmQrAgain') openQr(); });
 
@@ -1310,3 +1346,23 @@ fetch('/api/status').then((r) => r.json()).then((d) => { aiReady = !!d.ai; if (!
   if (document.querySelector('#tplStrip .t')) apply()
   else setTimeout(apply, 400)
 })()
+
+// 从文案库带一条进来：?copy=<id> → 直接进「用别人的爆款做」，跳过上传和听写
+// 文案库页没登录会跳来 ?login=1&back=<原页面>：登录完再回去
+;(() => {
+  const q = new URLSearchParams(location.search);
+  const id = q.get('copy'); const back = q.get('back') || '';
+  if (!id && !q.get('login')) return;
+  history.replaceState(null, '', location.pathname);
+  if (!id) return loginThen('登录后就能用你的文案库', () => { if (back.startsWith('/') && !back.startsWith('//') && !back.includes('\\')) location.href = back; });
+  const go = async () => {
+    openRemix();
+    const r = await fetch('/api/copy/get?id=' + encodeURIComponent(id), { cache: 'no-store' }).catch(() => null);
+    if (r?.status === 401) return loginThen('登录后就能用你的文案库做视频', go);
+    const d = r ? await r.json().catch(() => ({})) : {};
+    if (!r?.ok) { $('#createErr').textContent = d.error || '这条文案打不开了'; return; }
+    useCopy(d.sample);
+    $('#rmIndustry').focus();
+  };
+  go();
+})();

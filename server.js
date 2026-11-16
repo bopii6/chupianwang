@@ -496,7 +496,7 @@ http.createServer(async (req, res) => {
     if (req.method === 'POST' && pathname === '/api/remix-plan') return await handleRemixPlan(req, res);
     if (pathname === '/api/qr' || pathname.startsWith('/api/relay')) return await handleRelay(req, res, pathname, new URL(req.url, 'http://x').searchParams, { readJson, sendJson }); // 手机扫码上传
     if (req.method === 'POST' && pathname === '/api/fetch-url') return await handleFetchUrl(req, res);
-    if (pathname.startsWith('/api/copy/')) return await handleCopyApi(req, res, pathname, { readJson, sendJson }); // 文案库（内部工具）
+    if (pathname.startsWith('/api/copy/')) return await handleCopyApi(req, res, pathname, { readJson, sendJson, user: await currentUser(req) }); // 文案库：每个客户自己的；没登录的管理员用公共库
     if (req.method === 'GET' && pathname === '/api/stock') return await handleStock(req, res, new URL(req.url, 'http://x').searchParams);
     if (req.method === 'POST' && pathname === '/api/debug-frame' && process.env.NODE_ENV !== 'production') {
       // 开发调试：把浏览器里渲染的某一帧存成图片

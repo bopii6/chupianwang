@@ -2,14 +2,15 @@
 body.cl { min-height: 100vh; }
 
 /* ---------- 顶栏胶囊导航 ---------- */
-.cl-tabs { display: flex; gap: 2px; padding: 4px; margin-left: 18px; background: var(--surface-3); border-radius: 999px; }
+.cl-switch { display: flex; justify-content: center; padding: 28px 16px 0; }
+.cl-tabs { display: inline-flex; gap: 2px; padding: 4px; background: var(--surface-3); border-radius: 999px; }
 .cl-tabs button { border: none; background: transparent; padding: 6px 16px; border-radius: 999px; color: var(--text-2); font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; }
 .cl-tabs button.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
 .cl-tabs b { font-weight: 700; font-size: 11px; min-width: 18px; padding: 1px 6px; border-radius: 999px; background: var(--hair); color: var(--text-2); }
 .cl-tabs button.on b { background: var(--accent-soft); color: var(--accent); }
 
 /* ---------- 页面骨架 ---------- */
-.cl-page { width: min(820px, 100%); margin: 0 auto; padding: 52px 16px 100px; }
+.cl-page { width: min(820px, 100%); margin: 0 auto; padding: 36px 16px 100px; }
 .cl-page.cl-wide { width: min(1160px, 100%); }
 .cl-page h1 { font-size: 34px; font-weight: 900; letter-spacing: -0.4px; line-height: 1.25; margin: 0 0 10px; }
 .cl-page .lead { margin: 0 0 26px; font-size: 15px; line-height: 1.7; color: var(--text-2); }
@@ -38,78 +39,27 @@ body.cl { min-height: 100vh; }
 .toast { position: fixed; left: 50%; bottom: 32px; transform: translate(-50%, 20px); background: var(--text); color: #fff; font-size: 13px; padding: 10px 20px; border-radius: 999px; opacity: 0; pointer-events: none; transition: all .25s var(--ease); z-index: 90; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
-/* ---------- 拆解卡片 ---------- */
-.cl-card { background: var(--surface); border-radius: var(--r-xl); box-shadow: var(--shadow-md), 0 0 0 1px var(--hair); padding: 30px 34px 20px; animation: in .4s var(--ease); }
-.cl-title { margin: 0; font-size: 25px; font-weight: 900; line-height: 1.4; letter-spacing: -0.2px; }
-.cl-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0 22px; font-size: 13px; color: var(--text-3); }
-.cl-edit { outline: none; border-radius: 8px; padding: 2px 6px; margin-left: -6px; margin-right: -6px; transition: background .15s; cursor: text; }
-.cl-edit:hover { background: var(--surface-2); }
-.cl-edit:focus { background: var(--surface-2); box-shadow: 0 0 0 1px var(--hair-2); }
+/* ---------- 拆解卡片：三段，每段同一种排法 ---------- */
+.cl-card { background: var(--surface); border-radius: var(--r-xl); box-shadow: var(--shadow-md), 0 0 0 1px var(--hair); padding: 30px 36px 18px; animation: in .4s var(--ease); }
+.cl-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 13px; color: var(--text-3); }
 
-/* 通用「标签 + 内容」行 */
-.cl-row { display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 14px; padding: 15px 0; border-top: 1px solid var(--hair); }
-.cl-row > .cl-k { padding-top: 3px; }
-.cl-k { display: block; font-size: 12px; font-weight: 800; letter-spacing: .5px; color: var(--text-3); }
-.cl-row p { margin: 0; }
+.cl-why { margin: 6px 0 0; font-size: 14px; line-height: 1.9; color: var(--text-2); }
+.cl-sec { margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--hair); }
+.cl-k { margin: 0 0 14px; font-size: 12px; font-weight: 700; letter-spacing: .6px; color: var(--text-3); }
 
-.cl-formula-text { font-size: 16px; font-weight: 700; line-height: 1.85; }
-.cl-hook { font-size: 17px; font-weight: 700; line-height: 1.6; }
-.cl-sub { color: var(--text-2); font-size: 13px; line-height: 1.8; margin-top: 5px !important; }
+/* 原文：一字不改，正文阅读排版 */
+.cl-raw p { margin: 0 0 14px; font-size: 16px; line-height: 2; color: var(--text); word-break: break-word; }
+.cl-raw p:last-child { margin-bottom: 0; }
+.cl-hookline { font-size: 20px; font-weight: 900; line-height: 1.7; display: block; margin-bottom: 4px; }
+.cl-one { margin: 0; font-size: 16px; font-weight: 700; line-height: 1.8; }
 
-/* ① 一句话核心 */
-.cl-core { background: var(--accent-soft); border-radius: var(--r-lg); padding: 22px 24px 24px; margin: 4px 0 8px; }
-.cl-core-k { margin: 0 0 12px; font-size: 12px; font-weight: 900; letter-spacing: .8px; color: var(--accent); }
-.cl-core-one { margin: 0; font-size: 20px; font-weight: 800; line-height: 1.7; letter-spacing: -0.1px; }
-.cl-core-why { margin: 14px 0 0; font-size: 14px; line-height: 1.9; color: var(--text-2); }
-
-/* ② 五步递进 */
-.cl-steps { margin: 0; padding: 0; list-style: none; }
-.cl-step { display: grid; grid-template-columns: 24px 58px minmax(0, 1fr); gap: 12px; padding: 13px 0; border-bottom: 1px dashed var(--hair-2); }
-.cl-step:last-child { border-bottom: none; padding-bottom: 2px; }
-.cl-num { width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; background: var(--text); color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; }
-.cl-step-k { padding-top: 2px; font-size: 13px; font-weight: 800; }
-.cl-step-t { margin: 0; font-size: 14px; line-height: 1.85; color: var(--text-2); }
-
-/* ③ 骨架 / 结构 / 能套到 */
-.cl-skel-row { margin: 0 0 9px; font-size: 13.5px; line-height: 1.8; }
-.cl-skel-row:last-child { margin-bottom: 0; }
-.cl-skel-row b { display: inline-block; min-width: 4.2em; margin-right: 8px; color: var(--text); font-weight: 800; }
-.cl-skel-row .cl-sub { display: inline; margin: 0 !important; }
-.cl-taboo { margin: 12px 0 0; padding: 10px 12px; border-radius: var(--r-sm); background: rgba(229, 72, 77, .07); font-size: 13px; line-height: 1.7; color: #a1281c; }
-
-.cl-bar { display: flex; gap: 3px; height: 6px; border-radius: 999px; overflow: hidden; margin: 2px 0 14px; }
-.cl-bar i { display: block; min-width: 4px; }
-.cl-segs { display: flex; flex-direction: column; gap: 9px; }
-.cl-segs p { margin: 0; line-height: 1.8; font-size: 14px; color: var(--text-2); }
-.cl-segs b { display: inline-block; width: 40px; font-size: 12px; }
-.cl-segs .cl-sub { margin: 2px 0 0 !important; font-size: 12.5px; color: var(--text-3); }
-.cl-ul { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.9; color: var(--text-2); }
-.cl-ul li::marker { color: var(--accent); }
-.cl-risks { display: flex; flex-direction: column; gap: 8px; }
-.cl-risks p { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 14px; }
-.cl-risks .cl-sub { margin: 0 !important; }
-.cl-lv { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px; color: #fff; background: var(--text-3); }
-.lv-bad .cl-lv { background: var(--danger); }
-.lv-warn .cl-lv { background: #f59e0b; }
-.cl-tf p { margin: 0 0 8px; font-size: 14px; line-height: 1.75; color: var(--text-2); }
-.cl-tf p:last-child { margin-bottom: 0; }
-.cl-tf b { margin-right: 10px; color: var(--text); }
-
-/* ④ 原文 */
-.cl-raw { margin: 0; padding: 20px 22px; border-left: 3px solid var(--hair-2); border-radius: 0 var(--r-md) var(--r-md) 0; background: var(--surface-2); font-size: 14.5px; line-height: 2.05; color: var(--text); white-space: pre-wrap; word-break: break-word; }
-
-/* 折叠区 */
-.cl-fold { border-top: 1px solid var(--hair); }
-.cl-fold > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 15px 0; font-size: 13.5px; font-weight: 700; color: var(--text-2); }
-.cl-fold > summary::-webkit-details-marker { display: none; }
-.cl-fold > summary::before { content: '▸'; color: var(--text-3); font-size: 11px; transition: transform .2s var(--ease); }
-.cl-fold[open] > summary::before { transform: rotate(90deg); }
-.cl-fold > summary:hover { color: var(--accent); }
-.cl-fold-body { padding: 0 0 18px; }
-.cl-fold[open] > summary { color: var(--text); }
+/* 换到你的行业：和原文同一套左右对齐 */
+.cl-ex p { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 12px; margin: 0 0 10px; font-size: 15px; line-height: 1.8; }
+.cl-ex b { padding-top: 3px; font-size: 12px; font-weight: 600; color: var(--text-3); }
+.cl-dont { margin: 14px 0 0; font-size: 13px; line-height: 1.8; color: var(--text-3); }
 
 /* 页脚 */
-.cl-foot { display: flex; align-items: center; gap: 14px; margin-top: 10px; padding-top: 15px; border-top: 1px solid var(--hair); color: var(--text-3); font-size: 12px; }
+.cl-foot { display: flex; align-items: center; gap: 14px; margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--hair); color: var(--text-3); font-size: 12px; }
 .cl-foot a { color: var(--accent); text-decoration: none; }
 .cl-del { margin-left: auto; border: none; background: none; color: var(--text-3); font-size: 12px; padding: 5px 9px; border-radius: 6px; }
 .cl-del:hover { color: var(--danger); background: rgba(229, 72, 77, .08); }
@@ -150,6 +100,7 @@ body.cl { min-height: 100vh; }
 
 /* ---------- 弹窗 ---------- */
 .cl-modal { border: none; padding: 0; background: transparent; width: min(780px, calc(100vw - 32px)); max-height: calc(100vh - 64px); overflow: visible; }
+.cl-modal:focus, .cl-modal:focus-visible { outline: none; }
 .cl-modal::backdrop { background: rgba(20, 18, 14, .42); backdrop-filter: blur(4px); }
 .cl-modal > div { position: relative; max-height: calc(100vh - 64px); overflow-y: auto; border-radius: var(--r-xl); }
 .cl-close { position: sticky; top: 14px; float: right; margin: 14px 14px -48px 0; z-index: 2; width: 34px; height: 34px; border-radius: 50%; border: none; background: var(--surface-2); color: var(--text-2); font-size: 20px; line-height: 1; }
@@ -159,11 +110,12 @@ body.cl { min-height: 100vh; }
   .cl-page { padding-top: 30px; }
   .cl-page h1 { font-size: 27px; }
   .cl-card { padding: 24px 18px 16px; }
-  .cl-row { grid-template-columns: 1fr; gap: 6px; }
-  .cl-step { grid-template-columns: 24px minmax(0, 1fr); }
-  .cl-step-k { grid-column: 2; }
-  .cl-step-t { grid-column: 2; }
   .cl-lib-head { flex-wrap: wrap; }
   .cl-search { width: 100%; margin-left: 0; }
 }
 
+
+/* 用这条做视频：整张卡唯一的主按钮 */
+.cl-make { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-top: 24px; padding: 13px 16px; border-radius: 14px; background: var(--accent); color: #fff; text-decoration: none; font-size: 15px; font-weight: 800; transition: filter .15s, transform .15s; }
+.cl-make:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.cl-make-sub { font-size: 12px; font-weight: 500; opacity: .85; }

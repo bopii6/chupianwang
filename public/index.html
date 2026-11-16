@@ -17,9 +17,9 @@
     <a class="brand" href="#" data-nav="gallery"><span class="logo"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg></span>微信出片</a>
     <span class="brand-sub">教培老师的视频获客工具</span>
     <nav class="topnav">
-      <a href="/" class="on">制作台</a>
+      <a href="/">制作台</a>
       <a href="/admin/copy.html">文案库</a>
-        <a href="/works.html">作品墙</a>
+      <a href="/works.html">作品墙</a>
     </nav>
     <div class="crumb" id="crumb"></div>
     <div class="acct-area" id="acctArea"><span class="trial">新用户免费试做 3 条</span></div>
@@ -78,7 +78,11 @@
               </div>
               <input type="file" id="rmInput" accept="video/*,audio/*" hidden />
             </div>
+            <div class="rm-alts">
+            <button class="rm-alt" id="rmLibBtn" type="button"><svg viewBox="0 0 24 24"><path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-3.5-1-5.5 1-8.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>从我的文案库选</button>
             <button class="rm-alt" id="rmQrBtn" type="button"><svg viewBox="0 0 24 24"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10.5 18.5h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>视频在手机上？扫码传</button>
+            </div>
+            <div class="rm-lib hidden" id="rmLib"></div>
             <div class="rm-qr hidden" id="rmQr">
               <img id="rmQrImg" alt="扫码上传视频" width="148" height="148" />
               <div class="rm-qr-txt">
@@ -213,6 +217,7 @@
     </div>
   </dialog>
   <div class="toast" id="toast"></div>
+  <script type="module" src="/nav.js"></script>
   <script type="module" src="/app.js"></script>
 </body>
 </html>

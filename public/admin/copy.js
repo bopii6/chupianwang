@@ -7,6 +7,13 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* 隐私模式忽略 */ } },
 };
 
+// 管理员维护公共库：地址后面加 ?admin 输一次口令（服务器 .env 里的 ADMIN_TOKEN），之后不用登录也能进公共库
+if (new URLSearchParams(location.search).has('admin')) {
+  const t = prompt('输入管理员口令（不需要就点取消）', store.get('cl.token', ''));
+  if (t != null) store.set('cl.token', t.trim());
+  history.replaceState(null, '', location.pathname);
+}
+
 // ---------- 接口 ----------
 async function api(path, opts = {}) {
   const headers = { ...(opts.headers || {}) };
@@ -14,9 +21,10 @@ async function api(path, opts = {}) {
   if (token) headers['x-admin-token'] = token;
   if (opts.json !== undefined) { headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(opts.json); }
   const r = await fetch(path, { method: opts.body ? 'POST' : 'GET', ...opts, headers });
-  if (r.status === 403 && !opts.retried) {
-    const t = prompt('这是内部工具，请输入管理员口令（服务器 .env 里的 ADMIN_TOKEN）');
-    if (t) { store.set('cl.token', t.trim()); return api(path, { ...opts, retried: true }); }
+  // 文案库是每个客户自己的：没登录就去首页登录，登录完自动回来
+  if (r.status === 401) {
+    location.href = '/?login=1&back=' + encodeURIComponent(location.pathname);
+    return new Promise(() => {});
   }
   const data = await r.json().catch(() => ({}));
   if (!r.ok) throw Object.assign(new Error(data.error || `请求失败（${r.status}）`), { data, status: r.status });
@@ -41,7 +49,6 @@ function toast(msg) {
   const t = $('toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
 }
-const ROLE_COLOR = { 钩子: '#ff5a1f', 共鸣: '#a855f7', 干货: '#3b82f6', 证明: '#16a34a', 转折: '#eab308', 引导: '#e5484d' };
 
 // 原文只做排版：按句号断段，一个字都不改；没标点的长文按逗号断
 function formatRaw(t) {
@@ -75,103 +82,55 @@ function show(view) {
 $('tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) show(b.dataset.view); });
 function updateCount() { $('libCount').textContent = LIB.length; }
 
-// ---------- 可直接点改的字段 ----------
-function editable(tag, cls, value, field, s) {
-  const el = h(tag, { class: cls + ' cl-edit', contenteditable: 'plaintext-only', spellcheck: 'false', title: '点击可修改' }, value);
-  el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } });
-  el.addEventListener('blur', async () => {
-    const v = el.innerText.trim();
-    const old = field === 'title' ? s.analysis.title : s.analysis.formula;
-    if (!v) { el.textContent = old; return; }
-    if (v === old) return;
-    try {
-      const { sample } = await api('/api/copy/update', { json: { id: s.id, [field]: v } });
-      Object.assign(s, sample); replaceInLib(sample); toast('已保存');
-    } catch (e) { toast('保存失败：' + e.message); el.textContent = old; }
-  });
-  return el;
-}
-function replaceInLib(sample) { const i = LIB.findIndex((x) => x.id === sample.id); if (i >= 0) LIB[i] = sample; }
+// ---------- 一张拆解卡：原文 → 为什么能来客户 → 换到你的行业 ----------
+// 套路公式、五步、骨架等仍存在样本里给出片 AI 用，界面上不再重复展示
+const cardTitle = (a) => a.hook?.text || a.title;
 
-// ---------- 一张拆解卡 ----------
 function sampleCard(s, { onDelete } = {}) {
   const a = s.analysis; const st = s.stats || {}; const core = a.core || {};
-  const who = [a.subject || a.category, a.audience, a.goal].filter(Boolean).join(' · ');
-  const total = a.segments.reduce((n, x) => n + x.text.length, 0) || 1;
-  const nums = [st.likes != null && `赞 ${fmtNum(st.likes)}`, st.comments != null && `评 ${fmtNum(st.comments)}`, st.collects != null && `藏 ${fmtNum(st.collects)}`, st.leads].filter(Boolean);
+  const who = [a.subject || a.category, a.audience].filter(Boolean).join(' · ');
+  const nums = [st.likes != null && `赞 ${fmtNum(st.likes)}`, st.comments != null && `评 ${fmtNum(st.comments)}`, st.collects != null && `藏 ${fmtNum(st.collects)}`].filter(Boolean).join(' · ');
+  const sec = (label, ...kids) => h('section', { class: 'cl-sec' }, h('p', { class: 'cl-k' }, label), ...kids);
 
-  // ① 一句话核心
-  const coreBlock = core.oneLine ? h('section', { class: 'cl-core' },
-    h('p', { class: 'cl-core-k' }, '🦴 一句话讲透'),
-    h('p', { class: 'cl-core-one' }, core.oneLine),
-    core.why ? h('p', { class: 'cl-core-why' }, core.why) : null) : null;
+  // ① 原文：一字不改，放最前面；开头的钩子原话加粗，当作标题来读
+  const paras = formatRaw(s.text).split(/\n{2,}/).filter(Boolean);
+  const hook = (a.hook?.text || '').trim();
+  const rawBlock = h('div', { class: 'cl-raw' }, ...paras.map((p, i) => {
+    if (i === 0 && hook && p.startsWith(hook)) return h('p', {}, h('b', { class: 'cl-hookline' }, hook), p.slice(hook.length));
+    return h('p', {}, p);
+  }));
 
-  // ② 五步递进
-  const chain = core.chain || [];
-  const stepBlock = chain.length ? h('section', { class: 'cl-row' },
-    h('span', { class: 'cl-k' }, '五步'),
-    h('ul', { class: 'cl-steps' }, ...chain.map((c, i) => h('li', { class: 'cl-step' },
-      h('span', { class: 'cl-num' }, String(i + 1)),
-      h('span', { class: 'cl-step-k' }, c.step),
-      h('p', { class: 'cl-step-t' }, c.what))))) : null;
+  // ② 为什么能来客户
+  const one = core.oneLine || a.highlights[0] || '';
+  const why = core.why || (core.oneLine ? '' : a.highlights.slice(1).join('；'));
+  const whyBlock = one ? sec('为什么能来客户', h('p', { class: 'cl-one' }, one), why ? h('p', { class: 'cl-why' }, why) : null) : null;
 
-  // ③ 换行业怎么套
-  const skel = h('details', { class: 'cl-fold' }, h('summary', {}, '换行业怎么套（骨架 · 示例 · 禁忌）'),
-    h('div', { class: 'cl-fold-body' },
-      ...(core.skeleton || []).map((x) => h('p', { class: 'cl-skel-row' }, h('b', {}, x.part), x.fixed,
-        x.variable ? h('span', { class: 'cl-sub' }, '｜换：' + x.variable) : null)),
-      ...(core.examples || []).map((x) => h('p', { class: 'cl-skel-row' }, h('b', {}, x.industry), x.opening)),
-      core.taboo && core.taboo.length ? h('p', { class: 'cl-taboo' }, '禁忌：' +
-        core.taboo.map((t) => String(t).replace(/^不能照搬[：:、\s]*/, '')).join('；')) : null));
-
-  // ④ 完整拆解（默认收起，避免一上来一坨字）
-  const rest = h('details', { class: 'cl-fold' }, h('summary', {}, '完整拆解（为什么火 · 结构 · 能套到 · 风险）'),
-    h('div', { class: 'cl-fold-body' },
-      a.highlights.length ? h('div', { class: 'cl-row' }, h('span', { class: 'cl-k' }, '为什么火'),
-        h('ul', { class: 'cl-ul' }, ...a.highlights.map((t) => h('li', {}, t)))) : null,
-      h('div', { class: 'cl-row', style: 'border-top:none' }, h('span', { class: 'cl-k' }, '结构'),
-        h('div', {},
-          h('div', { class: 'cl-bar' }, ...a.segments.map((x) => h('i', { style: `flex:${Math.max(x.text.length, total * 0.03)};background:${ROLE_COLOR[x.role] || '#999'}` }))),
-          h('div', { class: 'cl-segs' }, ...a.segments.map((x) => h('p', {},
-            h('b', { style: `color:${ROLE_COLOR[x.role] || '#999'}` }, x.role), x.text,
-            x.note ? h('span', { class: 'cl-sub', style: 'display:block' }, x.note) : null))))),
-      a.transfer.length ? h('div', { class: 'cl-row', style: 'border-top:none' }, h('span', { class: 'cl-k' }, '能套到'),
-        h('div', { class: 'cl-tf' }, ...a.transfer.map((t) => h('p', {}, h('b', {}, t.track), t.opening)))) : null,
-      s.risks.length ? h('div', { class: 'cl-row', style: 'border-top:none' }, h('span', { class: 'cl-k' }, '风险'),
-        h('div', { class: 'cl-risks' }, ...s.risks.map((r) => h('p', { class: LEVEL_CLS[r.level] },
-          h('span', { class: 'cl-lv' }, r.level), h('b', {}, r.word),
-          h('span', { class: 'cl-sub' }, (r.fix ? '改：' + r.fix + '　' : '') + (r.reason || '')))))) : null));
-
-  // ⑤ 原文：默认展开，能收
-  const raw = h('details', { class: 'cl-fold', open: true }, h('summary', {}, `原文（${String(s.text || '').length} 字${s.textRaw ? '，转写可能有错字' : ''}）`),
-    h('div', { class: 'cl-fold-body' }, h('p', { class: 'cl-raw' }, formatRaw(s.text))));
+  // ③ 换到你的行业：示例开头 + 别照搬
+  const examples = (core.examples?.length ? core.examples.map((x) => ({ k: x.industry, t: x.opening })) : a.transfer.map((x) => ({ k: x.track, t: x.opening }))).filter((x) => x.t);
+  const taboo = (core.taboo || []).map((t) => String(t).replace(/^不能照搬[：:、\s]*/, ''));
+  const donts = [
+    ...taboo,
+    ...s.risks.filter((r) => !taboo.some((t) => t.includes(r.word))).map((r) => `「${r.word}」${r.fix ? '→ 改成「' + r.fix + '」' : ''}${r.reason ? '（' + r.reason + '）' : ''}`),
+  ].filter(Boolean);
+  const moveBlock = examples.length || donts.length ? sec('换到你的行业',
+    examples.length ? h('div', { class: 'cl-ex' }, ...examples.map((x) => h('p', {}, h('b', {}, x.k), x.t))) : null,
+    donts.length ? h('p', { class: 'cl-dont' }, '别照搬：' + donts.join('；')) : null) : null;
 
   return h('article', { class: 'cl-card' },
-    editable('h2', 'cl-title', a.title, 'title', s),
-    h('p', { class: 'cl-meta' }, who, a.structure ? h('span', { class: 'cl-tag' }, a.structure) : null),
-
-    coreBlock,
-
-    a.formula ? h('div', { class: 'cl-row' }, h('span', { class: 'cl-k' }, '套路'),
-      editable('p', 'cl-formula-text', a.formula, 'formula', s)) : null,
-
-    a.hook?.text ? h('div', { class: 'cl-row' }, h('span', { class: 'cl-k' }, '钩子'),
-      h('div', {}, h('p', { class: 'cl-hook' }, a.hook.text),
-        (a.hook.type || a.hook.why) ? h('p', { class: 'cl-sub' }, [a.hook.type, a.hook.why].filter(Boolean).join(' · ')) : null)) : null,
-
-    stepBlock,
-    raw,
-    core.skeleton?.length || core.examples?.length ? skel : null,
-    rest,
-
+    h('p', { class: 'cl-meta' }, [who, `原文 ${String(s.text || '').length} 字`, s.textRaw ? '视频转写，可能有错字' : ''].filter(Boolean).join(' · ')),
+    rawBlock, whyBlock, moveBlock,
+    // 直接拿这条去出片：制作台会跳过上传和听写，只要填自己的行业
+    h('a', { class: 'cl-make', href: '/?copy=' + encodeURIComponent(s.id) }, '用这条做视频',
+      h('span', { class: 'cl-make-sub' }, '换成你的行业，AI 照它的写法写一条原创的')),
     h('div', { class: 'cl-foot' },
-      h('span', {}, [s.source?.account, s.source?.platform, ...nums].filter(Boolean).join(' · ') || '没有填数据'),
+      h('span', {}, [s.source?.account, nums, st.leads].filter(Boolean).join(' · ')),
       s.source?.url ? h('a', { href: s.source.url, target: '_blank', rel: 'noopener noreferrer' }, '原视频') : null,
       onDelete ? h('button', { class: 'cl-del', type: 'button', onclick: onDelete }, '删除') : null));
 }
 
+
 async function removeSample(s, after) {
-  if (!confirm(`删除「${s.analysis.title}」？`)) return;
+  if (!confirm(`删除「${cardTitle(s.analysis)}」？`)) return;
   try {
     await api('/api/copy/delete', { json: { id: s.id } });
     LIB = LIB.filter((x) => x.id !== s.id); updateCount();
@@ -302,11 +261,11 @@ function renderLib() {
   }
   $('cards').replaceChildren(...items.map((s) => {
     const a = s.analysis; const st = s.stats || {};
-    const heat = [st.likes != null && `赞 ${fmtNum(st.likes)}`, st.comments != null && `评 ${fmtNum(st.comments)}`].filter(Boolean).join(' · ');
+    const heat = st.likes != null ? `赞 ${fmtNum(st.likes)}` : '';
     const who = [a.subject || a.category, a.audience === '家长' ? '给家长' : a.audience === '学生' ? '给学生' : a.audience].filter(Boolean).join(' · ');
     return h('button', { class: 'cl-sample', type: 'button', onclick: () => openModal(s.id) },
       who ? h('p', { class: 'cl-sample-who' }, who) : null,
-      h('h4', {}, a.hook?.text || a.title),
+      h('h4', {}, cardTitle(a)),
       h('p', { class: 'cl-sample-body' }, a.core?.oneLine || a.why || ''),
       h('div', { class: 'cl-sample-foot' },
         heat ? h('span', {}, heat) : null,
