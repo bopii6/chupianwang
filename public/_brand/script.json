@@ -1,0 +1,17 @@
+{
+  "title": "出片王品牌宣传片",
+  "account": "出片王",
+  "theme": { "key": "business", "emoji": ["🎬"] },
+  "sections": [
+    { "scene": "hook", "lines": ["做教培的，都知道该发短视频。"] },
+    { "scene": "pain", "lines": ["可写文案、剪视频、天天拍，", "哪一样都要时间。"] },
+    { "scene": "type", "lines": ["现在，只要一句话。"] },
+    { "scene": "make", "lines": ["出片王帮你写文案、配声音、配音乐、做画面。"] },
+    { "scene": "phone", "lines": ["几分钟，就是一条竖屏成片。"] },
+    { "scene": "styles", "lines": ["六种画面风格，", "今天讲干货，明天讲故事。"] },
+    { "scene": "trades", "lines": ["钢琴、舞蹈、驾校、健身、考证，", "做培训的，都能用。"] },
+    { "scene": "remix", "lines": ["刷到同行的爆款，", "学它的打法，换成你自己的内容。"] },
+    { "scene": "trust", "lines": ["AI 不乱编数字，", "拿不准的地方，标黄提醒你。"] },
+    { "scene": "end", "lines": ["出片王。", "一句话，出一条视频。"] }
+  ]
+}
