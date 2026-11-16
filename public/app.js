@@ -35,6 +35,7 @@ const VIS_NAMES = { shot: '画面', chips: '标签', quote: '金句', question: 
   compare: '对比', steps: '步骤', chat: '聊天', offer: '课程卡', ask: '提问', checktest: '自测', verdict: '判对错', warning: '警示', formula: '公式', pyramid: '金字塔', rank: '排行', timeline: '时间轴', keywords: '关键词', ticket: '门票', certificate: '喜报', map: '地址', notify: '通知',
   countdown: '倒计时', checklist: '清单', vs: '对决', calendar: '日历', episodes: '剧集', marker: '划重点', nametag: '名牌', poll: '投票', ticker: '新闻条',
   progress: '进度条', quest: '闯关', levelup: '升级', lockscreen: '锁屏', grid4: '四宫格', gift: '礼包', neon: '霓虹', bedtime: '睡前', pledge: '承诺书', quiz: '小测验', notebook: '笔记', top3: '前三名', spotlight: '聚光灯', faq: '问答',
+  badge: '大图标', spotlight: '聚光灯', count: '记分牌', flash: '闪屏', phones: '两台手机', crowd: '观众', target: '靶子', stack: '叠卡片', gauge: '表盘', weeks: '周卡', word: '关键词', grid: '矩阵', brand: '名片', button: '大按钮', follow: '关注', bars: '柱状图', versus: '对决', timer: '秒表', path: '路线', mystery: '盲盒', bulb: '灯泡',
   caption: '解说卡', magnifier: '放大镜', qa: '问答', breaking: '快讯', polaroid: '拍立得', chain: '因果链', stamp: '盖章', sticky: '便利贴', cinema: '电影感', location: '地点', tape: '警戒线', tug: '拔河' };
 
 // ---------- 偏好记忆（只是方便，读写失败也不影响使用） ----------
@@ -73,7 +74,7 @@ let galleryLoop = 0;
 const previewCache = new Map();
 const formOf = (id) => forms.find((f) => f.id === id);
 const prepScript = (form, raw) => (form.module.normalize ? form.module.normalize(raw, splitLongLine) : normalize(raw));
-const TPL_USE = { 'photo-talk': '招生 · 招商', 'series-intro': '涨粉', 'deep-dive': '立专业人设', 'pixel-story': '好转发', 'data-card': '讲知识点' };
+const TPL_USE = { 'sketch-talk': '讲干货', 'photo-talk': '招生 · 招商', 'series-intro': '涨粉', 'deep-dive': '立专业人设', 'pixel-story': '好转发', 'data-card': '讲知识点' };
 function loadPreview(form) {
   if (!previewCache.has(form.id)) {
     previewCache.set(form.id, (async () => {
@@ -187,6 +188,7 @@ const IDEA_POOL = {
   'series-intro': ['每晚一个乐理知识|每晚 10 分钟，带你学一个乐理知识', '30 天学会美甲|30 天学会美甲基础', '每天一道科目一题|每天一道科目一易错题', '每天练一句口语|每天 1 分钟，练一句地道英语口语', '睡前讲一道数学题|每晚睡前讲一个数学解题思路'],
   'deep-dive': ['学半年钢琴弹不完一首|为什么很多人学了半年钢琴，还弹不完一首曲子', '教资越来越难考？|为什么考教资一次过的人越来越少', '美甲学徒为何出不了师|为什么有的美甲学徒三年都出不了师', '成年人为何爱上跳舞|为什么越来越多成年人开始学跳舞'],
   'pixel-story': ['方法比努力重要|学习方法比努力更重要', '别等考前才复习|别等到考前才开始复习', '学手艺怕三天打鱼|学手艺最怕三天打鱼两天晒网', '零基础三个月接单|一个零基础学员，三个月开始接单的故事'],
+  'sketch-talk': ['新手学琴 4 个错|新手学钢琴最容易犯的 4 个错', '考三次没过的原因|为什么有人科目二考了三次都没过', '孩子主动练习|让孩子主动练习的 3 个办法', '美甲接单难在哪|美甲新手接不到单，问题出在哪'],
   'data-card': ['科目二最常挂 3 点|驾考科目二最常挂的 3 个点', '学美甲 3 个坑|学美甲最容易踩的 3 个坑', '初中数学 3 个真相|初中数学提分的 3 个真相', '成人学琴 4 个误区|成人学钢琴的 4 个误区'],
 };
 let ideaSeen = new Set();

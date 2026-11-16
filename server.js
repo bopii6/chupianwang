@@ -364,7 +364,7 @@ async function handleScript(req, res, me = null) {
   const promptFile = path.join(ROOT, 'prompts', `${String(form).replace(/[^a-z0-9-]/g, '')}.md`);
   if (!fs.existsSync(promptFile)) return sendJson(res, 400, { error: '未知的形式' });
   const system = await fsp.readFile(promptFile, 'utf8');
-  const perMin = form === 'series-intro' || form === 'deep-dive' ? 14 : form === 'pixel-story' ? 9 : form === 'photo-talk' ? 6 : 4.5; // 像素小剧场是短镜头，段数更多
+  const perMin = form === 'series-intro' || form === 'deep-dive' || form === 'sketch-talk' ? 14 : form === 'pixel-story' ? 9 : form === 'photo-talk' ? 6 : 4.5; // 像素小剧场是短镜头，段数更多
   const sections = Math.max(4, Math.min(30, Math.round(Number(minutes) * perMin)));
   // 客户上传的资料（PPT / Word / PDF / 网页提取出的文字），总量控制在约 24000 字
   let budget = 24000;
@@ -408,6 +408,7 @@ ${ref}` : '';
     'photo-talk': { open: ['quote', 'ask', 'chat', 'title', 'compare', 'checktest', 'verdict', 'warning', 'keywords', 'rank'], feat: ['quote', 'ask', 'chat', 'compare', 'steps', 'offer', 'tags', 'list', 'emoji', 'table', 'checktest', 'verdict', 'warning', 'formula', 'pyramid', 'rank', 'timeline', 'keywords', 'ticket', 'notify'], n: 3 },
     'series-intro': { open: ['type', 'countdown', 'quote', 'bedtime', 'progress'], feat: ['countdown', 'chat', 'checklist', 'vs', 'calendar', 'episodes', 'quote', 'ask', 'tree', 'cards', 'icons', 'quest', 'levelup', 'lockscreen', 'grid4', 'gift', 'neon', 'pledge', 'timeline', 'quiz', 'notebook', 'top3', 'spotlight', 'faq'], n: 4 },
     'deep-dive': { open: ['question', 'poll', 'marker', 'breaking', 'cinema', 'stamp', 'qa'], feat: ['chips', 'big', 'quote', 'compare', 'steps', 'checklist', 'marker', 'nametag', 'timeline', 'poll', 'ticker', 'caption', 'magnifier', 'qa', 'breaking', 'polaroid', 'top3', 'chain', 'stamp', 'sticky', 'cinema', 'chat', 'tape', 'tug'], n: 4 },
+    'sketch-talk': { open: ['badge', 'spotlight', 'count', 'word', 'crowd', 'mystery', 'bulb', 'versus'], feat: ['phones', 'crowd', 'target', 'calendar', 'stack', 'gauge', 'weeks', 'word', 'grid', 'checklist', 'chat', 'bars', 'versus', 'timer', 'path', 'quote', 'mystery', 'progress', 'bulb', 'flash', 'count'], n: 4 },
     'pixel-story': { open: ['bump', 'fall', 'shocked', 'think', 'sad'], feat: ['jump', 'happy', 'read', 'point', 'talk', 'leave', 'bump', 'fall'], n: 2, word: '动作' },
     'data-card': { open: ['compare', 'myth', 'quote', 'matrix', 'bars', 'list', 'iceberg', 'scale', 'qa', 'keyword', 'gauge'], feat: ['compare', 'grid', 'flow', 'list', 'matrix', 'timeline', 'pyramid', 'myth', 'quote', 'formula', 'cycle', 'bars', 'venn', 'checks', 'scale', 'stairs', 'funnel', 'iceberg', 'gauge', 'schedule', 'qa', 'mindmap', 'checkmatrix', 'keyword', 'roadmap', 'donut'], n: 3 },
   };
@@ -421,7 +422,7 @@ ${ref}` : '';
     '让观众在评论区说说自己踩过的坑或者遇到的问题，下期挑着讲',
     '让观众私信你说想了解什么（不要留电话、微信号）',
   ];
-  const ENDS = { 'photo-talk': ['ask', 'checktest', 'quote', 'offer', 'notify', 'ticket', 'list', 'verdict', 'title', 'keywords'] };
+  const ENDS = { 'sketch-talk': ['follow', 'button', 'checklist', 'brand'], 'photo-talk': ['ask', 'checktest', 'quote', 'offer', 'notify', 'ticket', 'list', 'verdict', 'title', 'keywords'] };
   const pickOne = (arr) => arr[Math.floor(Math.random() * arr.length)];
   const cta = pickOne(CTA_STYLES);
   const endVis = ENDS[form] ? pickOne(ENDS[form]) : '';
