@@ -19,3 +19,4 @@ Thumbs.db
 tmp/
 .chrome-dump/
 .chrome-shot2/
+!.env.example

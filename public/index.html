@@ -55,10 +55,6 @@
             <div class="say-input">
               <textarea id="input" rows="3" placeholder=""></textarea>
               <div class="attachments hidden" id="attachments"></div>
-              <div class="link-row hidden" id="linkRow">
-                <input id="linkInput" placeholder="粘贴公众号文章、机构官网等网页链接" spellcheck="false" />
-                <button id="linkAdd" type="button">添加</button>
-              </div>
             </div>
             <!-- 灵感：不知道说什么，点一个就填进去 -->
             <div class="sparks" id="ideas"></div>
@@ -78,19 +74,10 @@
               </div>
               <input type="file" id="rmInput" accept="video/*,audio/*" hidden />
             </div>
-            <div class="rm-alts">
-            <button class="rm-alt" id="rmLibBtn" type="button"><svg viewBox="0 0 24 24"><path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-3.5-1-5.5 1-8.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>从我的文案库选</button>
-            <button class="rm-alt" id="rmQrBtn" type="button"><svg viewBox="0 0 24 24"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10.5 18.5h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>视频在手机上？扫码传</button>
-            </div>
-            <div class="rm-lib hidden" id="rmLib"></div>
-            <div class="rm-qr hidden" id="rmQr">
-              <img id="rmQrImg" alt="扫码上传视频" width="148" height="148" />
-              <div class="rm-qr-txt">
-                <b>用手机微信或相机扫一扫</b>
-                <span id="rmQrSt">在手机上选好视频，会自动传到这里</span>
-                <span class="rm-qr-tip" id="rmQrTip"></span>
-                <button class="link quiet" id="rmQrClose" type="button">不用了</button>
-              </div>
+            <!-- 文案库直接摆出来：一眼看到自己存了哪些，点一条就用 -->
+            <div class="rm-lib" id="rmLib">
+              <div class="rm-lib-head"><b>或者，从我的文案库挑一条</b><span id="rmLibCount"></span><a href="/admin/copy.html">管理文案库</a></div>
+              <div class="rm-lib-strip" id="rmLibStrip"></div>
             </div>
             <div class="rm-ask">
               <label for="rmIndustry">换成我的行业</label>
@@ -113,7 +100,6 @@
         <div class="box-bar">
           <div class="bar-group" id="sayTools">
             <button class="tool" id="btnAttach" type="button" title="PPT、Word、PDF、TXT 都行，也可以直接拖进来"><svg viewBox="0 0 24 24"><path d="M14.5 4H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5zM14 4v5h5M12 12v5m-2.5-2.5h5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span>加资料</span></button>
-            <button class="tool" id="btnLink" type="button" title="公众号文章、机构官网等网页"><svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg><span>链接</span></button>
             <span class="bar-sep"></span>
           </div>
           <div class="bar-dur">
@@ -172,7 +158,7 @@
             <div class="photo-row" data-photo-row></div>
           </div>
           <div class="field"><label>背景大字</label><input id="glyph" maxlength="1" class="glyph-input" /><span class="hint">挑一个和主题有关的字</span></div>
-          <div class="field"><label>账号名</label><input id="account2" maxlength="16" /></div>
+          <div class="field"><label>账号名</label><input id="account2" maxlength="16" placeholder="视频上显示的 @账号名，如 Lily美甲课堂" /></div>
         </div>
         <div class="tab hidden" id="tab-voice">
           <div class="voice-list" id="voices"></div>

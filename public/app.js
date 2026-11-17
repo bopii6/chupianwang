@@ -161,6 +161,16 @@ function startHover(el) { startHero(formOf(el.dataset.id)); }
 function stopHover(el) { if (!el) return stopHero(); if (heroFor !== state.form) startHero(state.form); }
 
 /** 选模板：记住选择，换示例句、照片区 */
+// 时长按钮：成片时长是 AI 按字数写出来的，做不到正好 1/2/3 分钟，按实测范围给一个大概的说法
+// 实测（2026-11，每档 12 条）：选 1 → 40–70 秒；选 2 → 75–130 秒；选 3 → 130–175 秒
+// 手绘图解每句 ≤16 字、节奏快，最长只能到 1 分半左右
+const DUR_LABELS = { default: ['1 分钟内', '1–2 分钟', '2–3 分钟'], 'sketch-talk': ['1 分钟内', '1 分钟出头', '1 分半左右'] };
+function renderDurLabels() {
+  const labels = DUR_LABELS[state.form?.id] || DUR_LABELS.default;
+  $('#minutes').querySelectorAll('button').forEach((b, i) => { b.textContent = labels[i]; });
+  $('#minutes').title = '成片大概的长度，实际看内容会有出入；生成后右下角会显示准确时长';
+  moveSegThumb($('#minutes'));
+}
 function selectForm(id) {
   state.form = formOf(id) || forms[0];
   prefs.formId = state.form.id; savePrefs();
@@ -173,6 +183,7 @@ function selectForm(id) {
   $('#photoPanel .photos-head b').textContent = photoKind() === 'scenes' ? '现场照片' : '我的形象照';
   $('#photoPanel .photos-head span').textContent = photoKind() === 'scenes' ? '可选，讲到“我们”时用' : '可选，不传就用卡通讲师';
   $('#photoPanel').title = state.form.photoHint || '3–6 张半身照，换不同手势，会自动抠图。照片只存在你自己的电脑里。';
+  renderDurLabels();
   renderPhotoRows();
   warmBgm(bgmOf().style, getAudioCtx().sampleRate); // 用户打字时，后台先把音乐合成好
 }
@@ -238,6 +249,7 @@ function setMode(m) {
   $('#createErr').textContent = aiReady ? '' : $('#createErr').textContent;
   renderIdeas(); updateGo();
   if (m === 'say') setTimeout(() => $('#input').focus(), 30);
+  if (m === 'video') loadLib();
 }
 $('#modeTabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b && b.dataset.mode !== state.mode) setMode(b.dataset.mode); });
 function moveTabInd() {
@@ -338,31 +350,14 @@ function addFiles(files) {
 }
 $('#btnAttach').addEventListener('click', () => $('#docInput').click());
 $('#docInput').addEventListener('change', (e) => { addFiles([...e.target.files]); e.target.value = ''; });
-$('#btnLink').addEventListener('click', () => {
-  $('#linkRow').classList.toggle('hidden');
-  if (!$('#linkRow').classList.contains('hidden')) $('#linkInput').focus();
-});
-function submitLink() {
-  const url = $('#linkInput').value.trim();
-  if (!url) return;
-  $('#linkInput').value = ''; $('#linkRow').classList.add('hidden');
-  addMaterial(async () => (await loadDocs()).extractUrl(url), url.replace(/^https?:\/\//, '').slice(0, 40), 'link');
-}
-$('#linkAdd').addEventListener('click', submitLink);
-$('#linkInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); submitLink(); } if (e.key === 'Escape') $('#linkRow').classList.add('hidden'); });
 $('#attachments').addEventListener('click', (e) => {
   const b = e.target.closest('.att-x'); if (!b) return;
   state.attachments.splice(Number(b.dataset.i), 1); renderAttachments();
 });
-// 直接粘贴一个链接也自动识别
+// 直接粘贴文件也能加资料
 $('#input').addEventListener('paste', (e) => {
   const files = [...(e.clipboardData?.files || [])];
   if (files.length) { e.preventDefault(); addFiles(files); return; }
-  const t = (e.clipboardData?.getData('text') || '').trim();
-  if (/^https?:\/\/\S+$/.test(t) && !$('#input').value.trim()) {
-    e.preventDefault();
-    addMaterial(async () => (await loadDocs()).extractUrl(t), t.replace(/^https?:\/\//, '').slice(0, 40), 'link');
-  }
 });
 
 async function generate(input = $('#input').value.trim()) {
@@ -374,7 +369,7 @@ async function generate(input = $('#input').value.trim()) {
   state.input = input;
   primeAudio();
   enterStudio();
-  overlaySpin(materials.length ? 'AI 正在读你的资料' : 'AI 正在写文案', materials.length ? '挑出最能获客的内容，按「' + state.form.name + '」的结构来写，大约 20 秒' : '按「' + state.form.name + '」的结构来写，大约 10 秒');
+  overlaySpin(materials.length ? 'AI 正在读你的资料' : 'AI 正在写文案', materials.length ? '挑出最能获客的内容，按「' + state.form.name + '」的结构来写，一般 10–30 秒' : '按「' + state.form.name + '」的结构来写，一般 10–30 秒');
   try {
     const r = await fetch('/api/script', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -433,15 +428,11 @@ function pickRemixFile(file) {
   if (!/^(video|audio)\//.test(file.type) && !/\.(mp4|mov|m4v|webm|mkv|avi|mp3|m4a|wav|aac)$/i.test(file.name)) {
     $('#createErr').textContent = '这不是视频文件。请上传 MP4、MOV 这类视频'; return;
   }
+  lib.picked = ''; markLib();
   ensureLogin('登录后就能拆解这条爆款视频').then(() => runRemix(file.name, async (opts) => (await loadAsr()).transcribe(file, opts))).catch(() => {});
-}
-/** 手机扫码传来的声音（16kHz 单声道），跳过解码直接转文字 */
-function pickRemixAudio(name, audio) {
-  ensureLogin('登录后就能拆解这条爆款视频').then(() => runRemix(name, async (opts) => (await loadAsr()).transcribeAudio(audio, opts))).catch(() => {});
 }
 // listen 是听写函数；从文案库来的已经是文字，传 { text } 直接跳过听写
 async function runRemix(name, listen) {
-  closeQr(); closeLib();
   const job = ++rm.job;
   const given = typeof listen === 'object' ? listen : null;
   Object.assign(rm, { file: { name }, text: '', plan: null, error: '', busy: true, userPicked: false });
@@ -487,93 +478,57 @@ async function runRemix(name, listen) {
     updateGo();
   }
 }
-// ---------- 手机扫码上传：手机上拆出声音，只传声音过来 ----------
-let qr = null;
-function closeQr() {
-  if (qr) clearTimeout(qr.timer);
-  qr = null;
-  $('#rmQr').classList.add('hidden'); $('#rmQrBtn').classList.remove('hidden');
-}
-async function openQr() {
-  closeQr(); closeLib();
-  $('#rmQrBtn').classList.add('hidden'); $('#rmQr').classList.remove('hidden');
-  $('#rmQrSt').textContent = '正在生成二维码…'; $('#rmQrTip').textContent = ''; $('#rmQrImg').removeAttribute('src');
-  try {
-    const r = await fetch('/api/relay', { method: 'POST' });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.error || '生成二维码失败');
-    // 本机开发时 localhost 手机打不开，换成电脑的局域网地址
-    let origin = location.origin; let lan = false;
-    if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) && d.lan?.length) { origin = `${location.protocol}//${d.lan[0]}${location.port ? ':' + location.port : ''}`; lan = true; }
-    const url = `${origin}/m/up.html#id=${d.id}&k=${d.k}`;
-    $('#rmQrImg').src = '/api/qr?text=' + encodeURIComponent(url);
-    $('#rmQrSt').textContent = '在手机上选好视频，会自动传到这里';
-    $('#rmQrTip').textContent = lan ? '手机要和这台电脑连同一个 Wi-Fi' : '';
-    const sess = qr = { id: d.id, k: d.k, timer: 0 };
-    const poll = async () => {
-      if (qr !== sess) return;
-      try {
-        const res = await fetch(`/api/relay/${sess.id}?k=${encodeURIComponent(sess.k)}`);
-        const s = await res.json();
-        if (qr !== sess) return;
-        if (res.status === 410) { $('#rmQrSt').textContent = '二维码过期了'; $('#rmQrTip').innerHTML = '<button class="link" id="rmQrAgain" type="button">重新生成</button>'; return; }
-        const nm = s.name ? `「${s.name}」` : '';
-        if (s.state === 'picked' || s.state === 'decoding') $('#rmQrSt').textContent = `手机已选好${nm}，正在读取声音…`;
-        if (s.state === 'uploading') $('#rmQrSt').textContent = '正在从手机传过来…';
-        if (s.state === 'failed') $('#rmQrSt').textContent = '手机上没传成功，可以在手机上再选一次';
-        if (s.state === 'ready') {
-          $('#rmQrSt').textContent = '收到了，正在接收…';
-          const a = await fetch(`/api/relay/${sess.id}/audio?k=${encodeURIComponent(sess.k)}`);
-          if (!a.ok) throw new Error('接收失败');
-          const { fromPcm16 } = await loadAsr();
-          const audio = fromPcm16(await a.arrayBuffer());
-          if (qr === sess) pickRemixAudio(s.name || '手机上的视频', audio);
-          return;
-        }
-      } catch { /* 网络抖动，下一轮再试 */ }
-      sess.timer = setTimeout(poll, 1500);
-    };
-    sess.timer = setTimeout(poll, 1500);
-  } catch (err) {
-    $('#rmQrSt').textContent = err.message;
-  }
-}
-$('#rmQrBtn').addEventListener('click', openQr);
-
-// ---------- 从我的文案库选：文案库里存的已经是文字，跳过上传和听写，直接拆解 ----------
+// ---------- 从我的文案库选：直接摆在上传框下面，一眼看到存了哪些，点一条就用 ----------
+// 文案库里存的已经是文字，跳过上传和听写，直接拆解
 /** 先登录再做：没登录就弹登录框，登录完接着做 */
 function loginThen(reason, fn) {
   return new Promise((resolve, reject) => { loginWaiters.push({ resolve, reject }); openLogin(reason); }).then(fn).catch(() => {});
 }
-function closeLib() { $('#rmLib').classList.add('hidden'); $('#rmLib').replaceChildren(); }
+const lib = { items: null, loading: null, picked: '' };
+const fmtLikes = (n) => (n >= 10000 ? (n / 10000).toFixed(n >= 100000 ? 0 : 1).replace(/\.0$/, '') + '万' : String(n));
+function libTitle(s) { const a = s.analysis || {}; return a.hook?.text || a.title || String(s.text || '').slice(0, 30); }
 function useCopy(s) {
-  const a = s.analysis || {};
-  openRemix();
-  runRemix(a.hook?.text || a.title || '文案库里的一条', { text: s.text });
+  lib.picked = s.id; markLib();
+  runRemix(libTitle(s), { text: s.text });
 }
-async function openLib() {
-  const box = $('#rmLib');
-  if (!box.classList.contains('hidden')) return closeLib();
-  closeQr();
-  box.classList.remove('hidden');
-  box.innerHTML = '<p class="rm-lib-tip">正在打开你的文案库…</p>';
-  const r = await fetch('/api/copy/list', { cache: 'no-store' }).catch(() => null);
-  if (r?.status === 401) { closeLib(); return loginThen('登录后就能用你的文案库', openLib); }
-  const items = r?.ok ? (await r.json()).items || [] : null;
-  if (!items) { box.innerHTML = '<p class="rm-lib-tip">文案库打不开，稍后再试</p>'; return; }
-  if (!items.length) { box.innerHTML = '<p class="rm-lib-tip">文案库还是空的。<a href="/admin/copy.html">去收录第一条</a></p>'; return; }
-  box.replaceChildren(...items.slice(0, 30).map((s) => {
+function markLib() { $('#rmLibStrip').querySelectorAll('.rl-card').forEach((el) => el.classList.toggle('on', el.dataset.id === lib.picked)); }
+function renderLib(msg = '') {
+  const strip = $('#rmLibStrip');
+  const items = lib.items || [];
+  $('#rmLibCount').textContent = items.length ? `共 ${items.length} 条` : '';
+  if (msg) { strip.innerHTML = `<p class="rl-tip">${msg}</p>`; return; }
+  if (!items.length) {
+    strip.innerHTML = '<a class="rl-empty" href="/admin/copy.html"><b>文案库还是空的</b><span>把看到的爆款文案存进来，以后点一下就能用 →</span></a>';
+    return;
+  }
+  strip.replaceChildren(...items.map((s) => {
     const a = s.analysis || {};
     const b = document.createElement('button');
-    b.type = 'button'; b.className = 'rm-lib-item';
-    b.innerHTML = `<b>${esc(a.hook?.text || a.title || '')}</b><span>${esc([a.subject || a.category, a.audience].filter(Boolean).join(' · '))}</span>`;
+    b.type = 'button'; b.className = 'rl-card'; b.dataset.id = s.id;
+    const tag = a.subject || a.category || '';
+    const likes = Number(s.stats?.likes) > 0 ? `<i>♥ ${fmtLikes(Number(s.stats.likes))}</i>` : '';
+    b.innerHTML = `<b>${esc(libTitle(s))}</b><span>${tag ? `<em>${esc(tag)}</em>` : ''}${likes}</span>`;
+    b.title = String(s.text || '').slice(0, 120);
     b.addEventListener('click', () => useCopy(s));
     return b;
   }));
+  markLib();
 }
-$('#rmLibBtn').addEventListener('click', () => openLib());
-$('#rmQrClose').addEventListener('click', closeQr);
-$('#rmQr').addEventListener('click', (e) => { if (e.target.id === 'rmQrAgain') openQr(); });
+async function loadLib() {
+  if (lib.loading) return lib.loading;
+  if (!lib.items) renderLib('正在打开你的文案库…');
+  lib.loading = (async () => {
+    const r = await fetch('/api/copy/list', { cache: 'no-store' }).catch(() => null);
+    if (r?.status === 401) { lib.items = null; renderLib('<button class="link" id="rlLogin" type="button">登录</button>后就能看到你的文案库'); return; }
+    if (!r?.ok) { renderLib('文案库打不开，稍后再试'); return; }
+    lib.items = (await r.json()).items || [];
+    renderLib();
+  })().finally(() => { lib.loading = null; });
+  return lib.loading;
+}
+$('#rmLibStrip').addEventListener('click', (e) => { if (e.target.id === 'rlLogin') loginThen('登录后就能用你的文案库', loadLib); });
+// 从文案库页回来时重新拉一次，刚存的能马上看到
+window.addEventListener('focus', () => { if (state.mode === 'video') loadLib(); });
 
 $('#rmDrop').addEventListener('click', (e) => { if (!e.target.closest('#rmFile')) $('#rmInput').click(); });
 $('#rmChange').addEventListener('click', () => $('#rmInput').click());
@@ -594,7 +549,7 @@ async function replicate() {
   state.input = '';
   primeAudio();
   enterStudio();
-  overlaySpin('AI 正在写你的原创文案', `学爆款的文案套路，内容换成「${industry}」，大约 20 秒`);
+  overlaySpin('AI 正在写你的原创文案', `学爆款的文案套路，内容换成「${industry}」，一般 10–30 秒`);
   try {
     const r = await fetch('/api/script', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -764,7 +719,7 @@ async function startWithScript(script) {
   state.t = 0;
   drawNow();
   const stock = state.form.needsStock;
-  overlaySpin(stock ? '正在配音、找画面' : '正在配音', stock ? `${countLines()} 句配音，${script.sections.length} 个镜头，大约半分钟` : `${countLines()} 句，几秒钟`);
+  overlaySpin(stock ? '正在配音、找画面' : '正在配音', stock ? `${countLines()} 句配音，${script.sections.length} 个镜头，半分钟左右` : `${countLines()} 句，10 秒左右`);
   try {
     await Promise.all([ensureAudio(), stock ? findMedia() : null]);
     hideOverlay();
@@ -884,7 +839,7 @@ $('#glyph').addEventListener('input', async (e) => {
   drawNow();
 });
 $('#account2').addEventListener('input', (e) => {
-  prefs.account = e.target.value.trim(); savePrefs();
+  prefs.account = e.target.value.trim(); savePrefs(); e.target.classList.remove('need');
   if (state.script) { state.script.account = prefs.account; drawNow(); }
 });
 
@@ -1028,8 +983,17 @@ function refresh() {
 }
 
 // ---------- 导出 ----------
+// 这几个套路的画面上一直挂着「@账号名」，没填就显示“我的账号”，导出前提醒一次
+const SHOWS_ACCOUNT = new Set(['data-card', 'deep-dive', 'pixel-story', 'series-intro']);
 $('#btnExport').addEventListener('click', async () => {
   if (!state.script || state.exporting) return;
+  if (!state.script.account && SHOWS_ACCOUNT.has(state.form.id) && !state.askedAccount) {
+    state.askedAccount = true;
+    switchTab('style');
+    const f = $('#account2'); f.classList.add('need'); f.focus(); f.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    toast('视频上会显示你的账号名，先在这里填一下（不填就显示“我的账号”），再点导出');
+    return;
+  }
   if (!exportSupported()) { toast(matchMedia('(pointer: coarse)').matches ? '这个手机浏览器还不能出片，请用电脑上的 Chrome 或 Edge 打开' : '当前浏览器不支持本地出片，请用最新版 Chrome 或 Edge'); return; }
   stop();
   const signal = { cancelled: false };
@@ -1042,7 +1006,7 @@ $('#btnExport').addEventListener('click', async () => {
     const blob = await exportInWorker({
       formUrl: state.form.url, frameData, width: W, height: H, fps: FPS, duration: state.tl.duration,
       audioBuffer: state.master, signal,
-      onProgress: (p, left) => overlayProgress(p, '正在生成视频', `还要约 ${Math.max(1, Math.ceil(left))} 秒 · 可以先去忙别的`),
+      onProgress: (p, left) => overlayProgress(p, '正在生成视频', `${p < 0.06 ? `一般要 1–3 分钟（视频越长越久）` : left > 90 ? `还要约 ${Math.round(left / 60)} 分钟` : `还要约 ${Math.max(5, Math.ceil(left / 5) * 5)} 秒`} · 可以先去忙别的`),
     });
     const name = `${state.script.title || '我的视频'}.mp4`.replace(/[\\/:*?"<>|]/g, '');
     const a = document.createElement('a');

@@ -398,7 +398,9 @@ ${p ? `原视频为什么火：${String(p.why || '').slice(0, 80)}
 ===== 原视频口播文字稿 =====
 ${ref}` : '';
   const sayLine = ref ? [trade && `我是做${trade}的。`, say].filter(Boolean).join('\n') : say;
-  const user = `目标时长：约 ${minutes} 分钟（约 ${sections} 段，口播总字数约 ${Math.round(minutes * (form === 'pixel-story' ? 220 : 250))} 字）\n账号名：${account || '（未填写）'}\n\n客户说的话：\n${sayLine || (ref ? '（没写，照原视频的打法来）' : '（没写，按资料来）')}${materialRule}${docs.length ? `\n\n${docs.join('\n\n')}` : ''}${remixRule}
+  // 每分钟口播字数；手绘图解每句 ≤16 字、一段 1-2 句，实测最多写到 450 字左右（约 1 分半），按它能做到的要
+  const targetChars = Math.round(minutes * (form === 'pixel-story' ? 220 : form === 'sketch-talk' ? 160 : 250));
+  const user = `目标时长：约 ${minutes} 分钟（约 ${sections} 段，口播总字数约 ${targetChars} 字）\n账号名：${account || '（未填写）'}\n\n客户说的话：\n${sayLine || (ref ? '（没写，照原视频的打法来）' : '（没写，按资料来）')}${materialRule}${docs.length ? `\n\n${docs.join('\n\n')}` : ''}${remixRule}
 
 【不许编】客户没提供的人数、比例、价格、适合年龄、教龄、头衔荣誉、服务内容（免费试听、答疑、赠送、名额、一对一等）一律不写；不许用 XX、某某 这种占位词，提到机构就说“我们”${account ? `或“${account}”` : ''}。`;
 
@@ -450,18 +452,22 @@ ${ref}` : '';
     const source = [say, trade, account, ...(Array.isArray(materials) ? materials : []).map((m) => String(m?.text || ''))].join('\n');
     const check = (d) => {
       const text = allText(d);
-      return { copied: ref ? copiedPhrases(text, ref).slice(0, 8) : [], illegal: scanRisks(text).filter((x) => x.level === '违法').slice(0, 6), fab: fabricated(text, source).slice(0, 10) };
+      const chars = (d?.sections || []).flatMap((x) => x?.lines || []).join('').length;
+      return { copied: ref ? copiedPhrases(text, ref).slice(0, 8) : [], illegal: scanRisks(text).filter((x) => x.level === '违法').slice(0, 6), fab: fabricated(text, source).slice(0, 10), chars, short: chars < targetChars * 0.75 };
     };
-    const score = (x) => x.copied.length * 2 + x.illegal.length * 2 + x.fab.length;
+    // 篇幅明显不够（实测 AI 常常写短，选 3 分钟出来不到 2 分钟），也带着问题让它补一次
+    const score = (x) => x.copied.length * 2 + x.illegal.length * 2 + x.fab.length + (x.short ? 3 : 0);
     let c = check(data);
     if (score(c)) {
       const fb = [
         c.copied.length && `这些地方和原视频一模一样，属于照抄：${c.copied.map((x) => `「${x}」`).join('、')}。全部换成你自己的说法。`,
         c.illegal.length && `这些说法违反广告法：${c.illegal.map((x) => `「${x.word}」（${x.reason}）`).join('、')}。改成合规的说法。`,
+        c.short && `篇幅不够：现在口播一共只有 ${c.chars} 字，目标约 ${targetChars} 字（约 ${sections} 段）。补到目标篇幅：多加几段新内容（换角度、举例子、讲做法），不要把每句话拉长注水。`,
         c.fab.length && `这些内容客户没提供过，是你编的：${c.fab.map((x) => `「${x.word}」（${x.why}）`).join('、')}。删掉或改成不带具体数字、不承诺具体服务的说法；占位词换成“我们”${account ? `或“${account}”` : ''}。`,
       ].filter(Boolean).join('\n');
       const again = await deepseek([...messages, { role: 'assistant', content }, { role: 'user', content: `${fb}\n其它保持不变，重新输出完整 JSON。` }], { temperature: 0.7 });
       const c2 = check(again.data);
+      if (c.short) console.log(`[篇幅] ${form} 目标 ${targetChars} 字，第一版 ${c.chars} 字，补写后 ${c2.chars} 字（问题分 ${score(c)} → ${score(c2)}）`);
       if (score(c2) <= score(c)) { data = again.data; c = c2; }
     }
     // 改完还剩下的，标出来让客户发之前自己核对
