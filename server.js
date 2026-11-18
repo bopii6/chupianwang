@@ -15,6 +15,8 @@ import { handleCopyApi, scanRisks } from './lib/copylib.js';
 import { handleRelay } from './lib/relay.js';
 import { handleAuth, currentUser, hasQuota, useQuota } from './lib/auth.js';
 import { handleWorks, serveWorkFile } from './lib/works.js';
+import { handleJobs } from './lib/jobs.js';
+import { handleMcp } from './lib/mcp.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const WORKS = path.join(ROOT, 'works'); // 作品墙：导出的成片存这里
@@ -43,6 +45,7 @@ const MIME = {
 const LONG_CACHE = 'public, max-age=31536000, immutable';
 const STATIC_MOUNTS = [
   ['/vendor/mp4-muxer/', path.join(ROOT, 'node_modules/mp4-muxer/build/')],
+  ['/vendor/encode-aac/', path.join(ROOT, 'node_modules/@audio/encode-aac/')],
   ['/vendor/noto-sans-sc/', path.join(ROOT, 'node_modules/@fontsource/noto-sans-sc/')],
   ['/vendor/mediapipe/', path.join(ROOT, 'node_modules/@mediapipe/tasks-vision/')],
   ['/vendor/fflate/', path.join(ROOT, 'node_modules/fflate/esm/')],
@@ -520,9 +523,11 @@ http.createServer(async (req, res) => {
       req.pipe(out);
       return out.on('finish', () => sendJson(res, 200, { ok: true }));
     }
+    if (pathname === '/mcp') return await handleMcp(req, res, { readJson });
+    if (pathname.startsWith('/api/jobs')) return await handleJobs(req, res, pathname, new URL(req.url, 'http://x').searchParams);
     if (pathname.startsWith('/api/works')) return await handleWorks(req, res, pathname, WORKS, new URL(req.url, 'http://x').searchParams); // 作品墙
     if (pathname.startsWith('/works/')) return await serveWorkFile(req, res, pathname, WORKS); // 作品墙视频（支持 Range）
-    if (req.method === 'GET' && pathname === '/api/status') { if (!process.env.PEXELS_API_KEY) loadEnv(); return sendJson(res, 200, { ai: !!process.env.DEEPSEEK_API_KEY, stock: !!process.env.PEXELS_API_KEY, asrBase: process.env.ASR_MODEL_BASE || '/models/asr/', asrModel: process.env.ASR_MODEL || 'whisper-base', authRequired: process.env.AUTH_REQUIRED === '1' }); }
+    if (req.method === 'GET' && pathname === '/api/status') { if (!process.env.PEXELS_API_KEY) loadEnv(); return sendJson(res, 200, { ai: !!process.env.DEEPSEEK_API_KEY, stock: !!process.env.PEXELS_API_KEY, asrBase: process.env.ASR_MODEL_BASE || '/models/asr/', asrModel: process.env.ASR_MODEL || 'whisper-base', authRequired: process.env.AUTH_REQUIRED === '1', jobWorker: process.env.JOB_WORKER === '1' }); }
     if (req.method === 'GET' && (await serveStatic(req, res, pathname))) return;
     res.writeHead(404); res.end('not found');
   } catch (e) {

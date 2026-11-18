@@ -384,7 +384,9 @@ async function generate(input = $('#input').value.trim()) {
     state.flags = Array.isArray(data._flags) ? data._flags : [];
     onQuota(data);
     await startWithScript(state.form.module.normalize ? state.form.module.normalize(data, splitLongLine) : normalize(data));
+    await afterJobExport();
   } catch (err) {
+    failJob(err.message);
     overlayMessage('没写成功', err.message, [
       { label: '返回修改', primary: true, fn: () => show('gallery') },
       { label: '再试一次', fn: () => generate(input) },
@@ -564,7 +566,9 @@ async function replicate() {
     state.flags = Array.isArray(data._flags) ? data._flags : [];
     onQuota(data);
     await startWithScript(prepScript(state.form, data));
+    await afterJobExport();
   } catch (err) {
+    failJob(err.message);
     overlayMessage('没写成功', err.message, [
       { label: '返回修改', primary: true, fn: () => openRemix() },
       { label: '再试一次', fn: () => replicate() },
@@ -987,16 +991,39 @@ function refresh() {
 // ---------- 导出 ----------
 // 这几个套路的画面上一直挂着「@账号名」，没填就显示“我的账号”，导出前提醒一次
 const SHOWS_ACCOUNT = new Set(['data-card', 'deep-dive', 'pixel-story', 'series-intro']);
-$('#btnExport').addEventListener('click', async () => {
-  if (!state.script || state.exporting) return;
-  if (!state.script.account && SHOWS_ACCOUNT.has(state.form.id) && !state.askedAccount) {
+function jobIdFromUrl() {
+  return new URLSearchParams(location.search).get('job') || '';
+}
+async function failJob(msg) {
+  const id = jobIdFromUrl();
+  if (!id) return;
+  await fetch('/api/jobs/' + encodeURIComponent(id) + '/fail', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ error: String(msg || '出片失败') }),
+  }).catch(() => {});
+}
+async function afterJobExport() {
+  const id = jobIdFromUrl();
+  if (!id) return;
+  const blob = await exportVideo({ skipAccountPrompt: true, saveToWorks: false, jobId: id });
+  if (blob) { try { window.close(); } catch {} }
+}
+async function waitAiReady(ms = 10000) {
+  const t0 = Date.now();
+  while (!aiReady && Date.now() - t0 < ms) await new Promise((r) => setTimeout(r, 200));
+  return !!aiReady;
+}
+
+async function exportVideo({ skipAccountPrompt = false, saveToWorks = true, jobId = '' } = {}) {
+  if (!state.script || state.exporting) return null;
+  if (!skipAccountPrompt && !state.script.account && SHOWS_ACCOUNT.has(state.form.id) && !state.askedAccount) {
     state.askedAccount = true;
     switchTab('style');
     const f = $('#account2'); f.classList.add('need'); f.focus(); f.scrollIntoView({ block: 'center', behavior: 'smooth' });
     toast('视频上会显示你的账号名，先在这里填一下（不填就显示“我的账号”），再点导出');
-    return;
+    return null;
   }
-  if (!exportSupported()) { toast(matchMedia('(pointer: coarse)').matches ? '这个手机浏览器还不能出片，请用电脑上的 Chrome 或 Edge 打开' : '当前浏览器不支持本地出片，请用最新版 Chrome 或 Edge'); return; }
+  if (!exportSupported()) { toast(matchMedia('(pointer: coarse)').matches ? '这个手机浏览器还不能出片，请用电脑上的 Chrome 或 Edge 打开' : '当前浏览器不支持本地出片，请用最新版 Chrome 或 Edge'); return null; }
   stop();
   const signal = { cancelled: false };
   state.exporting = signal;
@@ -1011,29 +1038,42 @@ $('#btnExport').addEventListener('click', async () => {
       onProgress: (p, left) => overlayProgress(p, '正在生成视频', `${p < 0.06 ? `一般要 1–3 分钟（视频越长越久）` : left > 90 ? `还要约 ${Math.round(left / 60)} 分钟` : `还要约 ${Math.max(5, Math.ceil(left / 5) * 5)} 秒`} · 可以先去忙别的`),
     });
     const name = `${state.script.title || '我的视频'}.mp4`.replace(/[\\/:*?"<>|]/g, '');
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = name; a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 60000);
-    // 作品墙：顺手在本机 works/ 存一份，直播时直接在作品墙里放
-    fetch('/api/works?title=' + encodeURIComponent(state.script?.title || name.replace(/\.mp4$/, '')), {
-      method: 'POST', headers: { 'content-type': 'video/mp4' }, body: blob,
-    }).catch(() => {});
-    // 手机上：下载的文件不好找，给一个“存到手机”按钮（系统分享面板里能存相册、发微信）
     const file = new File([blob], name, { type: 'video/mp4' });
     const canShare = matchMedia('(pointer: coarse)').matches && navigator.canShare?.({ files: [file] });
+    if (jobId) {
+      const up = await fetch('/api/jobs/' + encodeURIComponent(jobId) + '/complete?title=' + encodeURIComponent(state.script?.title || name.replace(/\.mp4$/, '')), {
+        method: 'POST', headers: { 'content-type': 'video/mp4' }, body: blob,
+      });
+      if (!up.ok) {
+        const err = await up.json().catch(() => ({}));
+        throw new Error(err.error || '回传成片失败');
+      }
+    } else if (saveToWorks) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = name; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+      fetch('/api/works?title=' + encodeURIComponent(state.script?.title || name.replace(/\.mp4$/, '')), {
+        method: 'POST', headers: { 'content-type': 'video/mp4' }, body: blob,
+      }).catch(() => {});
+    }
     overlayDone('视频已导出', `${name} · ${(blob.size / 1048576).toFixed(0)} MB · ${canShare ? '点下面按钮存到相册或发给微信' : '已保存到下载文件夹，也存进了作品墙'}`, [
       ...(canShare ? [{ label: '存到手机 / 分享', primary: true, fn: () => navigator.share({ files: [file], title: state.script?.title || '' }).catch(() => {}) }] : []),
       { label: '再做一条', primary: !canShare, fn: () => { hideOverlay(); show('gallery'); } },
       { label: '去作品墙', fn: () => { location.href = '/works.html'; } },
       { label: '继续修改', fn: hideOverlay },
     ]);
+    return blob;
   } catch (err) {
+    if (jobId) failJob(err.message);
     if (signal.cancelled) { hideOverlay(); toast('已取消导出'); } else overlayMessage('导出失败', err.message, [{ label: '知道了', primary: true, fn: hideOverlay }]);
+    return null;
   } finally {
     state.exporting = null;
     $('#btnExport').disabled = false;
   }
-});
+}
+
+$('#btnExport').addEventListener('click', () => { exportVideo({}); });
 
 // ---------- 浮层 ----------
 const RING = 213.6;
@@ -1290,18 +1330,32 @@ loadPhotos('photos').catch(() => {});
 loadPhotos('scenes').catch(() => {});
 fetch('/api/status').then((r) => r.json()).then((d) => { aiReady = !!d.ai; if (!aiReady) $('#createErr').textContent = '服务端还没配置 AI 密钥，可以先看示例。'; if (d.asrBase) asrBase = d.asrBase; if (d.asrModel) asrModel = d.asrModel; authRequired = !!d.authRequired; renderAcct(); }).catch(() => { aiReady = false; });
 
-// 从外部（选题雷达 / 微信出片）带主题进来：?topic=...&form=...
-;(() => {
+function applyQueryForm(formName) {
+  if (formName && typeof forms !== 'undefined') {
+    const hit = forms.find((f) => f.name === formName || f.id === formName)
+    if (hit) selectForm(hit.id)
+  }
+}
+
+// 从外部（选题雷达 / 微信出片 / 任务接口）带主题进来：?topic=&form=&minutes=&auto=&job=&account=&mode=&industry=
+;(async () => {
   const q = new URLSearchParams(location.search)
   const topic = q.get('topic')
   const formName = q.get('form')
-  if (!topic && !formName) return
+  const mins = q.get('minutes')
+  const account = q.get('account')
+  const auto = q.get('auto') === '1'
+  const mode = q.get('mode')
+  const industry = (q.get('industry') || topic || '').trim()
+  const job = q.get('job')
+  if (!topic && !formName && !job && !auto) return
+
+  if (['1', '2', '3'].includes(mins)) { prefs.minutes = Number(mins); setSeg('#minutes', mins) }
+  if (account) { prefs.account = account; const el = $('#account'); if (el) el.value = account }
+
   const apply = () => {
-    if (formName && typeof forms !== 'undefined') {
-      const hit = forms.find((f) => f.name === formName || f.id === formName)
-      if (hit) selectForm(hit.id)
-    }
-    if (topic) {
+    applyQueryForm(formName)
+    if (topic && mode !== 'remix') {
       const input = $('#input')
       if (!input) return
       input.value = topic
@@ -1310,7 +1364,37 @@ fetch('/api/status').then((r) => r.json()).then((d) => { aiReady = !!d.ai; if (!
     }
   }
   if (document.querySelector('#tplStrip .t')) apply()
-  else setTimeout(apply, 400)
+  else await new Promise((r) => setTimeout(() => { apply(); r() }, 400))
+
+  if (!auto) return
+  if (!(await waitAiReady())) {
+    const msg = '服务端还没配置 AI 密钥，可以先看示例。'
+    if (job) failJob(msg)
+    $('#createErr').textContent = msg
+    return
+  }
+
+  if (mode === 'remix') {
+    if (!industry) { if (job) failJob('请提供行业或主题'); $('#createErr').textContent = '请提供行业或主题'; return }
+    if (!job) { $('#createErr').textContent = '对标片任务缺少 job 参数'; return }
+    setMode('video')
+    prefs.industry = industry
+    $('#rmIndustry').value = industry
+    applyQueryForm(formName)
+    const r = await fetch('/api/jobs/' + encodeURIComponent(job) + '/reference')
+    if (!r.ok) { failJob('找不到参考视频'); return }
+    const buf = await r.blob()
+    const file = new File([buf], 'reference.mp4', { type: buf.type || 'video/mp4' })
+    try {
+      await runRemix(file.name, async (opts) => (await loadAsr()).transcribe(file, opts))
+    } catch (err) { failJob(err.message); return }
+    if (!rm.plan) { failJob(rm.error || '拆解失败'); return }
+    if (!formName && rm.plan.form) applyQueryForm(rm.plan.form)
+    await replicate()
+    return
+  }
+
+  if (topic) await generate(topic)
 })()
 
 // 从文案库带一条进来：?copy=<id> → 直接进「用别人的爆款做」，跳过上传和听写

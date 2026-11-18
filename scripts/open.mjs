@@ -35,7 +35,7 @@ if (await alive()) console.log('微信出片已经在运行');
 else {
   fs.mkdirSync(path.dirname(PID_FILE), { recursive: true });
   const out = fs.openSync(LOG, 'a');
-  const child = spawn(process.execPath, [path.join(ROOT, 'server.js')], { cwd: ROOT, detached: true, stdio: ['ignore', out, out], windowsHide: true });
+  const child = spawn(process.execPath, [path.join(ROOT, 'server.js')], { cwd: ROOT, detached: true, stdio: ['ignore', out, out], windowsHide: true, env: { ...process.env, JOB_WORKER: '1' } });
   fs.writeFileSync(PID_FILE, String(child.pid));
   child.unref();
   let up = false;

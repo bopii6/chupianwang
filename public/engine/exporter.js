@@ -64,13 +64,61 @@ async function pickVideoCodec(width, height, fps) {
  * @param {(ctx:OffscreenCanvasRenderingContext2D, t:number)=>void} o.draw
  * @param {{sampleRate:number, channels:Float32Array[]}} o.audio
  */
+
+/** 两字节 AudioSpecificConfig，给 mp4-muxer 当 decoderConfig.description */
+function makeAsc(profile, freqIdx, channels) {
+  return new Uint8Array([(profile << 3) | (freqIdx >> 1), ((freqIdx & 1) << 7) | (channels << 3)]);
+}
+
+/**
+ * 从 ADTS 流里拆出裸 AAC 帧。Linux 版 Chrome 没有系统 AAC 编码器，软件编码输出带 ADTS 头；
+ * MP4 里要的是去头后的帧。
+ */
+function* iterAdtsFrames(buf) {
+  const u8 = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  let off = 0;
+  while (off + 7 <= u8.length) {
+    if (u8[off] !== 0xFF || (u8[off + 1] & 0xF6) !== 0xF0) { off++; continue; }
+    const hdr = (u8[off + 1] & 1) ? 7 : 9;
+    const frameLen = ((u8[off + 3] & 0x03) << 11) | (u8[off + 4] << 3) | ((u8[off + 5] & 0xE0) >> 5);
+    if (frameLen < hdr || off + frameLen > u8.length) break;
+    const b2 = u8[off + 2];
+    const b3 = u8[off + 3];
+    yield {
+      payload: u8.subarray(off + hdr, off + frameLen),
+      profile: ((b2 >> 6) & 3) + 1,
+      freqIdx: (b2 >> 2) & 0x0F,
+      channels: ((b2 & 1) << 2) | ((b3 >> 6) & 3),
+    };
+    off += frameLen;
+  }
+}
+
+/** 把一截 ADTS 喂给 muxer；state 用已写出的帧数算时间戳。 */
+function addAdtsToMuxer(muxer, adts, sr, frameSamples, state) {
+  if (!adts?.length) return;
+  for (const { payload, profile, freqIdx, channels } of iterAdtsFrames(adts)) {
+    if (!payload.length) continue;
+    const timestamp = Math.round((state.frameIndex * frameSamples / sr) * 1e6);
+    const duration = Math.round((frameSamples / sr) * 1e6);
+    const chunk = new EncodedAudioChunk({ type: 'key', timestamp, duration, data: payload });
+    if (!state.descSent) {
+      muxer.addAudioChunk(chunk, {
+        decoderConfig: { codec: 'mp4a.40.2', sampleRate: sr, numberOfChannels: 2, description: makeAsc(profile, freqIdx, channels) },
+      });
+      state.descSent = true;
+    } else {
+      muxer.addAudioChunk(chunk);
+    }
+    state.frameIndex++;
+  }
+}
+
 export async function encodeMp4({ width, height, fps, duration, draw, frameSource, audio, onProgress, signal }) {
   const vcfg = await pickVideoCodec(width, height, fps);
   const sr = audio.sampleRate;
   const acfg = { codec: 'mp4a.40.2', sampleRate: sr, numberOfChannels: 2, bitrate: 160_000 };
-  if (!(await AudioEncoder.isConfigSupported(acfg).catch(() => ({}))).supported) {
-    throw new Error('当前浏览器不支持 AAC 音频编码，请使用最新版 Chrome 或 Edge');
-  }
+  const aacNative = !!(await AudioEncoder.isConfigSupported(acfg).catch(() => ({}))).supported;
 
   const muxer = new Muxer({
     target: new ArrayBufferTarget(),
@@ -83,21 +131,35 @@ export async function encodeMp4({ width, height, fps, duration, draw, frameSourc
   let failure = null;
   const venc = new VideoEncoder({ output: (c, m) => muxer.addVideoChunk(c, m), error: (e) => { failure = e; } });
   venc.configure(vcfg);
-  const aenc = new AudioEncoder({ output: (c, m) => muxer.addAudioChunk(c, m), error: (e) => { failure = e; } });
-  aenc.configure(acfg);
-
-  // 音频：按 0.1 秒切块
+  // Linux 版 Chrome 没有系统 AAC 编码器；这时 aenc 为空，后面改走软件编码。
+  let aenc = null;
   const [L, R = L] = audio.channels;
   const total = Math.min(L.length, Math.ceil(duration * sr));
   const block = Math.floor(sr / 10);
-  for (let s = 0; s < total; s += block) {
-    const n = Math.min(block, total - s);
-    const planar = new Float32Array(n * 2);
-    planar.set(L.subarray(s, s + n), 0);
-    planar.set(R.subarray(s, s + n), n);
-    const ad = new AudioData({ format: 'f32-planar', sampleRate: sr, numberOfFrames: n, numberOfChannels: 2, timestamp: Math.round((s / sr) * 1e6), data: planar });
-    aenc.encode(ad);
-    ad.close();
+  if (aacNative) {
+    aenc = new AudioEncoder({ output: (c, m) => muxer.addAudioChunk(c, m), error: (e) => { failure = e; } });
+    aenc.configure(acfg);
+    // 音频：按 0.1 秒切块
+    for (let s = 0; s < total; s += block) {
+      const n = Math.min(block, total - s);
+      const planar = new Float32Array(n * 2);
+      planar.set(L.subarray(s, s + n), 0);
+      planar.set(R.subarray(s, s + n), n);
+      const ad = new AudioData({ format: 'f32-planar', sampleRate: sr, numberOfChannels: 2, numberOfFrames: n, timestamp: Math.round((s / sr) * 1e6), data: planar });
+      aenc.encode(ad);
+      ad.close();
+    }
+  } else {
+    // 只在需要时加载约 500KB 的 FDK WASM，Windows / macOS 不会走到这里。
+    const { default: createAac } = await import('/vendor/encode-aac/aac-encode.js');
+    const enc = await createAac({ sampleRate: sr, channels: 2, bitrate: 160, profile: 'lc' });
+    const frameSamples = enc.frameLength || 1024;
+    const state = { frameIndex: 0, descSent: false };
+    for (let s = 0; s < total; s += block) {
+      const n = Math.min(block, total - s);
+      addAdtsToMuxer(muxer, await enc.encode([L.subarray(s, s + n), R.subarray(s, s + n)]), sr, frameSamples, state);
+    }
+    addAdtsToMuxer(muxer, await enc.flush(), sr, frameSamples, state);
   }
 
   // 视频：有 frameSource 时由多个渲染子线程并行出帧；否则在本线程逐帧绘制
@@ -132,7 +194,7 @@ export async function encodeMp4({ width, height, fps, duration, draw, frameSourc
     }
   }
   await venc.flush();
-  await aenc.flush();
+  if (aenc) await aenc.flush();
   if (failure) throw failure;
   muxer.finalize();
   onProgress?.(1, 0);
