@@ -17,6 +17,18 @@ node server.js
 - 配音：开发期用 `edge-tts`（需要 `pip install edge-tts`）。**商用前要换成微软 Azure 语音服务**。
 - AI 文案：把 `.env.example` 复制成 `.env`，填入 `DEEPSEEK_API_KEY=...`。不填也能用「先看示例」体验。
 
+## 后台出片（默认无窗口，不弹浏览器）
+
+服务带一个出片 worker：开着它，别的东西（Agent、脚本、MCP 客户端）就能直接下单出片，不用人点页面。
+
+- **默认无头**：worker 启动的 Chrome 带 `--headless=new`，**桌面上不会弹窗口**，安静跑完。
+- **想看过程**：启动前设 `JOB_HEADLESS=0`，就会弹出浏览器窗口，能看着它自己选形式、填主题、点导出。调试和演示用。
+- **必须带 `JOB_WORKER=1`**：`打开微信出片.bat` 走 `scripts/open.mjs`，已经自动带上了；手工 `node server.js` 起的话 worker 是关的，`create_video` 会返回「未开启渲染 worker」。
+- **实测耗时**（1 分钟片子）：无头约 **30 秒**，有窗口约 **90 秒**。无头反而快一倍多，因为不用合成窗口。
+
+对外接口是 MCP：`POST http://127.0.0.1:5173/mcp`，工具 `list_formats` / `create_video` / `remix_video` / `list_works` / `prepare_video`。
+返回的是**本机绝对路径 + 标题、时长、大小**，不含任何链接（本机地址在外面打不开，给了会误导）。接入写法见 `docs/MCP-接入.md`。
+
 ## 装到客户电脑上（本地版，不上云）
 
 1. 客户电脑装好 [Node.js 20+](https://nodejs.org/zh-cn)、[Python 3.10+](https://www.python.org/downloads/)（安装时勾 “Add python.exe to PATH”）、Git、Chrome 或 Edge
