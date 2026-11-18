@@ -4,6 +4,8 @@ import { buildTimeline, synthesize, mixAudio, mixWithBgm, envelope, getAudioCtx 
 import { BGM_STYLES, renderBgm, warmBgm } from './engine/music.js';
 import { listPhotos, savePhoto, deletePhoto, shrinkPhoto } from './engine/photos.js';
 import { exportInWorker, exportSupported } from './engine/exporter.js';
+import { warmFonts } from './engine/font-preload.js';
+warmFonts();
 
 const $ = (s) => document.querySelector(s);
 const FPS = 24; // 与对标样片一致；图文动效 24 帧足够流畅，比 30 帧少 20% 渲染量
