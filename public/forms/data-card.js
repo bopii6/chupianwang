@@ -4,6 +4,7 @@
 import {
   W, H, clamp, easeOut, appear, font, fitFont, wrap, splitSubtitle, strokeRect, withFade, countUp, hash,
 } from '../engine/draw.js';
+import { loadFontFaces } from '../engine/font-preload.js';
 import { themeEmoji, normalizeTheme, drawWallpaper, EMOJI_FONT } from './themes.js';
 
 export const meta = {
@@ -887,7 +888,6 @@ export function drawFrame(ctx, { script, tl, planData, t, skinId = 'blackGold', 
 /** 字体预加载：把脚本里出现的字都加载好（Noto Sans SC 按需分片） */
 export async function preloadFonts(script) {
   const text = JSON.stringify(script) + '0123456789@/›%.';
-  const fonts = globalThis.document?.fonts || self.fonts;
-  await Promise.all([fonts.load(`900 40px "Noto Sans SC"`, text), fonts.load(`700 40px "Noto Sans SC"`, text)]);
+  await loadFontFaces([`900 40px "Noto Sans SC"`, `700 40px "Noto Sans SC"`], text);
   bgCache.clear();
 }

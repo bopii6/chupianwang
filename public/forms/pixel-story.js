@@ -2,6 +2,7 @@
 // 灵魂：把道理“演”成一个比喻小故事。像素小人在场景里撞墙、掉坑、拿到一本书，观众看着就懂了。
 // 全部美术由代码绘制（原创）。三层画面：场景层（×6）→ 角色/特效层（×9，人物更醒目）→ 前景层（×6）。
 import { W, H, clamp, easeOut, hash, splitSubtitle } from '../engine/draw.js';
+import { loadFontFaces } from '../engine/font-preload.js';
 import { THEMES, normalizeTheme } from './themes.js';
 
 export const meta = {
@@ -1057,8 +1058,7 @@ export function drawFrame(ctx, { script, tl, planData, t, skinId = 'warm' }) {
 
 export async function preloadFonts(script) {
   const text = JSON.stringify(script) + '0123456789@/考场我';
-  const fonts = globalThis.document?.fonts || self.fonts;
-  await Promise.all([fonts.load(`48px "${PIXEL_FAMILY}"`, text), fonts.load(`900 40px "Noto Sans SC"`, text)]);
+  await loadFontFaces([`48px "${PIXEL_FAMILY}"`, `900 40px "Noto Sans SC"`], text);
 }
 
 /** AI 结果兜底 */

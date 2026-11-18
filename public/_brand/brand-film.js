@@ -1,5 +1,6 @@
 // 出片王 品牌宣传片：专门写的一套动画（不是产品模板），用产品自己的配音、配乐、导出引擎出片
 import { W, H, clamp, easeOut, easeInOut } from '../engine/draw.js';
+import { loadFontFaces } from '../engine/font-preload.js';
 
 export const meta = { id: 'brand-film', name: '品牌宣传片', category: '品牌', bgm: 'tech', durations: [1] };
 export const skins = { dark: { name: '深色' } };
@@ -314,7 +315,6 @@ export function drawFrame(ctx, { script, tl, planData, t }) {
 
 export async function preloadFonts(script) {
   const txt = JSON.stringify(script) + '做教培的都知道该发短视频写文案剪视频天天拍每一样都要时间现在只要一句话我是教钢琴的讲讲零基础怎么入门说一句你想讲什么生成成片→AI写口播自动配音配乐出画面几分钟一条竖屏成片✓1080×1920MP46种画面风格真人图文口播系列课介绍手绘图解深度解读像素小剧场知识卡片12类培训行业学科辅导考证考公外语口才钢琴声乐舞蹈美术书法少儿编程驾校美甲美妆健身游泳烘焙咖啡知识付费做培训的都能用用别人的爆款做同行爆款学打法你的版本不照抄换成你自己的内容不乱编口播文案零基础学琴先别急着练曲子每天十分钟把手型找对我们的学员通过率98%下期讲怎么练节奏⚠这个数字要核实拿不准的地方自动标黄出片王一句话出一条视频一次买断·不按条收费0123456789';
-  const fonts = globalThis.document?.fonts || self.fonts;
-  await Promise.all([fonts.load(`900 40px "Noto Sans SC"`, txt), fonts.load(`700 40px "Noto Sans SC"`, txt)]);
+  await loadFontFaces([`900 40px "Noto Sans SC"`, `700 40px "Noto Sans SC"`], txt);
 }
 export function normalize(s) { return s; }

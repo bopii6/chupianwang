@@ -3,6 +3,7 @@
 // 关键处叠一层“信息贴片”（蓝色标签、斜体大字、数据卡、引语），底部一行字幕。像一档财经/行业解读节目。
 // 画面来源：客户现场照片优先，其余按关键词从正版素材库（Pexels）找；都没有时画科技感兜底面板。
 import { W, H, clamp, easeOut, font, fitFont, wrap, countUp, hash } from '../engine/draw.js';
+import { loadFontFaces } from '../engine/font-preload.js';
 import { THEMES, themeEmoji, normalizeTheme, EMOJI_FONT } from './themes.js';
 
 export const meta = {
@@ -614,8 +615,7 @@ export function drawFrame(ctx, { script, tl, planData, t, skinId = 'navy', asset
 
 export async function preloadFonts(script) {
   const text = JSON.stringify(script) + '0123456789%?？—';
-  const fonts = globalThis.document?.fonts || self.fonts;
-  await Promise.all([fonts.load(`900 40px "Noto Sans SC"`, text), fonts.load(`700 40px "Noto Sans SC"`, text)]);
+  await loadFontFaces([`900 40px "Noto Sans SC"`, `700 40px "Noto Sans SC"`], text);
 }
 
 /** AI 结果兜底 */
