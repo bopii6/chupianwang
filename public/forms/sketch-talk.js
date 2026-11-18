@@ -3,6 +3,7 @@
 // 把一句话“演”成一个小场景（聚光灯、记分牌、靶子、日历、周卡、清单…）；讲师站在右下角讲。
 // 偶尔插一帧整屏的品牌色或深色“关键词”镜头，制造节奏。
 import { W, H, clamp, easeOut, font, fitFont, wrap, hash } from '../engine/draw.js';
+import { loadFontFaces } from '../engine/font-preload.js';
 import { THEMES, themeEmoji, normalizeTheme, EMOJI_FONT } from './themes.js';
 import { demoPresenter } from './photo-talk.js';
 
@@ -666,8 +667,7 @@ export function drawFrame(ctx, { script, tl, planData, t, skinId = 'paper', asse
 
 export async function preloadFonts(script) {
   const text = JSON.stringify(script) + '0123456789VS!?已关注✓+';
-  const fonts = globalThis.document?.fonts || self.fonts;
-  await Promise.all([fonts.load(`900 40px "Noto Sans SC"`, text), fonts.load(`700 40px "Noto Sans SC"`, text)]);
+  await loadFontFaces([`900 40px "Noto Sans SC"`, `700 40px "Noto Sans SC"`], text);
 }
 
 /** AI 结果兜底 */

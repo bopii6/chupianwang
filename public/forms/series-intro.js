@@ -2,6 +2,7 @@
 // 灵魂：用“每晚睡前看一集，一个月后领先 90% 的人”做钩子，几十秒交代：讲什么、我是谁、怎么带你学、资料备好了、现在关注。
 // 版式：顶部头像 + 账号 + 话题，绿青渐变系列大字（全片固定）；中间一块深色网格“屏幕”，每句换一个画面；底部一行字幕。
 import { W, H, clamp, easeOut, font, fitFont, wrap } from '../engine/draw.js';
+import { loadFontFaces } from '../engine/font-preload.js';
 import { demoPresenter } from './photo-talk.js';
 import { themeEmoji, normalizeTheme, drawWallpaper } from './themes.js';
 
@@ -708,8 +709,7 @@ export function drawFrame(ctx, { script, tl, planData, t, skinId = 'dark', asset
 
 export async function preloadFonts(script) {
   const text = JSON.stringify(script) + '0123456789%|点赞关注评论';
-  const fonts = globalThis.document?.fonts || self.fonts;
-  await Promise.all([fonts.load(`900 40px "Noto Sans SC"`, text), fonts.load(`700 40px "Noto Sans SC"`, text)]);
+  await loadFontFaces([`900 40px "Noto Sans SC"`, `700 40px "Noto Sans SC"`], text);
 }
 
 /** AI 结果兜底 */

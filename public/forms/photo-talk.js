@@ -2,6 +2,7 @@
 // 灵魂：真人（客户自己的照片，自动抠图）站在画面里“讲”，旁边的标题像打字一样蹦出来，标签、表格、贴纸一个个弹出，底部中英双语字幕。
 // 真人其实是几张不同手势的照片，每个镜头换一个姿势，靠换姿势 + 弹出效果制造节奏。
 import { W, H, clamp, easeOut, font, fitFont, wrap, splitSubtitle } from '../engine/draw.js';
+import { loadFontFaces } from '../engine/font-preload.js';
 import { THEMES, themeEmoji, normalizeTheme, drawWallpaper } from './themes.js';
 
 export const meta = {
@@ -907,8 +908,7 @@ export function drawFrame(ctx, { script, tl, planData, t, skinId = 'white', asse
 
 export async function preloadFonts(script) {
   const text = JSON.stringify(script) + '0123456789%';
-  const fonts = globalThis.document?.fonts || self.fonts;
-  await Promise.all([fonts.load(`900 40px "Noto Sans SC"`, text), fonts.load(`700 40px "Noto Sans SC"`, text)]);
+  await loadFontFaces([`900 40px "Noto Sans SC"`, `700 40px "Noto Sans SC"`], text);
 }
 
 /** AI 结果兜底 */
