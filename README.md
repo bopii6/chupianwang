@@ -35,7 +35,7 @@ npm run dist
 
 产物在 `dist/`。`npm run dist` 会先跑 `scripts/build-python.mjs` 重做精简版 Python。微软改了配音接口导致没声音时：改 `scripts/build-python.mjs` 里的 `EDGE_TTS` 版本号，重新打包发布。
 
-开发时直接以桌面软件方式运行：`npm run app`。自检（打包后验证）：设环境变量 `CPW_SELFTEST=<输出文件夹>` 启动，会截图并检查导出、配音、听写模型，结果写到 `selftest.json` 后自动退出。
+开发时直接以桌面软件方式运行：`npm run app`。自检（打包后验证）：设环境变量 `CPW_SELFTEST=<输出文件夹>` 启动，会截图并检查导出能力、配音、听写模型、字体；再加 `CPW_SELFTEST_EXPORT=1` 会真的导出一条示例视频。结果写到 `selftest.json` 后自动退出。`npm run release` 发布前会自动跑这一整套。
 
 ## 后台出片（默认无窗口，不弹浏览器）
 

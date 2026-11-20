@@ -51,9 +51,9 @@ if (key) {
 if (bad.length) fail('安装包里混进了不该有的文件：\n' + bad.join('\n'));
 console.log('✓ 干净');
 
-step('自检：打开打包好的软件，检查导出、配音、听写模型、字体、页面报错');
+step('自检：打开打包好的软件，检查配音、听写模型、字体、页面报错，并真的导出一条示例视频（约 2 分钟）');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cpw-release-'));
-sh(path.join(DIST, 'win-unpacked', `${pkg.productName}.exe`), [], { env: { ...process.env, CPW_DATA_DIR: path.join(tmp, 'data'), CPW_SELFTEST: path.join(tmp, 'out') }, timeout: 180_000 });
+sh(path.join(DIST, 'win-unpacked', `${pkg.productName}.exe`), [], { env: { ...process.env, CPW_DATA_DIR: path.join(tmp, 'data'), CPW_SELFTEST: path.join(tmp, 'out'), CPW_SELFTEST_EXPORT: '1', CPW_DOWNLOAD_DIR: tmp }, timeout: 900_000 });
 let r;
 try { r = JSON.parse(fs.readFileSync(path.join(tmp, 'out', 'selftest.json'), 'utf8')); } catch { fail('自检没出结果（软件可能没启动起来），看 ' + path.join(tmp, 'data', 'server.log')); }
 const p = r.page || {};
@@ -66,9 +66,10 @@ const problems = [
   !p.asrModel && '听写模型没带上',
   p.fontsMissing?.length && `缺字体文件 ${p.fontsMissing.length} 个，如 ${p.fontsMissing[0]}`,
   p.diag?.clientErrors?.length && `页面报错：${p.diag.clientErrors.map((e) => e.message).join('；')}`,
+  !(r.export?.download?.size > 100_000) && `导出示例视频失败：${JSON.stringify(r.export)}`,
 ].filter(Boolean);
 if (problems.length) fail('自检没通过：\n- ' + problems.join('\n- '));
-console.log('✓ 自检通过，截图：' + path.join(tmp, 'out', 'selftest.png'));
+console.log(`✓ 自检通过：示例视频 ${(r.export.download.size / 2 ** 20).toFixed(1)}MB，用时 ${r.export.seconds} 秒。截图：${path.join(tmp, 'out')}`);
 
 step(`上传到 ${owner}/${repo}`);
 // 发布仓库是公开的：说明写给客户看，从 发布说明.md 里取当前版本那一节，不用 git 提交记录（那是写给开发看的）

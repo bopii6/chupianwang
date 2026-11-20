@@ -15,6 +15,7 @@ const PREFERRED_PORT = 51730; // 固定端口：草稿、偏好存在浏览器�
 
 if (!app.requestSingleInstanceLock()) app.quit(); // 已经开着一个：把那个窗口叫到前面，这个退出
 let win = null;
+const downloads = []; // 本次运行下载（导出）完成的文件，自检用
 app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
 
 // ---------- 日志：服务的输出写到数据目录的 server.log（诊断信息里会带上最后几十行） ----------
@@ -102,6 +103,18 @@ function createWindow(url) {
   win.webContents.on('render-process-gone', (_e, d) => console.error('[页面崩溃]', d.reason, d.exitCode));
   // 出问题时给我们看：Ctrl+Shift+I 打开开发者工具
   win.webContents.on('before-input-event', (_e, input) => { if (input.control && input.shift && input.key.toLowerCase() === 'i') win.webContents.toggleDevTools(); });
+  // 导出的视频直接存进“下载”文件夹（和 Chrome 一样），不弹“另存为”；重名自动加 (1)(2)
+  win.webContents.session.on('will-download', (_e, item) => {
+    const dir = process.env.CPW_DOWNLOAD_DIR || app.getPath('downloads');
+    const { name, ext } = path.parse(item.getFilename());
+    let file = path.join(dir, name + ext);
+    for (let i = 1; fs.existsSync(file); i++) file = path.join(dir, `${name}(${i})${ext}`);
+    item.setSavePath(file);
+    item.once('done', (_ev, state) => {
+      console.log(`[下载] ${state === 'completed' ? '已保存' : '失败(' + state + ')'} ${file}`);
+      downloads.push({ file, state, size: state === 'completed' ? fs.statSync(file).size : 0 });
+    });
+  });
   win.once('ready-to-show', () => { win.maximize(); win.show(); });
   win.loadURL(url);
   if (process.env.CPW_SELFTEST) selfTest(process.env.CPW_SELFTEST);
@@ -134,6 +147,21 @@ async function selfTest(outDir) {
     }))()`);
     fs.mkdirSync(outDir, { recursive: true });
     fs.writeFileSync(path.join(outDir, 'selftest.png'), (await win.webContents.capturePage()).toPNG());
+    // CPW_SELFTEST_EXPORT=1：再真的出一条片（用示例，不花 AI 额度）：看示例 → 等配音 → 导出 → 等文件存好
+    if (process.env.CPW_SELFTEST_EXPORT) {
+      const t0 = Date.now();
+      const js = (code) => win.webContents.executeJavaScript(code);
+      const waitFor = async (code, ms, what) => { for (const end = Date.now() + ms; Date.now() < end; await new Promise((r) => setTimeout(r, 500))) if (await js(code)) return; throw new Error('等太久：' + what); };
+      await js("document.querySelector('#btnSample').click()");
+      await waitFor("!!document.querySelector('#btnExport') && !document.querySelector('#btnExport').disabled && document.querySelector('#btnExport').offsetParent !== null", 120_000, '示例载入和配音');
+      await new Promise((r) => setTimeout(r, 1500));
+      await js("document.querySelector('#btnExport').click()");
+      for (const end = Date.now() + 600_000; !downloads.length && Date.now() < end;) await new Promise((r) => setTimeout(r, 1000));
+      fs.writeFileSync(path.join(outDir, 'export.png'), (await win.webContents.capturePage()).toPNG());
+      const works = await js("fetch('/api/works').then((r) => r.json()).then((d) => d.items.length)");
+      result.export = { seconds: Math.round((Date.now() - t0) / 1000), download: downloads[0] || null, works };
+      if (!downloads[0] || downloads[0].state !== 'completed' || downloads[0].size < 100_000) result.error = '导出没成功：' + JSON.stringify(result.export);
+    }
   } catch (e) { result.error = String(e.stack || e); }
   fs.mkdirSync(outDir, { recursive: true });
   fs.writeFileSync(path.join(outDir, 'selftest.json'), JSON.stringify(result, null, 2));
