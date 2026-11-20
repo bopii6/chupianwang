@@ -17,7 +17,8 @@ const EXE = `chupianwang-setup-${pkg.version}.exe`;
 
 const fail = (m) => { console.error(`\n× ${m}`); process.exit(1); };
 const step = (m) => console.log(`\n== ${m}`);
-const sh = (cmd, args, opts = {}) => spawnSync(cmd, args, { cwd: ROOT, encoding: 'utf8', shell: process.platform === 'win32' && !path.isAbsolute(cmd), ...opts });
+// Windows 上 npm/npx 是 .cmd，要经过命令行；gh、git 是 exe，不能经过命令行（带空格、换行的参数会被拆开）
+const sh = (cmd, args, opts = {}) => spawnSync(cmd, args, { cwd: ROOT, encoding: 'utf8', shell: process.platform === 'win32' && ['npm', 'npx'].includes(cmd), ...opts });
 const must = (cmd, args) => { const r = sh(cmd, args, { stdio: 'inherit' }); if (r.status !== 0) fail(`没通过：${cmd} ${args.join(' ')}`); };
 
 step(`准备发布 ${TAG} 到 ${owner}/${repo}`);
