@@ -13,6 +13,8 @@ const RES = DEV ? path.join(APP_DIR, 'build') : process.resourcesPath;
 const DATA_DIR = process.env.CPW_DATA_DIR || app.getPath('userData');
 const PREFERRED_PORT = 51730; // 固定端口：草稿、偏好存在浏览器本地，端口一变就读不到了
 
+// 自检用单独的浏览器配置：电脑上正开着出片王也不冲突（“只开一个”是按这个配置目录算的）
+if (process.env.CPW_SELFTEST) app.setPath('userData', path.join(process.env.CPW_SELFTEST, 'profile'));
 if (!app.requestSingleInstanceLock()) app.quit(); // 已经开着一个：把那个窗口叫到前面，这个退出
 let win = null;
 const downloads = []; // 本次运行下载（导出）完成的文件，自检用
