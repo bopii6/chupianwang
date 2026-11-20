@@ -1,4 +1,4 @@
-// 微信出片 - 轻量服务端
+// 出片王 - 轻量服务端
 // 只做三件事：静态文件、AI 文案代理（密钥留在服务端）、配音。
 // 渲染全部在用户浏览器里完成，不占服务器算力。
 import http from 'node:http';
@@ -6,7 +6,8 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import dns from 'node:dns';
 import net from 'node:net';
@@ -17,23 +18,38 @@ import { handleAuth, currentUser, hasQuota, useQuota } from './lib/auth.js';
 import { handleWorks, serveWorkFile } from './lib/works.js';
 import { handleJobs } from './lib/jobs.js';
 import { handleMcp } from './lib/mcp.js';
+import { handleSettings } from './lib/settings.js';
+import { APP_ROOT, ENV_FILE, LOG_FILE, WORKS_DIR, CACHE_DIR, MODELS_DIR } from './lib/paths.js';
 
-const ROOT = path.dirname(fileURLToPath(import.meta.url));
-const WORKS = path.join(ROOT, 'works'); // 作品墙：导出的成片存这里
+const ROOT = APP_ROOT; // 程序文件（只读）；客户数据的位置见 lib/paths.js
+const WORKS = WORKS_DIR; // 作品墙：导出的成片存这里
 fs.mkdirSync(WORKS, { recursive: true });
 const portArg = process.argv.indexOf('--port');
 const PORT = Number((portArg > 0 && process.argv[portArg + 1]) || process.env.PORT || 5173);
 
+// 版本号：页面右下角显示，诊断信息里也带上，客户报问题时一眼知道是哪一版
+const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+const COMMIT = (() => { try { return spawnSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: ROOT, encoding: 'utf8', windowsHide: true }).stdout.trim(); } catch { return ''; } })();
+const STARTED = new Date();
+
 // ---------- .env ----------
+// 启动时就在环境变量里的（比如测试明确设成空）以它为准；从 .env 读来的，.env 改了再读会更新（填了密钥不用重启）
+const FROM_ENV_FILE = new Set();
 function loadEnv() {
-  const f = path.join(ROOT, '.env');
+  const f = ENV_FILE;
   if (!fs.existsSync(f)) return;
   for (const line of fs.readFileSync(f, 'utf8').split(/\r?\n/)) {
     const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+    if (!m || (m[1] in process.env && !FROM_ENV_FILE.has(m[1]))) continue;
+    process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+    FROM_ENV_FILE.add(m[1]);
   }
 }
 loadEnv();
+
+// 默认只听本机：同一个 WiFi 里的其他电脑、手机都连不上。真要局域网用（比如手机扫码上传），在 .env 里设 HOST=0.0.0.0
+const HOST = process.env.HOST || '127.0.0.1';
+const LOCAL_ONLY = ['127.0.0.1', 'localhost', '::1'].includes(HOST);
 
 // ---------- 静态文件 ----------
 const MIME = {
@@ -55,7 +71,7 @@ const STATIC_MOUNTS = [
   ['/vendor/ort/', path.join(ROOT, 'node_modules/onnxruntime-web/dist/'), LONG_CACHE],
   ['/vendor/opencc/', path.join(ROOT, 'node_modules/opencc-js/dist/esm/')],
   ['/vendor/mp4box/', path.join(ROOT, 'node_modules/mp4box/dist/')],
-  ['/models/asr/', path.join(ROOT, '.cache/models/web/'), LONG_CACHE], // 约 250MB，正式上线建议放 CDN（设 ASR_MODEL_BASE）
+  ['/models/asr/', MODELS_DIR + path.sep, LONG_CACHE], // 约 250MB，正式上线建议放 CDN（设 ASR_MODEL_BASE）
   ['/', path.join(ROOT, 'public/')],
 ];
 
@@ -91,7 +107,7 @@ function sendJson(res, code, obj) {
 }
 
 // ---------- 配音（开发期用 edge-tts，商用请换 Azure 语音服务） ----------
-const TTS_CACHE = path.join(ROOT, '.cache', 'tts');
+const TTS_CACHE = path.join(CACHE_DIR, 'tts');
 fs.mkdirSync(TTS_CACHE, { recursive: true });
 const VOICES = new Set(['zh-CN-YunxiNeural', 'zh-CN-YunyangNeural', 'zh-CN-XiaoxiaoNeural', 'zh-CN-XiaoyiNeural', 'zh-CN-YunjianNeural']);
 
@@ -247,14 +263,14 @@ async function handleFetchUrl(req, res) {
 // ---------- 正版素材搜索（Pexels：免费、可商用） ----------
 // 密钥只在服务端；图片本身由浏览器直接从 Pexels CDN 加载（对方允许跨域），不占服务器带宽。
 // 同一个关键词的结果缓存 7 天：所有客户共用，省接口次数（免费额度 200 次/小时）。
-const STOCK_CACHE = path.join(ROOT, '.cache', 'stock');
+const STOCK_CACHE = path.join(CACHE_DIR, 'stock');
 fs.mkdirSync(STOCK_CACHE, { recursive: true });
 async function handleStock(req, res, query) {
   const q = String(query.get('q') || '').trim().slice(0, 80);
   if (!q) return sendJson(res, 400, { error: '缺少关键词' });
   if (!process.env.PEXELS_API_KEY) loadEnv(); // 填了密钥不用重启
   const key = process.env.PEXELS_API_KEY;
-  if (!key) return sendJson(res, 400, { error: '服务端还没有配置 PEXELS_API_KEY（在项目根目录的 .env 文件里填写）', code: 'no-key' });
+  if (!key) return sendJson(res, 400, { error: '还没填实拍图素材库的密钥。点页面右下角的「出片王」版本号 →「去填」→ 展开「实拍图」那一栏', code: 'no-key' });
   const file = path.join(STOCK_CACHE, crypto.createHash('sha1').update(q.toLowerCase()).digest('hex') + '.json');
   try {
     const st = await fsp.stat(file);
@@ -296,7 +312,7 @@ async function deepseek(messages, { temperature = 0.7, max_tokens = 8000 } = {})
 // 第一步：拆出原视频为什么火、它的打法，推荐用哪个形式来做
 async function handleRemixPlan(req, res) {
   const { reference = '', forms = [] } = await readJson(req);
-  if (!process.env.DEEPSEEK_API_KEY) return sendJson(res, 400, { error: '服务端还没有配置 DEEPSEEK_API_KEY' });
+  if (!process.env.DEEPSEEK_API_KEY) return sendJson(res, 400, { error: '还没填 AI 密钥。点页面右下角的「出片王」版本号，在「AI 写文案」那一行点「去填」', code: 'no-key' });
   const ref = String(reference).trim().slice(0, 12000);
   if (ref.replace(/\s/g, '').length < 20) return sendJson(res, 400, { error: '视频里的话太少了，复刻不了' });
   const list = (Array.isArray(forms) ? forms : []).slice(0, 20)
@@ -363,7 +379,7 @@ function fabricated(text, source) {
 async function handleScript(req, res, me = null) {
   const { form, input, minutes = 2, account = '', materials = [], reference = '', plan = null, industry = '' } = await readJson(req);
   const key = process.env.DEEPSEEK_API_KEY;
-  if (!key) return sendJson(res, 400, { error: '服务端还没有配置 DEEPSEEK_API_KEY（在项目根目录的 .env 文件里填写）' });
+  if (!key) return sendJson(res, 400, { error: '还没填 AI 密钥。点页面右下角的「出片王」版本号，在「AI 写文案」那一行点「去填」', code: 'no-key' });
   const promptFile = path.join(ROOT, 'prompts', `${String(form).replace(/[^a-z0-9-]/g, '')}.md`);
   if (!fs.existsSync(promptFile)) return sendJson(res, 400, { error: '未知的形式' });
   const system = await fsp.readFile(promptFile, 'utf8');
@@ -482,13 +498,75 @@ ${ref}` : '';
   }
 }
 
+// ---------- 访问限制 ----------
+// 1. 只认 localhost / 127.0.0.1 这个地址（防“DNS 重绑定”：恶意网页把自己的域名指到本机来调接口）
+// 2. 会改东西的请求（POST/PUT/DELETE）必须来自本页面自己：别的网站不能偷偷让浏览器来删作品、刷 AI 额度
+const LOCAL_HOST_RE = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i;
+function rejectReason(req) {
+  const host = String(req.headers.host || '');
+  if (LOCAL_ONLY && !LOCAL_HOST_RE.test(host)) return '只能在这台电脑上用 http://localhost 打开';
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return '';
+  const origin = req.headers.origin;
+  if (origin && origin !== `http://${host}`) return '不接受其他网站发来的请求';
+  if (!origin && req.headers['sec-fetch-site'] === 'cross-site') return '不接受其他网站发来的请求';
+  return '';
+}
+
+// ---------- 诊断信息（客户出问题时一键复制给我们） ----------
+const clientErrors = []; // 页面上最近的报错，最多留 30 条
+function pushClientError(e) {
+  clientErrors.push(e);
+  if (clientErrors.length > 30) clientErrors.shift();
+  console.error(`[页面出错] ${e.page} ${e.message}${e.stack ? '\n' + e.stack : ''}`);
+}
+function tail(file, n) {
+  try {
+    const st = fs.statSync(file);
+    const fd = fs.openSync(file, 'r');
+    const len = Math.min(st.size, 64 * 1024);
+    const buf = Buffer.alloc(len);
+    fs.readSync(fd, buf, 0, len, st.size - len);
+    fs.closeSync(fd);
+    // 登录验证码、邮箱这些不带出去
+    return buf.toString('utf8').split(/\r?\n/).filter((l) => !/验证码/.test(l)).slice(-n).join('\n')
+      .replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, '***@***');
+  } catch { return '（没有）'; }
+}
+function checkPython() {
+  const r = spawnSync(process.env.PYTHON || 'python', ['-c', 'import edge_tts,sys;print(sys.version.split()[0], edge_tts.__version__)'], { encoding: 'utf8', windowsHide: true, timeout: 8000 });
+  return r.status === 0 ? r.stdout.trim() : `不可用：${(r.error?.message || r.stderr || '').trim().split('\n').pop()}`;
+}
+async function handleDiag(req, res) {
+  const asrDir = path.join(MODELS_DIR, 'onnx-community', 'whisper-base');
+  const works = fs.existsSync(WORKS) ? fs.readdirSync(WORKS).filter((f) => f.endsWith('.mp4')).length : 0;
+  sendJson(res, 200, {
+    version: PKG.version, commit: COMMIT, started: STARTED.toISOString(),
+    node: process.versions.node, os: `${os.type()} ${os.release()} ${os.arch()}`,
+    cpus: os.cpus().length, memoryGB: Math.round(os.totalmem() / 2 ** 30), freeMemoryGB: Math.round(os.freemem() / 2 ** 30),
+    aiKey: !!process.env.DEEPSEEK_API_KEY, stockKey: !!process.env.PEXELS_API_KEY,
+    tts: checkPython(), asrModel: fs.existsSync(path.join(asrDir, 'config.json')) ? '已下载' : '没下载',
+    works, clientErrors: clientErrors.slice(-10),
+    log: tail(LOG_FILE, 60),
+  });
+}
+
 // ---------- 路由 ----------
 http.createServer(async (req, res) => {
   const { pathname } = new URL(req.url, 'http://x');
   // 跨源隔离：浏览器里转文字要用多线程（SharedArrayBuffer）。用 credentialless，外站图片（Pexels）照常能加载
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
   res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
+  const why = rejectReason(req);
+  if (why) { res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end(why); }
   try {
+    if (req.method === 'GET' && pathname === '/api/diag') return await handleDiag(req, res);
+    if (pathname === '/api/settings') return await handleSettings(req, res, { readJson, sendJson, markFromEnvFile: (k) => FROM_ENV_FILE.add(k) });
+    if (req.method === 'POST' && pathname === '/api/client-error') {
+      const b = await readJson(req).catch(() => ({}));
+      const s = (v, n) => String(v ?? '').slice(0, n);
+      pushClientError({ at: new Date().toISOString(), page: s(b.page, 200), message: s(b.message, 500), stack: s(b.stack, 1500) });
+      return sendJson(res, 200, { ok: true });
+    }
     if (req.method === 'POST' && pathname === '/api/tts') return await handleTts(req, res);
     if (req.method === 'POST' && pathname === '/api/tts-batch') return await handleTtsBatch(req, res);
     const tf = pathname.match(/^\/api\/tts-file\/([0-9a-f]{40})\.mp3$/);
@@ -510,13 +588,13 @@ http.createServer(async (req, res) => {
     if (req.method === 'POST' && pathname === '/api/debug-frame' && process.env.NODE_ENV !== 'production') {
       // 开发调试：把浏览器里渲染的某一帧存成图片
       const { name, data } = await readJson(req);
-      const dir = path.join(ROOT, '.cache', 'frames');
+      const dir = path.join(CACHE_DIR, 'frames');
       await fsp.mkdir(dir, { recursive: true });
       await fsp.writeFile(path.join(dir, String(name).replace(/[^\w.-]/g, '') + '.png'), Buffer.from(String(data).split(',')[1], 'base64'));
       return sendJson(res, 200, { ok: true });
     }
     if (req.method === 'POST' && pathname === '/api/debug-file' && process.env.NODE_ENV !== 'production') {
-      const dir = path.join(ROOT, '.cache', 'frames');
+      const dir = path.join(CACHE_DIR, 'frames');
       await fsp.mkdir(dir, { recursive: true });
       const fname = (new URL(req.url, 'http://x').searchParams.get('name') || 'export').replace(/[^\w.-]/g, '');
       const out = fs.createWriteStream(path.join(dir, fname + '.mp4'));
@@ -527,11 +605,11 @@ http.createServer(async (req, res) => {
     if (pathname.startsWith('/api/jobs')) return await handleJobs(req, res, pathname, new URL(req.url, 'http://x').searchParams);
     if (pathname.startsWith('/api/works')) return await handleWorks(req, res, pathname, WORKS, new URL(req.url, 'http://x').searchParams); // 作品墙
     if (pathname.startsWith('/works/')) return await serveWorkFile(req, res, pathname, WORKS); // 作品墙视频（支持 Range）
-    if (req.method === 'GET' && pathname === '/api/status') { if (!process.env.PEXELS_API_KEY) loadEnv(); return sendJson(res, 200, { ai: !!process.env.DEEPSEEK_API_KEY, stock: !!process.env.PEXELS_API_KEY, asrBase: process.env.ASR_MODEL_BASE || '/models/asr/', asrModel: process.env.ASR_MODEL || 'whisper-base', authRequired: process.env.AUTH_REQUIRED === '1', jobWorker: process.env.JOB_WORKER === '1' }); }
+    if (req.method === 'GET' && pathname === '/api/status') { if (!process.env.PEXELS_API_KEY) loadEnv(); return sendJson(res, 200, { ai: !!process.env.DEEPSEEK_API_KEY, stock: !!process.env.PEXELS_API_KEY, asrBase: process.env.ASR_MODEL_BASE || '/models/asr/', asrModel: process.env.ASR_MODEL || 'whisper-base', authRequired: process.env.AUTH_REQUIRED === '1', jobWorker: process.env.JOB_WORKER === '1', version: PKG.version, commit: COMMIT }); }
     if (req.method === 'GET' && (await serveStatic(req, res, pathname))) return;
     res.writeHead(404); res.end('not found');
   } catch (e) {
     console.error(e);
     if (!res.headersSent) sendJson(res, 500, { error: String(e.message || e) });
   }
-}).listen(PORT, () => console.log(`微信出片 已启动: http://localhost:${PORT}`));
+}).listen(PORT, HOST, () => console.log(`出片王 v${PKG.version}${COMMIT ? ` (${COMMIT})` : ''} 已启动: http://localhost:${PORT}${LOCAL_ONLY ? '（只允许本机访问）' : `（局域网可访问，HOST=${HOST}）`}`));

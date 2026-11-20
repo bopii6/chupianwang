@@ -1337,7 +1337,7 @@ function applyQueryForm(formName) {
   }
 }
 
-// 从外部（选题雷达 / 微信出片 / 任务接口）带主题进来：?topic=&form=&minutes=&auto=&job=&account=&mode=&industry=
+// 从外部（选题雷达 / 出片王 / 任务接口）带主题进来：?topic=&form=&minutes=&auto=&job=&account=&mode=&industry=
 ;(async () => {
   const q = new URLSearchParams(location.search)
   const topic = q.get('topic')

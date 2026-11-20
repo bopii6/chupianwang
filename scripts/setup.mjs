@@ -1,11 +1,11 @@
-// 微信出片：客户电脑一键安装 / 检查（可以反复运行，装好的会跳过）
+// 出片王：客户电脑一键安装 / 检查（可以反复运行，装好的会跳过）
 //   node scripts/setup.mjs
 // 做的事：
 //   1. 装网页依赖（npm install，走国内镜像）
 //   2. 装配音（Python 的 edge-tts，走国内镜像）
 //   3. 下载“用别人的爆款做”要用的听写模型（约 77MB，走国内镜像）
 //   4. 没有 .env 就从 .env.example 复制一份（DeepSeek 密钥要手动填）
-//   5. 让电脑上的 Claude 记住：说“打开微信出片”就运行本项目的 打开微信出片.bat
+//   5. 让电脑上的 Claude 记住：说“打开出片王”就运行本项目的 打开出片王.bat
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import os from 'node:os';
@@ -21,7 +21,7 @@ const problems = [];
 const run = (cmd, args) => spawnSync(cmd, args, { cwd: ROOT, stdio: 'inherit' });
 const quiet = (cmd, args) => spawnSync(cmd, args, { cwd: ROOT, encoding: 'utf8' });
 
-console.log('微信出片 · 安装检查\n项目位置：' + ROOT);
+console.log('出片王 · 安装检查\n项目位置：' + ROOT);
 
 // ---------- 1. Node 版本 ----------
 step('1/5 检查 Node.js');
@@ -36,7 +36,7 @@ if (need.every((p) => fs.existsSync(path.join(ROOT, 'node_modules', p, 'package.
 else {
   console.log('  正在安装（第一次大约 1–3 分钟）…');
   // Windows 上 npm 是 npm.cmd，要经过 cmd 才能运行
-  const r = spawnSync(process.platform === 'win32' ? 'npm.cmd install --no-audit --no-fund --registry=https://registry.npmmirror.com' : 'npm install --no-audit --no-fund --registry=https://registry.npmmirror.com', { cwd: ROOT, stdio: 'inherit', shell: true });
+  const r = spawnSync(process.platform === 'win32' ? 'npm.cmd install --omit=dev --no-audit --no-fund --registry=https://registry.npmmirror.com' : 'npm install --omit=dev --no-audit --no-fund --registry=https://registry.npmmirror.com', { cwd: ROOT, stdio: 'inherit', shell: true });
   if (r.status === 0) ok('装好了'); else { problems.push('npm install 失败，看上面的报错；网络不好就再运行一次'); warn(problems.at(-1)); }
 }
 
@@ -95,27 +95,30 @@ const env = fs.readFileSync(envFile, 'utf8');
 if (!/^DEEPSEEK_API_KEY=[ 	]*\S+/m.test(env)) { problems.push('.env 里的 DEEPSEEK_API_KEY 还没填（不填就不能 AI 写文案）'); warn(problems.at(-1)); }
 else ok('.env 已配置 AI 密钥');
 
-// 让电脑上的 Claude 不管在哪个目录，听到“打开微信出片”都知道怎么做
+// 让电脑上的 Claude 不管在哪个目录，听到“打开出片王”都知道怎么做
 const claudeDir = path.join(os.homedir(), '.claude');
 const claudeMd = path.join(claudeDir, 'CLAUDE.md');
-const BEGIN = '<!-- 微信出片:开始 -->', END = '<!-- 微信出片:结束 -->';
+const BEGIN = '<!-- 出片王:开始 -->', END = '<!-- 出片王:结束 -->';
 const bat = (n) => path.join(ROOT, n);
 const block = `${BEGIN}
-## 微信出片（本机视频出片工具）
-- 用户说“打开微信出片”“帮我打开微信出片儿”之类：运行 \`"${bat('打开微信出片.bat')}"\`（它会在后台启动服务并用浏览器打开 http://localhost:5173 ），然后告诉用户已打开。不要用前台方式运行 node server.js。
-- 用户说“更新微信出片”：运行 \`"${bat('更新微信出片.bat')}"\`。
-- 用户说“关掉微信出片”：运行 \`node "${path.join(ROOT, 'scripts', 'open.mjs')}" --stop\`。
+## 出片王（本机视频出片工具，以前叫“微信出片”，用户说旧名字也照下面做）
+- 用户说“打开出片王”“打开微信出片”之类：运行 \`"${bat('打开出片王.bat')}"\`（它会在后台启动服务并用浏览器打开 http://localhost:5173 ），然后告诉用户已打开。不要用前台方式运行 node server.js。
+- 用户说“更新出片王”：运行 \`"${bat('更新出片王.bat')}"\`。
+- 用户说“出片王退回上一版”（更新后不好用）：运行 \`node "${path.join(ROOT, 'scripts', 'update.mjs')}" --rollback\`。
+- 用户说“关掉出片王”：运行 \`node "${path.join(ROOT, 'scripts', 'open.mjs')}" --stop\`。
 - 打不开时：看 \`${path.join(ROOT, 'server.log')}\` 的最后几十行找原因；缺东西就运行 \`node "${path.join(ROOT, 'scripts', 'setup.mjs')}"\`。
 ${END}`;
 if (process.argv.includes('--no-claude')) ok('跳过 Claude 口令（--no-claude）');
 else try {
   await fsp.mkdir(claudeDir, { recursive: true });
+  // 改名前写进去的旧口令（“微信出片”）先删掉，免得 Claude 去运行已经不用的文件
   const old = fs.existsSync(claudeMd) ? fs.readFileSync(claudeMd, 'utf8') : '';
+  const cleaned = old.replace(/\n*<!-- 微信出片:开始 -->[\s\S]*?<!-- 微信出片:结束 -->\n?/, '\n');
   const re = new RegExp(`${BEGIN}[\\s\\S]*?${END}`);
-  const next = re.test(old) ? old.replace(re, block) : (old.trim() ? old.trimEnd() + '\n\n' : '') + block + '\n';
+  const next = re.test(cleaned) ? cleaned.replace(re, block) : (cleaned.trim() ? cleaned.trimEnd() + '\n\n' : '') + block + '\n';
   if (next !== old) fs.writeFileSync(claudeMd, next, 'utf8');
-  ok('已告诉 Claude：说“打开微信出片”就能打开（' + claudeMd + '）');
+  ok('已告诉 Claude：说“打开出片王”就能打开（' + claudeMd + '）');
 } catch (e) { warn('没写进 Claude 的设置：' + e.message); }
 
-console.log('\n' + (problems.length ? `还有 ${problems.length} 件事要处理：\n- ${problems.join('\n- ')}` : '全部就绪。双击「打开微信出片.bat」，或对 Claude 说“打开微信出片”。'));
+console.log('\n' + (problems.length ? `还有 ${problems.length} 件事要处理：\n- ${problems.join('\n- ')}` : '全部就绪。双击「打开出片王.bat」，或对 Claude 说“打开出片王”。'));
 process.exitCode = problems.length ? 1 : 0;

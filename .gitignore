@@ -20,3 +20,7 @@ tmp/
 .chrome-dump/
 .chrome-shot2/
 !.env.example
+
+# 打包产物
+build/
+dist/

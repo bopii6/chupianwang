@@ -182,7 +182,7 @@ async function fromLink(u) {
     busy(true, '下载好了，正在转文字…');
     const blob = await (await fetch(r.videoUrl)).blob();
     const file = new File([blob], 'link.mp4', { type: 'video/mp4' });
-    const asr = await (await loadAsr()).transcribe(file, { base: '/models/asr/', model: 'whisper-small' });
+    const asr = await (await loadAsr()).transcribe(file, { base: '/models/asr/', model: await pickAsrModel() });
     if (!asr.text) throw new Error('没听出人声，这条可能只有音乐');
     textEl.value = asr.text;
     busy(true, 'AI 正在拆解（约 20 秒）');
@@ -196,6 +196,10 @@ async function fromLink(u) {
 // 视频 / 音频 → 转写 → 拆解
 let asrMod = null;
 const loadAsr = () => (asrMod ||= import('/engine/asr.js'));
+// 听写模型：电脑上有更准的 whisper-small 就用它，没有就用安装包自带的 whisper-base
+let asrModel = null;
+const pickAsrModel = () => (asrModel ||= fetch('/models/asr/onnx-community/whisper-small/config.json', { cache: 'no-store' })
+  .then((r) => (r.ok ? 'whisper-small' : 'whisper-base')).catch(() => 'whisper-base'));
 async function fromVideo(file) {
   if (!file) return;
   if (!/^(video|audio)\//.test(file.type) && !/\.(mp4|mov|m4v|webm|mkv|avi|flv|mp3|m4a|aac|wav|ogg|opus|amr)$/i.test(file.name)) { toast('只支持视频或音频文件'); return; }
@@ -205,7 +209,7 @@ async function fromVideo(file) {
   busy(true, '正在转文字…');
   const timer = setInterval(() => busy(true, `转文字 ${Math.round((Date.now() - t0) / 1000)} 秒，大约是视频时长的 2/3`), 1000);
   try {
-    const asr = await (await loadAsr()).transcribe(file, { base: '/models/asr/', model: 'whisper-small' });
+    const asr = await (await loadAsr()).transcribe(file, { base: '/models/asr/', model: await pickAsrModel() });
     if (!asr.text) throw new Error('没听出人声，这条可能只有音乐');
     textEl.value = asr.text;
     await analyzeText(asr.text);
@@ -294,7 +298,7 @@ $('modal').addEventListener('close', () => { if (!$('vLib').classList.contains('
   } catch (e) { $('err').textContent = '打不开文案库：' + e.message; return; }
   updateCount();
   textEl.value = store.get('cl.draft', '');
-  if (!META.ai) $('err').textContent = '服务端没有配置 DEEPSEEK_API_KEY，暂时不能拆解';
+  if (!META.ai) $('err').textContent = '还没填 AI 密钥，暂时不能拆解。点右下角的「出片王」版本号 →「去填」';
   show(store.get('cl.view', 'add') === 'lib' ? 'lib' : 'add');
   if (!$('vAdd').classList.contains('hidden')) textEl.focus();
 })();

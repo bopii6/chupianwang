@@ -1,0 +1,198 @@
+// 售后支持（三个页面共用，由 nav.js 引入）：
+// 1. 一打开就检查浏览器能不能导出视频，不行就在顶上提示，别等做完了才发现
+// 2. 页面上的报错自动记到 server.log，客户说“点了没反应”时有据可查
+// 3. 右下角显示版本号，点开能一键复制诊断信息，客户直接发给我们
+const css = `
+.sup-bar{position:sticky;top:0;z-index:60;background:#fff4ec;color:#8a2c00;border-bottom:1px solid rgba(255,90,31,.25);padding:10px 16px;font-size:13px;line-height:1.5;text-align:center}
+.sup-bar b{color:#c2410c}
+.sup-ver{position:fixed;right:12px;bottom:10px;z-index:40;font:12px/1 system-ui,sans-serif;color:var(--text-3,#908c84);background:transparent;border:0;padding:6px 8px;border-radius:8px;cursor:pointer;opacity:.75}
+.sup-ver:hover{opacity:1;background:var(--surface-2,#f3f2ee)}
+.sup-mask{position:fixed;inset:0;z-index:70;background:rgba(20,18,14,.35);display:flex;align-items:center;justify-content:center;padding:16px}
+.sup-card{background:var(--surface,#fff);color:var(--text,#141310);border-radius:var(--r-lg,20px);box-shadow:var(--shadow-lg,0 30px 60px -24px rgba(0,0,0,.3));width:min(520px,100%);max-height:86vh;display:flex;flex-direction:column;padding:22px;gap:12px;font-size:14px}
+.sup-card h3{margin:0;font-size:17px}
+.sup-card p{margin:0;color:var(--text-2,#57544e);line-height:1.6}
+.sup-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13px}
+.sup-card dt{color:var(--text-3,#908c84)}
+.sup-card dd{margin:0;word-break:break-all}
+.sup-card .bad{color:var(--danger,#e5484d)}
+.sup-row{display:flex;gap:10px;justify-content:flex-end;margin-top:4px}
+.sup-row button{border:0;border-radius:999px;padding:10px 18px;font-size:14px;cursor:pointer;background:var(--surface-2,#f3f2ee);color:inherit}
+.sup-in{width:100%;box-sizing:border-box;border:1px solid var(--hair-2,rgba(20,18,14,.13));border-radius:var(--r-sm,10px);padding:11px 12px;font:14px/1.2 ui-monospace,Consolas,monospace;background:var(--surface,#fff);color:inherit}
+.sup-in:focus{outline:2px solid var(--accent,#ff5a1f);outline-offset:-1px}
+.sup-card details summary{cursor:pointer;color:var(--text-2,#57544e);font-size:13px}
+.sup-card a{color:var(--accent,#ff5a1f)}
+.sup-msg:empty,.sup-now:empty{display:none}
+.sup-row button:disabled{opacity:.6;cursor:default}
+.sup-row button.pri{background:var(--accent,#ff5a1f);color:#fff;font-weight:600}
+`;
+const style = document.createElement('style');
+style.textContent = css;
+document.head.appendChild(style);
+
+// ---------- 报错自动上报到本机 server.log ----------
+let sent = 0;
+function report(message, stack = '') {
+  if (sent++ > 20) return; // 同一个页面最多报 20 条，免得刷屏
+  const body = JSON.stringify({ page: location.pathname + location.search, message: String(message).slice(0, 500), stack: String(stack || '').slice(0, 1500) });
+  fetch('/api/client-error', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
+}
+addEventListener('error', (e) => { if (e.message) report(e.message, e.error?.stack || `${e.filename}:${e.lineno}`); });
+addEventListener('unhandledrejection', (e) => { const r = e.reason; report(r?.message || r, r?.stack); });
+
+// ---------- 浏览器能不能出片 ----------
+async function checkBrowser() {
+  const problems = [];
+  const hasApi = typeof VideoEncoder !== 'undefined' && typeof AudioEncoder !== 'undefined' && typeof OffscreenCanvas !== 'undefined';
+  if (!hasApi) problems.push('不能导出视频');
+  else {
+    try {
+      const { supported } = await VideoEncoder.isConfigSupported({ codec: 'avc1.640028', width: 1080, height: 1920, bitrate: 2_500_000, framerate: 30 });
+      const base = supported || (await VideoEncoder.isConfigSupported({ codec: 'avc1.42001f', width: 720, height: 1280, bitrate: 2_000_000, framerate: 30 })).supported;
+      if (!base) problems.push('不支持 H.264 视频编码');
+    } catch { problems.push('不支持 H.264 视频编码'); }
+  }
+  if (typeof SharedArrayBuffer === 'undefined') problems.push('不能在本机转文字（“用别人的爆款做”会很慢或用不了）');
+  return problems;
+}
+const browserProblems = checkBrowser();
+browserProblems.then((list) => {
+  if (!list.length) return;
+  const phone = matchMedia('(pointer: coarse)').matches;
+  const bar = document.createElement('div');
+  bar.className = 'sup-bar';
+  bar.innerHTML = phone
+    ? '手机浏览器还不能出片，<b>请用电脑上的 Chrome 或 Edge 打开</b>'
+    : `这个浏览器${list.join('、')}。<b>请用最新版 Chrome 或 Edge 打开</b>（360、QQ 等浏览器内核太旧）`;
+  document.body.prepend(bar);
+});
+
+// ---------- 版本号 + 诊断信息 ----------
+const ver = document.createElement('button');
+ver.className = 'sup-ver';
+ver.type = 'button';
+ver.title = '版本信息 / 出问题时复制诊断信息';
+ver.textContent = '出片王';
+document.body.appendChild(ver);
+fetch('/api/status').then((r) => r.json()).then((s) => {
+  if (s.version) ver.textContent = `出片王 v${s.version}`;
+  // 第一次用、还没填 AI 密钥：直接弹出填写框（这次打开只弹一次）
+  let shown = false;
+  try { shown = sessionStorage.getItem('cpw-key-asked') === '1'; sessionStorage.setItem('cpw-key-asked', '1'); } catch { /* 隐私模式 */ }
+  if (!s.ai && !shown) openSettings(true);
+}).catch(() => {});
+
+// ---------- 设置：AI 密钥 ----------
+function openSettings(first = false) {
+  document.querySelector('.sup-mask[data-settings]')?.remove();
+  const mask = document.createElement('div');
+  mask.className = 'sup-mask';
+  mask.dataset.settings = '1';
+  mask.innerHTML = `<div class="sup-card" role="dialog" aria-label="AI 密钥设置">
+    <h3>${first ? '先填一下 AI 密钥' : 'AI 密钥设置'}</h3>
+    <p>${first ? '写文案要用 DeepSeek 的 AI。' : ''}到 <b>platform.deepseek.com</b> 登录 →「API keys」→ 创建，把 <b>sk-</b> 开头的那一串复制过来。保存时会先试一下能不能用。</p>
+    <p class="sup-now">正在读取…</p>
+    <input class="sup-in" type="password" placeholder="sk-…" autocomplete="off" spellcheck="false" data-ds>
+    <details><summary>深度解读模板的实拍图（选填）</summary>
+      <p style="margin-top:8px">到 <b>pexels.com/api</b> 免费申请，填进来后“深度解读”模板会自动配实拍图。</p>
+      <input class="sup-in" type="password" placeholder="Pexels 密钥（选填）" autocomplete="off" spellcheck="false" data-px>
+    </details>
+    <p class="sup-msg"></p>
+    <div class="sup-row"><button type="button" data-x>${first ? '先看看示例' : '关闭'}</button><button type="button" class="pri" data-save>保存</button></div>
+  </div>`;
+  document.body.appendChild(mask);
+  const $ = (s) => mask.querySelector(s);
+  const close = () => mask.remove();
+  $('[data-x]').onclick = close;
+  mask.addEventListener('click', (e) => { if (e.target === mask) close(); });
+  fetch('/api/settings?check=1').then((r) => r.json()).then((d) => {
+    const ds = d.deepseek || {};
+    $('.sup-now').innerHTML = ds.filled
+      ? `现在用的：${esc(ds.masked)}${ds.ok ? `　余额 <b>${esc(ds.balance)}</b>${ds.available ? '' : '（<span class="bad">余额不足，写不了文案</span>）'}` : ds.error ? `　<span class="bad">${esc(ds.error)}</span>` : ''}`
+      : '<span class="bad">还没填</span>';
+    if (d.pexels?.filled) $('[data-px]').placeholder = `已填写 ${d.pexels.masked}（不改就留空）`;
+  }).catch(() => { $('.sup-now').textContent = ''; });
+  $('[data-save]').onclick = async () => {
+    const body = {};
+    const ds = $('[data-ds]').value.trim(); const px = $('[data-px]').value.trim();
+    if (ds) body.deepseekKey = ds;
+    if (px) body.pexelsKey = px;
+    if (!Object.keys(body).length) { $('.sup-msg').innerHTML = '<span class="bad">还没填内容</span>'; return; }
+    const btn = $('[data-save]');
+    btn.disabled = true; btn.textContent = '正在检查…';
+    try {
+      const r = await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || '保存失败');
+      $('.sup-msg').innerHTML = `✓ 已保存${d.deepseek?.balance ? `，DeepSeek 余额 ${esc(d.deepseek.balance)}` : ''}`;
+      btn.textContent = '好了';
+      btn.disabled = false;
+      btn.onclick = close;
+    } catch (e) {
+      $('.sup-msg').innerHTML = `<span class="bad">${esc(e.message)}</span>`;
+      btn.disabled = false; btn.textContent = '保存';
+    }
+  };
+  setTimeout(() => $('[data-ds]').focus(), 50);
+}
+window.cpwOpenSettings = openSettings;
+
+function browserName() {
+  const b = navigator.userAgentData?.brands?.find((x) => !/Not.?A.?Brand|Chromium/i.test(x.brand));
+  if (b) return `${b.brand} ${b.version}`;
+  const m = navigator.userAgent.match(/(Edg|Chrome|Firefox|Version)\/([\d.]+)/);
+  return m ? `${m[1] === 'Edg' ? 'Edge' : m[1] === 'Version' ? 'Safari' : m[1]} ${m[2]}` : navigator.userAgent;
+}
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+async function openDiag() {
+  const mask = document.createElement('div');
+  mask.className = 'sup-mask';
+  mask.innerHTML = '<div class="sup-card" role="dialog" aria-label="诊断信息"><h3>诊断信息</h3><p>正在检查…</p></div>';
+  document.body.appendChild(mask);
+  mask.addEventListener('click', (e) => { if (e.target === mask) mask.remove(); });
+  let d = {};
+  try { d = await (await fetch('/api/diag')).json(); } catch (e) { d = { error: '连不上本机服务：' + e.message }; }
+  const problems = await browserProblems;
+  const rows = [
+    ['版本', d.version ? `v${d.version}${d.commit ? `（${d.commit}）` : ''}` : '?'],
+    ['浏览器', browserName()],
+    ['能否出片', problems.length ? `<span class="bad">${esc(problems.join('、'))}</span>` : '正常'],
+    ['AI 写文案', `${d.aiKey ? '已配置' : '<span class="bad">没填密钥</span>'}　<a href="#" data-set>${d.aiKey ? '修改' : '去填'}</a>`],
+    ['配音', d.tts && !/^不可用/.test(d.tts) ? '正常' : `<span class="bad">${esc(d.tts || '?')}</span>`],
+    ['听写模型', d.asrModel === '已下载' ? '已下载' : `<span class="bad">${esc(d.asrModel || '?')}</span>`],
+    ['电脑', d.os ? `${esc(d.os)}，${d.cpus} 核，内存 ${d.memoryGB}GB（空闲 ${d.freeMemoryGB}GB）` : esc(d.error || '?')],
+    ['最近报错', d.clientErrors?.length ? `<span class="bad">${d.clientErrors.length} 条</span>` : '没有'],
+  ];
+  const text = [
+    `出片王诊断信息 ${new Date().toLocaleString('zh-CN')}`,
+    `版本：v${d.version}（${d.commit}） 启动于 ${d.started}`,
+    `浏览器：${browserName()}  ${navigator.userAgent}`,
+    `屏幕：${screen.width}x${screen.height} @${devicePixelRatio}`,
+    `能否出片：${problems.length ? problems.join('、') : '正常'}`,
+    `Node ${d.node}  ${d.os}  ${d.cpus} 核  内存 ${d.memoryGB}GB（空闲 ${d.freeMemoryGB}GB）`,
+    `AI 密钥：${d.aiKey ? '有' : '没有'}  素材库密钥：${d.stockKey ? '有' : '没有'}  配音：${d.tts}  听写模型：${d.asrModel}  作品数：${d.works}`,
+    '',
+    '—— 页面最近报错 ——',
+    ...(d.clientErrors?.length ? d.clientErrors.map((e) => `${e.at} ${e.page} ${e.message}\n${e.stack}`) : ['没有']),
+    '',
+    '—— 服务日志最后 60 行 ——',
+    d.log || '',
+  ].join('\n');
+  mask.querySelector('.sup-card').innerHTML = `
+    <h3>诊断信息</h3>
+    <p>用着出了问题？点「复制」，把内容发给我们，不用截图。里面不含你的文案、视频和密钥。</p>
+    <dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
+    <div class="sup-row"><button type="button" data-x>关闭</button><button type="button" class="pri" data-copy>复制诊断信息</button></div>`;
+  mask.querySelector('[data-x]').onclick = () => mask.remove();
+  mask.querySelector('[data-set]').onclick = (e) => { e.preventDefault(); mask.remove(); openSettings(); };
+  const btn = mask.querySelector('[data-copy]');
+  btn.onclick = async () => {
+    try { await navigator.clipboard.writeText(text); }
+    catch {
+      const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); ta.remove();
+    }
+    btn.textContent = '已复制，去微信粘贴发给我们';
+  };
+}
+ver.addEventListener('click', openDiag);

@@ -1,11 +1,13 @@
-# 微信出片（装在客户电脑上的本地版）
+# 出片王（装在客户电脑上的本地版，以前叫“微信出片”）
 
-用户大多不懂技术，回复用中文、说人话，少讲命令。
+用户大多不懂技术，回复用中文、说人话，少讲命令。用户说旧名字“微信出片”也照下面做。
 
 ## 常用口令
-- “打开微信出片”：运行 `打开微信出片.bat`（后台启动服务 + 用 Chrome/Edge 打开 http://localhost:5173 ）。不要前台运行 `node server.js`，会把对话卡住。
-- “关掉微信出片”：`node scripts/open.mjs --stop`
-- “更新微信出片”：运行 `更新微信出片.bat`（git pull + 补装依赖 + 重启）
+- “打开出片王”：运行 `打开出片王.bat`（后台启动服务 + 用 Chrome/Edge 打开 http://localhost:5173 ）。不要前台运行 `node server.js`，会把对话卡住。
+- “关掉出片王”：`node scripts/open.mjs --stop`
+- “更新出片王”：运行 `更新出片王.bat`（拉新版 + 补装依赖 + 重启；新版启动失败会自动退回上一版）
+- “退回上一版”：`node scripts/update.mjs --rollback`
+- 客户说出了问题：让他点页面右下角的版本号 →「复制诊断信息」，发给我们
 - 第一次装 / 缺东西：`node scripts/setup.mjs`（npm 依赖、Python 的 edge-tts、听写模型、.env，可反复运行）
 
 ## 出问题先看

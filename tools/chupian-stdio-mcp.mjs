@@ -60,7 +60,7 @@ async function forward(msg) {
     const reason =
       err?.name === 'TimeoutError'
         ? '请求出片王超时（超过 11 分钟）'
-        : `连不上出片王（${URL_}）：${err?.message || err}。请先在本机运行「打开微信出片.bat」`;
+        : `连不上出片王（${URL_}）：${err?.message || err}。请先在本机运行「打开出片王.bat」`;
     log('network error', reason);
     if (!isNotification) writeOut(rpcError(msg.id, -32001, reason));
     return;

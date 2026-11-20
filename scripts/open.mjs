@@ -1,4 +1,4 @@
-// 打开微信出片：没在运行就在后台启动服务，然后用 Chrome / Edge 打开
+// 打开出片王：没在运行就在后台启动服务，然后用 Chrome / Edge 打开
 //   node scripts/open.mjs          启动（已在运行就直接打开浏览器）
 //   node scripts/open.mjs --stop   关掉后台服务
 //   node scripts/open.mjs --no-browser  只启动不打开浏览器
@@ -21,7 +21,7 @@ async function alive() {
 if (process.argv.includes('--stop')) {
   const pid = fs.existsSync(PID_FILE) ? Number(fs.readFileSync(PID_FILE, 'utf8')) : 0;
   if (pid) { try { process.kill(pid); } catch {} fs.rmSync(PID_FILE, { force: true }); }
-  console.log((await alive()) ? `端口 ${PORT} 上还有别的程序在运行（不是这个脚本启动的）` : '微信出片已关闭');
+  console.log((await alive()) ? `端口 ${PORT} 上还有别的程序在运行（不是这个脚本启动的）` : '出片王已关闭');
   process.exit(0);
 }
 
@@ -31,7 +31,7 @@ if (!fs.existsSync(path.join(ROOT, 'node_modules', 'mp4-muxer'))) {
   if (r.status !== 0) console.log('安装还有问题（见上面），先尝试打开');
 }
 
-if (await alive()) console.log('微信出片已经在运行');
+if (await alive()) console.log('出片王已经在运行');
 else {
   fs.mkdirSync(path.dirname(PID_FILE), { recursive: true });
   const out = fs.openSync(LOG, 'a');
@@ -45,7 +45,7 @@ else {
     console.log(fs.readFileSync(LOG, 'utf8').split('\n').slice(-20).join('\n'));
     process.exit(1);
   }
-  console.log('微信出片已启动');
+  console.log('出片王已启动');
 }
 
 if (!process.argv.includes('--no-browser')) {
