@@ -1103,3 +1103,5 @@ body { background: var(--surface); }
 .rl-empty:hover { border-color: var(--accent); color: var(--accent); }
 .rl-tip { margin: 4px 2px; font-size: 13px; color: var(--text-3); }
 .field input.need { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.ph-tile.footage img { object-fit: cover; object-position: center; }
+.ph-tile .vd { position: absolute; left: 4px; bottom: 4px; padding: 1px 6px; border-radius: 6px; background: rgba(20, 18, 14, .72); color: #fff; font-size: 11px; line-height: 16px; pointer-events: none; }

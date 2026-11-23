@@ -20,9 +20,15 @@ self.onmessage = async (e) => {
     return;
   }
   if (m.type === 'frame') {
-    const buf = m.buf && m.buf.byteLength === W * H * 1.5 ? new Uint8Array(m.buf) : new Uint8Array(W * H * 1.5);
-    form.drawFrame(ctx, { ...frameData, t: m.i / fps });
-    rgbaToI420(ctx.getImageData(0, 0, W, H).data, W, H, buf);
-    self.postMessage({ type: 'frame', i: m.i, buf: buf.buffer }, [buf.buffer]);
+    // 按顺序一帧帧处理：有视频素材的模板要先等画面解码好（异步），不能几帧同时画
+    queue = queue.then(async () => {
+      const buf = m.buf && m.buf.byteLength === W * H * 1.5 ? new Uint8Array(m.buf) : new Uint8Array(W * H * 1.5);
+      const data = { ...frameData, t: m.i / fps };
+      if (form.prepareFrame) { try { await form.prepareFrame(data); } catch { /* 画不出视频就用封面图 */ } }
+      form.drawFrame(ctx, data);
+      rgbaToI420(ctx.getImageData(0, 0, W, H).data, W, H, buf);
+      self.postMessage({ type: 'frame', i: m.i, buf: buf.buffer }, [buf.buffer]);
+    }).catch((err) => self.postMessage({ type: 'error', message: String(err?.message || err) }));
   }
 };
+let queue = Promise.resolve();

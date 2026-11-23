@@ -55,7 +55,7 @@ self.onmessage = async (e) => {
     const cores = self.navigator?.hardwareConcurrency || 4;
     // 渲染线程最多 4 个：再多会和编码器抢 CPU，反而变慢
     const k = Math.max(1, Math.min(4, Math.floor(cores / 2) - 1));
-    let frameSource = null; let draw = null;
+    let frameSource = null; let draw = null; let prepare = null;
     if (k >= 2) {
       pool = new RenderPool(k, { formUrl, frameData, width, height, fps, fontCss });
       await pool.start();
@@ -65,9 +65,10 @@ self.onmessage = async (e) => {
       const form = await import(formUrl);
       await form.preloadFonts(frameData.script);
       draw = (ctx, t) => form.drawFrame(ctx, { ...frameData, t });
+      if (form.prepareFrame) prepare = (t) => form.prepareFrame({ ...frameData, t }).catch(() => {});
     }
     const buffer = await encodeMp4({
-      width, height, fps, duration, audio, draw, frameSource,
+      width, height, fps, duration, audio, draw, prepare, frameSource,
       onProgress: (p, left) => self.postMessage({ type: 'progress', p, left }),
     });
     self.postMessage({ type: 'done', buffer, threads: k, stats: self.__exportStats }, [buffer]);

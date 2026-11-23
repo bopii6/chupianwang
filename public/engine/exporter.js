@@ -114,7 +114,7 @@ function addAdtsToMuxer(muxer, adts, sr, frameSamples, state) {
   }
 }
 
-export async function encodeMp4({ width, height, fps, duration, draw, frameSource, audio, onProgress, signal }) {
+export async function encodeMp4({ width, height, fps, duration, draw, prepare, frameSource, audio, onProgress, signal }) {
   const vcfg = await pickVideoCodec(width, height, fps);
   const sr = audio.sampleRate;
   const acfg = { codec: 'mp4a.40.2', sampleRate: sr, numberOfChannels: 2, bitrate: 160_000 };
@@ -174,6 +174,7 @@ export async function encodeMp4({ width, height, fps, duration, draw, frameSourc
     if (failure) throw failure;
     if (frameSource) { const a = performance.now(); yuv = await frameSource.get(i, frames); stats.waitFrame += performance.now() - a; }
     else {
+      if (prepare) await prepare(i / fps);
       draw(ctx, i / fps);
       rgbaToI420(ctx.getImageData(0, 0, width, height).data, width, height, yuv);
     }

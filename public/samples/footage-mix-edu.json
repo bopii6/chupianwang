@@ -1,0 +1,189 @@
+{
+ "title": "零基础美甲第一周",
+ "headline": [
+  "零基础学美甲",
+  "第一周都在练什么"
+ ],
+ "theme": {
+  "key": "beauty",
+  "emoji": [
+   "💅",
+   "✨",
+   "🎨"
+  ]
+ },
+ "sections": [
+  {
+   "label": "课堂现场",
+   "src": "https://images.pexels.com/photos/35745592/pexels-photo-35745592.jpeg?auto=compress&cs=tinysrgb&w=1440",
+   "by": "Ahmet Kurt",
+   "kw": "nail class teacher student",
+   "ours": true,
+   "visual": {
+    "type": "hook",
+    "lines": [
+     "零基础学美甲",
+     "第一周练什么？"
+    ]
+   },
+   "lines": [
+    "很多人问我，零基础学美甲，",
+    "第一周到底在练什么？"
+   ]
+  },
+  {
+   "label": "学员练习",
+   "src": "https://images.pexels.com/photos/14267567/pexels-photo-14267567.jpeg?auto=compress&cs=tinysrgb&w=1440",
+   "by": "Viktorya  Sergeeva 🫂",
+   "kw": "nail art practice hand",
+   "ours": true,
+   "visual": {
+    "type": "shot"
+   },
+   "lines": [
+    "今天带你看看，",
+    "我们课堂真实的样子。"
+   ]
+  },
+  {
+   "label": "学员实操",
+   "src": "https://images.pexels.com/photos/7755153/pexels-photo-7755153.jpeg?auto=compress&cs=tinysrgb&w=1440",
+   "by": "RDNE Stock project",
+   "kw": "nail student practicing",
+   "ours": true,
+   "visual": {
+    "type": "chips",
+    "items": [
+     "手型",
+     "磨甲",
+     "涂底胶",
+     "修死皮"
+    ]
+   },
+   "lines": [
+    "第一周不急着画花，",
+    "先把基本功练扎实。"
+   ]
+  },
+  {
+   "label": "工具特写",
+   "src": "https://images.pexels.com/photos/5238012/pexels-photo-5238012.jpeg?auto=compress&cs=tinysrgb&w=1440",
+   "by": "https://kaboompics.com/",
+   "kw": "nail art tools closeup",
+   "ours": true,
+   "visual": {
+    "type": "steps",
+    "title": "第一周安排",
+    "items": [
+     "认识工具",
+     "手型练习",
+     "涂色不溢胶",
+     "真人手模"
+    ]
+   },
+   "lines": [
+    "从认识工具开始，",
+    "一步一步往上走。"
+   ]
+  },
+  {
+   "label": "步骤分解",
+   "src": "https://images.pexels.com/photos/33992168/pexels-photo-33992168.jpeg?auto=compress&cs=tinysrgb&w=1440",
+   "by": "Mert Coşkun",
+   "kw": "nail art steps",
+   "ours": true,
+   "visual": {
+    "type": "shot"
+   },
+   "lines": [
+    "每个动作，老师先示范，",
+    "再到你身边看你做。"
+   ]
+  },
+  {
+   "label": "手模练习",
+   "src": "https://images.pexels.com/photos/20758445/pexels-photo-20758445.jpeg?auto=compress&cs=tinysrgb&w=1440",
+   "by": "mehrab zahedbeigi",
+   "kw": "nail art model hand",
+   "ours": true,
+   "visual": {
+    "type": "big",
+    "lines": [
+     "不是练手",
+     "是练客人"
+    ]
+   },
+   "lines": [
+    "很多人只在假手上练，",
+    "可客人的手不会乖乖不动。"
+   ]
+  },
+  {
+   "label": "真人练习",
+   "src": "https://images.pexels.com/photos/18112333/pexels-photo-18112333.jpeg?auto=compress&cs=tinysrgb&w=1440",
+   "by": "Maxi  Leiva",
+   "kw": "nail salon customer",
+   "ours": true,
+   "visual": {
+    "type": "checklist",
+    "title": "课上练到的细节",
+    "items": [
+     "和客人沟通",
+     "控制力度",
+     "处理边角",
+     "收尾清洁"
+    ]
+   },
+   "lines": [
+    "所以我们很早就上真人，",
+    "细节在真手上才练得出来。"
+   ]
+  },
+  {
+   "label": "作品细节",
+   "src": "https://images.pexels.com/photos/37888903/pexels-photo-37888903.jpeg?auto=compress&cs=tinysrgb&w=1440",
+   "by": "aksinfo7 universe",
+   "kw": "nail art detail",
+   "ours": true,
+   "visual": {
+    "type": "shot"
+   },
+   "lines": [
+    "这是学员第一周的作品，",
+    "线条已经很干净了。"
+   ]
+  },
+  {
+   "label": "作品完成",
+   "src": "https://images.pexels.com/photos/7705849/pexels-photo-7705849.jpeg?auto=compress&cs=tinysrgb&w=1440",
+   "by": "cottonbro studio",
+   "kw": "finished nail art",
+   "ours": true,
+   "visual": {
+    "type": "quote",
+    "text": "先把基础打牢，花样以后学得特别快。",
+    "by": "带班老师"
+   },
+   "lines": [
+    "基础打牢了，",
+    "后面学花样会特别快。"
+   ]
+  },
+  {
+   "label": "评论区互动",
+   "src": "https://images.pexels.com/photos/8809259/pexels-photo-8809259.jpeg?auto=compress&cs=tinysrgb&w=1440",
+   "by": "Egor Komarov",
+   "kw": "nail art community",
+   "ours": true,
+   "visual": {
+    "type": "cta",
+    "text": "评论区留言「美甲」",
+    "sub": "想来试试的看这里"
+   },
+   "lines": [
+    "想来体验的，",
+    "评论区留言「美甲」。"
+   ]
+  }
+ ]
+}

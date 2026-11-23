@@ -29,7 +29,12 @@ function autoVoice(script) {
 }
 const SCENE_NAMES = { field: '野外', room: '书房', classroom: '教室', exam: '考场', home: '客厅', street: '街市', river: '河边', studio: '练习室', lab: '电脑教室', road: '练车场' };
 /** 每个形式记住自己的皮肤 */
-const skinOf = () => { const ks = Object.keys(state.form.module.skins); const v = prefs.skins?.[state.form.id]; return ks.includes(v) ? v : ks[0]; };
+const skinOf = () => {
+  const ks = Object.keys(state.form.module.skins);
+  // 每条视频自带版式的模板（实拍混剪）：用这条自己的，不沿用上一条，免得条条一个样
+  if (state.form.autoSkin) { const v = state.script?.skin || state.script?.look; return ks.includes(v) ? v : ks[0]; }
+  const v = prefs.skins?.[state.form.id]; return ks.includes(v) ? v : ks[0];
+};
 /** 用来展示一段“完整搭好”样子的时间点 */
 const showcaseTime = (p) => (p.conclusion != null ? Math.min(p.end - 0.05, p.conclusion + 1.2) : Math.max(p.start + 0.3, Math.min(p.end - 0.1, (p.lineEnd ?? p.end) - 0.3)));
 const MOD_NAMES = { compare: '对比', stats: '数据卡', grid: '清单', flow: '流程', list: '要点', none: '标题', matrix: '四象限', timeline: '时间轴', pyramid: '金字塔', myth: '误区正解', quote: '金句', formula: '公式', cycle: '循环图', bars: '程度条', venn: '韦恩图', checks: '打勾清单', scale: '天平', stairs: '台阶', funnel: '漏斗', iceberg: '冰山', gauge: '仪表盘', schedule: '安排表', qa: '问答', mindmap: '导图', checkmatrix: '对比表', keyword: '关键词', roadmap: '路线图', donut: '环形构成' };
@@ -38,6 +43,7 @@ const VIS_NAMES = { shot: '画面', chips: '标签', quote: '金句', question: 
   countdown: '倒计时', checklist: '清单', vs: '对决', calendar: '日历', episodes: '剧集', marker: '划重点', nametag: '名牌', poll: '投票', ticker: '新闻条',
   progress: '进度条', quest: '闯关', levelup: '升级', lockscreen: '锁屏', grid4: '四宫格', gift: '礼包', neon: '霓虹', bedtime: '睡前', pledge: '承诺书', quiz: '小测验', notebook: '笔记', top3: '前三名', spotlight: '聚光灯', faq: '问答',
   badge: '大图标', spotlight: '聚光灯', count: '记分牌', flash: '闪屏', phones: '两台手机', crowd: '观众', target: '靶子', stack: '叠卡片', gauge: '表盘', weeks: '周卡', word: '关键词', grid: '矩阵', brand: '名片', button: '大按钮', follow: '关注', bars: '柱状图', versus: '对决', timer: '秒表', path: '路线', mystery: '盲盒', bulb: '灯泡',
+  hook: '开场', cta: '引导', focus: '圈重点',
   caption: '解说卡', magnifier: '放大镜', qa: '问答', breaking: '快讯', polaroid: '拍立得', chain: '因果链', stamp: '盖章', sticky: '便利贴', cinema: '电影感', location: '地点', tape: '警戒线', tug: '拔河' };
 
 // ---------- 偏好记忆（只是方便，读写失败也不影响使用） ----------
@@ -76,7 +82,7 @@ let galleryLoop = 0;
 const previewCache = new Map();
 const formOf = (id) => forms.find((f) => f.id === id);
 const prepScript = (form, raw) => (form.module.normalize ? form.module.normalize(raw, splitLongLine) : normalize(raw));
-const TPL_USE = { 'sketch-talk': '讲干货', 'photo-talk': '招生 · 招商', 'series-intro': '涨粉', 'deep-dive': '立专业人设', 'pixel-story': '好转发', 'data-card': '讲知识点' };
+const TPL_USE = { 'footage-mix': '用自己的素材', 'sketch-talk': '讲干货', 'photo-talk': '招生 · 招商', 'series-intro': '涨粉', 'deep-dive': '立专业人设', 'pixel-story': '好转发', 'data-card': '讲知识点' };
 function loadPreview(form) {
   if (!previewCache.has(form.id)) {
     previewCache.set(form.id, (async () => {
@@ -86,7 +92,7 @@ function loadPreview(form) {
       const d = { script, tl, planData: form.module.plan(script, tl), assets: null };
       // 实拍类套路：示例里写好了图片地址。封面那张先加载，其余后台慢慢加载（首页卡片用小图）
       if (form.needsStock) {
-        d.assets = { media: [] };
+        d.assets = { media: [] }; d.assets.pool = d.assets.media;
         const load = (i) => script.sections[i]?.src ? fetch(script.sections[i].src.replace(/w=d+/, 'w=640')).then((r) => r.blob()).then((b) => createImageBitmap(b)).then((bm) => { d.assets.media[i] = bm; }).catch(() => {}) : null;
         const cover = Math.min(form.coverIdx ?? 1, script.sections.length - 1);
         await load(cover);
@@ -100,7 +106,7 @@ function loadPreview(form) {
 const GW = 360; const GH = 640;
 function drawPreview(ctx, form, d, t) {
   ctx.setTransform(ctx.canvas.width / W, 0, 0, ctx.canvas.height / H, 0, 0);
-  form.module.drawFrame(ctx, { script: d.script, tl: d.tl, planData: d.planData, t, skinId: Object.keys(form.module.skins)[0], env: null, fps: FPS, assets: d.assets });
+  form.module.drawFrame(ctx, { script: d.script, tl: d.tl, planData: d.planData, t, skinId: form.autoSkin ? d.script.look : Object.keys(form.module.skins)[0], env: null, fps: FPS, assets: d.assets });
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 const coverIdx = (form, d) => Math.min(form?.coverIdx ?? 1, d.planData.length - 1);
@@ -180,11 +186,12 @@ function selectForm(id) {
   startHero(state.form);
   ideaSeen = new Set();
   renderIdeas(true);
-  const usesPhotos = state.form.needsPhotos || state.form.photoKind === 'scenes';
+  const usesPhotos = state.form.needsPhotos || !!state.form.photoKind;
   $('#photoPanel').classList.toggle('hidden', !usesPhotos);
-  $('#photoPanel .photos-head b').textContent = photoKind() === 'scenes' ? '现场照片' : '我的形象照';
-  $('#photoPanel .photos-head span').textContent = photoKind() === 'scenes' ? '可选，讲到“我们”时用' : '可选，不传就用卡通讲师';
+  $('#photoPanel .photos-head b').textContent = PHOTO_TEXT[photoKind()].name;
+  $('#photoPanel .photos-head span').textContent = PHOTO_TEXT[photoKind()].hint;
   $('#photoPanel').title = state.form.photoHint || '3–6 张半身照，换不同手势，会自动抠图。照片只存在你自己的电脑里。';
+  $('#photoInput').accept = photoKind() === 'footage' ? 'image/*,video/*' : 'image/*';
   renderDurLabels();
   renderPhotoRows();
   warmBgm(bgmOf().style, getAudioCtx().sampleRate); // 用户打字时，后台先把音乐合成好
@@ -199,6 +206,7 @@ $('#tplStrip').addEventListener('click', (e) => {
 const IDEA_POOL = {
   'photo-talk': ['钢琴暑假班招生|成人钢琴暑假班招生，一对一小课', '美甲新一期开班|美甲培训新一期开班，零基础也能学', '驾校周末班报名|驾校周末班开始报名了', '教资冲刺 30 天|考教资冲刺班，最后 30 天怎么学', '编程体验课|少儿编程体验课，带孩子来试一节', '下班学口语|成人英语口语班，下班后也能学'],
   'series-intro': ['每晚一个乐理知识|每晚 10 分钟，带你学一个乐理知识', '30 天学会美甲|30 天学会美甲基础', '每天一道科目一题|每天一道科目一易错题', '每天练一句口语|每天 1 分钟，练一句地道英语口语', '睡前讲一道数学题|每晚睡前讲一个数学解题思路'],
+  'footage-mix': ['带你看钢琴课现场|带大家看看我们成人钢琴课的上课现场', '美甲学员第一周|美甲零基础学员，第一周都在练什么', '驾校练车日常|带你看看我们驾校学员的练车日常', '舞蹈班开课第一天|少儿舞蹈暑假班开课第一天'],
   'deep-dive': ['学半年钢琴弹不完一首|为什么很多人学了半年钢琴，还弹不完一首曲子', '教资越来越难考？|为什么考教资一次过的人越来越少', '美甲学徒为何出不了师|为什么有的美甲学徒三年都出不了师', '成年人为何爱上跳舞|为什么越来越多成年人开始学跳舞'],
   'pixel-story': ['方法比努力重要|学习方法比努力更重要', '别等考前才复习|别等到考前才开始复习', '学手艺怕三天打鱼|学手艺最怕三天打鱼两天晒网', '零基础三个月接单|一个零基础学员，三个月开始接单的故事'],
   'sketch-talk': ['新手学琴 4 个错|新手学钢琴最容易犯的 4 个错', '考三次没过的原因|为什么有人科目二考了三次都没过', '孩子主动练习|让孩子主动练习的 3 个办法', '美甲接单难在哪|美甲新手接不到单，问题出在哪'],
@@ -713,9 +721,9 @@ async function startWithScript(script) {
   $('#title').value = script.title || '';
   $('#glyph').value = script.glyph || '';
   $('#glyph').closest('.field').classList.toggle('hidden', script.glyph === undefined);
-  $('#photoPanel2').classList.toggle('hidden', !(state.form.needsPhotos || state.form.photoKind === 'scenes'));
-  $('#photoPanel2 .group-title').firstChild.textContent = photoKind() === 'scenes' ? '现场照片 ' : '形象照 ';
-  $('#photoPanel2 .group-title span').textContent = photoKind() === 'scenes' ? '讲到“我们”时优先用；改完点镜头上的「换图」' : '每个镜头轮流换一张';
+  $('#photoPanel2').classList.toggle('hidden', !(state.form.needsPhotos || state.form.photoKind));
+  $('#photoPanel2 .group-title').firstChild.textContent = PHOTO_TEXT[photoKind()].name + ' ';
+  $('#photoPanel2 .group-title span').textContent = PHOTO_TEXT[photoKind()].hint2;
   $('#account2').value = script.account || '';
   await state.form.module.preloadFonts(script);
   if (!prefs.voicePicked) prefs.voice = autoVoice(script);
@@ -728,6 +736,7 @@ async function startWithScript(script) {
   overlaySpin(stock ? '正在配音、找画面' : '正在配音', stock ? `${countLines()} 句配音，${script.sections.length} 个镜头，半分钟左右` : `${countLines()} 句，10 秒左右`);
   try {
     await Promise.all([ensureAudio(), stock ? findMedia() : null]);
+    if (stock) await ensureAudio(); // 画面找好后音效可能要跟着变（拼图格子的出现声），重新混一下
     hideOverlay();
     $('#btnExport').disabled = false;
     seek(0);
@@ -834,7 +843,7 @@ function renderSkins() {
 }
 $('#skins').addEventListener('click', (e) => {
   const b = e.target.closest('.skin'); if (!b) return;
-  prefs.skins = { ...(prefs.skins || {}), [state.form.id]: b.dataset.skin }; savePrefs();
+  if (state.form.autoSkin) { if (state.script) { state.script.skin = b.dataset.skin; delete state.script.bgm; remix(); } } else { prefs.skins = { ...(prefs.skins || {}), [state.form.id]: b.dataset.skin }; savePrefs(); }
   document.querySelectorAll('.skin').forEach((x) => x.classList.toggle('on', x === b));
   drawNow();
 });
@@ -918,7 +927,7 @@ $('#bgms').addEventListener('click', async (e) => {
     return;
   }
   const b = e.target.closest('[data-bgm]'); if (!b) return;
-  prefs.bgm = { ...(prefs.bgm || {}), [state.form.id]: b.dataset.bgm }; savePrefs();
+  if (state.form.autoSkin && state.script) state.script.bgm = b.dataset.bgm; else { prefs.bgm = { ...(prefs.bgm || {}), [state.form.id]: b.dataset.bgm }; savePrefs(); }
   document.querySelectorAll('[data-bgm]').forEach((x) => x.classList.toggle('on', x === b));
   remix();
 });
@@ -942,7 +951,11 @@ const audioKey = () => JSON.stringify([prefs.voice, prefs.rate, state.script?.se
 const countLines = () => state.script.sections.reduce((n, s) => n + s.lines.length, 0);
 
 /** 当前形式用的背景音乐：每个形式记住自己的选择 */
-const bgmOf = () => ({ style: prefs.bgm?.[state.form.id] ?? state.form.module.meta.bgm ?? 'warm', volume: prefs.bgmVol || 'mid' });
+const bgmOf = () => {
+  // 每条自带版式的模板：音乐跟着版式走（这一条里客户自己挑过就用他挑的）
+  if (state.form?.autoSkin && state.form.module.bgmFor && state.script) return { style: state.script.bgm || state.form.module.bgmFor(state.script, skinOf()), volume: prefs.bgmVol || 'mid' };
+  return { style: prefs.bgm?.[state.form.id] ?? state.form.module.meta.bgm ?? 'warm', volume: prefs.bgmVol || 'mid' };
+};
 
 async function ensureAudio() {
   if (!(state.voiceMix && state.audioKey === audioKey())) {
@@ -957,9 +970,16 @@ async function ensureAudio() {
     state.env = envelope(state.voiceMix, FPS);
     state.mixKey = '';
   }
-  const mk = JSON.stringify(bgmOf());
+  const mod = state.form.module;
+  const mk = JSON.stringify([bgmOf(), mod.sfxCues ? [skinOf(), state.assets.pool?.length || 0, state.script.sections.map((s) => s.visual?.type)] : 0]);
   if (state.master && state.mixKey === mk && state.masterFor === state.voiceMix) return;
-  state.master = await mixWithBgm(state.voiceMix, bgmOf());
+  let master = await mixWithBgm(state.voiceMix, bgmOf());
+  // 转场、弹出、画面出现的音效
+  if (mod.sfxCues) {
+    const { addSfx } = await import('./engine/sfx.js');
+    master = await addSfx(master, mod.sfxCues({ script: state.script, tl: state.tl, planData: state.planData, skinId: skinOf(), assets: state.assets }));
+  }
+  state.master = master;
   state.masterFor = state.voiceMix;
   state.mixKey = mk;
 }
@@ -990,7 +1010,7 @@ function refresh() {
 
 // ---------- 导出 ----------
 // 这几个套路的画面上一直挂着「@账号名」，没填就显示“我的账号”，导出前提醒一次
-const SHOWS_ACCOUNT = new Set(['data-card', 'deep-dive', 'pixel-story', 'series-intro']);
+const SHOWS_ACCOUNT = new Set(['footage-mix', 'data-card', 'deep-dive', 'pixel-story', 'series-intro']);
 function jobIdFromUrl() {
   return new URLSearchParams(location.search).get('job') || '';
 }
@@ -1107,7 +1127,11 @@ function hideOverlay() { $('#overlay').className = 'overlay hidden'; }
 const pctx = $('#preview').getContext('2d');
 function drawNow() {
   if (!state.script || !state.tl) return;
-  state.form.module.drawFrame(pctx, { script: state.script, tl: state.tl, planData: state.planData, t: state.t, skinId: skinOf(), env: state.env, fps: FPS, assets: state.assets });
+  const data = { script: state.script, tl: state.tl, planData: state.planData, t: state.t, skinId: skinOf(), env: state.env, fps: FPS, assets: state.assets };
+  const mod = state.form.module;
+  mod.drawFrame(pctx, data);
+  // 视频素材在后台解码；停着的时候解好了再补画一帧
+  if (mod.prepareFrame) mod.prepareFrame(data).then(() => { if (!state.playing && state.t === data.t && state.form.module === mod) mod.drawFrame(pctx, data); }).catch(() => {});
   updateTime();
 }
 function primeAudio() { try { getAudioCtx().resume(); } catch { /* */ } }
@@ -1236,24 +1260,38 @@ function normalize(s) {
 }
 
 // ---------- 客户照片：形象照（自动抠图）/ 现场照片（原样），都只存在本机 ----------
-state.assets = { photos: [], scenes: [], media: [] };
-state.photoLists = { photos: [], scenes: [] };
+state.assets = { photos: [], scenes: [], footage: [], media: [] };
+state.photoLists = { photos: [], scenes: [], footage: [] };
 state.photoBusy = 0;
 const photoKind = () => state.form?.photoKind || 'photos';
+const PHOTO_TEXT = {
+  photos: { name: '我的形象照', hint: '可选，不传就用卡通讲师', hint2: '每个镜头轮流换一张', max: 8, add: '添加照片' },
+  scenes: { name: '现场照片', hint: '可选，讲到“我们”时用', hint2: '讲到“我们”时优先用；改完点镜头上的「换图」', max: 20, add: '添加照片' },
+  footage: { name: '我的照片和视频', hint: '课堂、校区、学员、作品，越多越好', hint2: '按上传顺序铺到各个镜头；点镜头上的「换图」可以换', max: 30, add: '加照片<br/>或视频' },
+};
 async function loadPhotos(kind = photoKind()) {
   const list = await listPhotos(kind);
   state.photoLists[kind].forEach((p) => URL.revokeObjectURL(p.url));
-  state.photoLists[kind] = await Promise.all(list.map(async (r) => ({ id: r.id, url: URL.createObjectURL(r.blob), bitmap: await createImageBitmap(r.blob) })));
-  state.assets[kind] = state.photoLists[kind].map((p) => p.bitmap);
+  state.photoLists[kind] = (await Promise.all(list.map(async (r) => {
+    try {
+      const bitmap = await createImageBitmap(r.blob);
+      // 视频：blob 是封面图，clip 是压缩好的画面数据
+      return { id: r.id, url: URL.createObjectURL(r.blob), bitmap, clip: r.clip ? { ...r.clip, id: r.id } : null };
+    } catch { return null; }
+  }))).filter(Boolean);
+  state.assets[kind] = kind === 'footage'
+    ? state.photoLists[kind].map((p) => (p.clip ? { type: 'video', clip: p.clip, poster: p.bitmap } : { type: 'photo', bitmap: p.bitmap }))
+    : state.photoLists[kind].map((p) => p.bitmap);
   renderPhotoRows();
-  if (state.script) drawNow();
+  if (state.script && kind === 'footage' && photoKind() === 'footage' && state.tl) findMedia().catch(() => {}); // 在成片页加了素材：重新铺一遍
+  else if (state.script) drawNow();
 }
+const fmtSec = (s) => `0:${String(Math.round(s)).padStart(2, '0')}`;
 function renderPhotoRows() {
-  const kind = photoKind(); const list = state.photoLists[kind];
-  const max = kind === 'scenes' ? 20 : 8;
-  const tiles = list.map((p) => `<div class="ph-tile ${kind}"><img src="${p.url}" alt="" /><button class="del" data-del-photo="${p.id}" title="删除">×</button></div>`).join('')
-    + Array.from({ length: state.photoBusy }, () => `<div class="ph-tile busy"><div><i></i>${kind === 'scenes' ? '处理中' : '抠图中'}</div></div>`).join('')
-    + (list.length + state.photoBusy < max ? '<button class="ph-tile add" data-add-photo>＋<br/>添加照片</button>' : '');
+  const kind = photoKind(); const list = state.photoLists[kind]; const tx = PHOTO_TEXT[kind];
+  const tiles = list.map((p) => `<div class="ph-tile ${kind}"><img src="${p.url}" alt="" />${p.clip ? `<span class="vd">▶ ${fmtSec(p.clip.dur)}</span>` : ''}<button class="del" data-del-photo="${p.id}" title="删除">×</button></div>`).join('')
+    + Array.from({ length: state.photoBusy }, (_, k) => `<div class="ph-tile busy"><div><i></i>${kind === 'photos' ? '抠图中' : k === 0 && state.photoPct ? `处理中 ${state.photoPct}%` : '处理中'}</div></div>`).join('')
+    + (list.length + state.photoBusy < tx.max ? `<button class="ph-tile add" data-add-photo>＋<br/>${tx.add}</button>` : '');
   document.querySelectorAll('[data-photo-row]').forEach((el) => { el.innerHTML = tiles; });
 }
 document.addEventListener('click', async (e) => {
@@ -1263,7 +1301,7 @@ document.addEventListener('click', async (e) => {
 });
 $('#photoInput').addEventListener('change', async (e) => {
   const kind = photoKind();
-  const files = [...e.target.files].slice(0, kind === 'scenes' ? 20 : 8);
+  const files = [...e.target.files].slice(0, Math.max(0, PHOTO_TEXT[kind].max - state.photoLists[kind].length));
   e.target.value = '';
   if (!files.length) return;
   state.photoBusy += files.length; renderPhotoRows();
@@ -1273,9 +1311,17 @@ $('#photoInput').addEventListener('change', async (e) => {
   }
   for (const f of files) {
     try {
-      if (kind === 'photos') { const r = await cutoutPerson(f); await savePhoto(r.blob); } else await savePhoto(await shrinkPhoto(f), 'scenes');
-    } catch (err) { toast(err.message || '这张照片处理失败，换一张试试'); }
-    state.photoBusy--; await loadPhotos(kind);
+      if (kind === 'photos') { const r = await cutoutPerson(f); await savePhoto(r.blob); }
+      else if (kind === 'footage' && (f.type.startsWith('video/') || /\.(mp4|mov|m4v|webm|mkv|avi)$/i.test(f.name))) {
+        // 视频：取前 30 秒，压成 720p、去掉原声，存在本机
+        const { importVideo, CLIP_MAX_SEC } = await import('./engine/footage.js');
+        state.photoPct = 0; renderPhotoRows();
+        const r = await importVideo(f, (p) => { const n = Math.round(p * 100); if (n !== state.photoPct) { state.photoPct = n; renderPhotoRows(); } });
+        await savePhoto(r.thumb, 'footage', { clip: r.clip });
+        if (r.clip.dur >= CLIP_MAX_SEC - 0.5) toast(`视频比较长，只用了前 ${CLIP_MAX_SEC} 秒`);
+      } else await savePhoto(await shrinkPhoto(f), kind);
+    } catch (err) { toast(err.message || '这个文件处理失败，换一个试试'); }
+    state.photoBusy--; state.photoPct = 0; await loadPhotos(kind);
   }
 });
 
@@ -1285,6 +1331,7 @@ const loadStock = () => (stockMod ||= import('./engine/stock.js'));
 async function findMedia() {
   const script = state.script;
   const { resolveMedia } = await loadStock();
+  if (photoKind() === 'footage') return findFootage(script, resolveMedia);
   const r = await resolveMedia(script.sections.map((x) => ({ kw: x.kw, ours: x.ours, pick: x.pick, src: x.pick ? '' : x.src, by: x.by })), state.assets.scenes);
   if (state.script !== script) return;
   state.assets.media = r.media; state.mediaPicks = r.picks;
@@ -1292,11 +1339,39 @@ async function findMedia() {
   if (r.error) toast(r.error.includes('PEXELS') ? '素材库还没配置，先用占位画面（可以上传自己的现场照片）' : r.error);
   drawNow();
 }
+/** 实拍混剪：客户自己的照片和视频先铺满，不够的镜头再从素材库补；素材库也没有，就把自己的素材再轮一遍 */
+async function findFootage(script, resolveMedia) {
+  const { planFootage } = await import('./engine/footage.js');
+  const n = script.sections.length;
+  const f = planFootage(n, state.assets.footage);
+  state.footageSlots = f.slots;
+  const need = f.media.map((m, i) => (m ? -1 : i)).filter((i) => i >= 0);
+  let error = '';
+  if (need.length) {
+    const r = await resolveMedia(need.map((i) => { const x = script.sections[i]; return { kw: x.kw, pick: x.pick, src: x.pick ? '' : x.src, by: x.by }; }), []);
+    need.forEach((i, k) => { if (r.media[k]) { f.media[i] = r.media[k]; f.picks[i] = r.picks[k]; } });
+    error = r.error;
+    if (f.slots.length) need.forEach((i, k) => { if (!f.media[i]) { const idx = (i + k) % f.slots.length; f.media[i] = f.slots[idx]; f.picks[i] = { own: true, idx }; } });
+  }
+  if (state.script !== script) return;
+  state.assets.media = f.media; state.mediaPicks = f.picks;
+  // 素材池：分屏、四宫格、一句一换时从这里再挑画面（自己的素材 + 补上的素材库图片）
+  state.assets.pool = [...new Set([...f.slots, ...f.media.filter(Boolean)])];
+  renderCredits();
+  if (error && f.media.some((m) => !m)) toast(error.includes('PEXELS') ? '素材库还没配置，没有素材的镜头先用占位画面（多传几个自己的照片和视频就行）' : error);
+  else if (!state.assets.footage.length) toast('还没上传自己的照片和视频，先用素材库的画面；在「风格」里可以加');
+  drawNow();
+}
 async function swapMedia(i) {
   const x = state.script.sections[i];
   x.pick = (x.pick || 0) + 1;
   const { resolveMedia } = await loadStock();
-  const own = state.mediaPicks?.[i]?.own && state.assets.scenes.length > 1;
+  if (photoKind() === 'footage' && state.mediaPicks?.[i]?.own && (state.footageSlots?.length || 0) > 1) {
+    const idx = (state.mediaPicks[i].idx + 1) % state.footageSlots.length;
+    state.assets.media[i] = state.footageSlots[idx]; state.mediaPicks[i] = { own: true, idx };
+    renderCredits(); drawNow(); return;
+  }
+  const own = photoKind() === 'scenes' && state.mediaPicks?.[i]?.own && state.assets.scenes.length > 1;
   if (own) {
     const idx = (state.mediaPicks[i].idx + 1) % state.assets.scenes.length;
     state.assets.media[i] = state.assets.scenes[idx]; state.mediaPicks[i] = { own: true, idx };
@@ -1328,6 +1403,7 @@ loadMe(); // 刷新页面后恢复登录状态
 document.fonts.ready.then(() => { moveTabInd(); moveSegThumb($('#minutes')); updateTplNav(); updateBarStuck(); requestAnimationFrame(() => document.body.classList.add('ready')); });
 loadPhotos('photos').catch(() => {});
 loadPhotos('scenes').catch(() => {});
+loadPhotos('footage').catch(() => {});
 fetch('/api/status').then((r) => r.json()).then((d) => { aiReady = !!d.ai; if (!aiReady) $('#createErr').textContent = '服务端还没配置 AI 密钥，可以先看示例。'; if (d.asrBase) asrBase = d.asrBase; if (d.asrModel) asrModel = d.asrModel; authRequired = !!d.authRequired; renderAcct(); }).catch(() => { aiReady = false; });
 
 function applyQueryForm(formName) {

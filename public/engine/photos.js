@@ -1,18 +1,19 @@
 // 客户照片本地保存：IndexedDB，只存在用户自己的浏览器里，不上传
 // photos：抠好图的形象照；scenes：现场照片（课堂、校区、学员作品），原样保存
-const DB = 'ycp'; const STORES = ['photos', 'scenes'];
+// footage：实拍混剪用的照片和视频（视频是压缩过的画面数据，见 footage.js）
+const DB = 'ycp'; const STORES = ['photos', 'scenes', 'footage'];
 function db() {
   return new Promise((resolve, reject) => {
-    const r = indexedDB.open(DB, 2);
+    const r = indexedDB.open(DB, 3);
     r.onupgradeneeded = () => { for (const s of STORES) if (!r.result.objectStoreNames.contains(s)) r.result.createObjectStore(s, { keyPath: 'id' }); };
     r.onsuccess = () => resolve(r.result);
     r.onerror = () => reject(r.error);
   });
 }
-export async function savePhoto(blob, store = 'photos') {
+export async function savePhoto(blob, store = 'photos', extra = {}) {
   const d = await db();
   const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  await new Promise((res, rej) => { const tx = d.transaction(store, 'readwrite'); tx.objectStore(store).put({ id, blob, at: Date.now() }); tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
+  await new Promise((res, rej) => { const tx = d.transaction(store, 'readwrite'); tx.objectStore(store).put({ id, blob, at: Date.now(), ...extra }); tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
   return id;
 }
 export async function listPhotos(store = 'photos') {
