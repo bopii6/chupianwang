@@ -63,7 +63,7 @@ async function boot() {
 function stateOf(u) {
   if (!u.active) return { cls: 'off', text: '已停用' };
   if (u.expiresAt && u.expiresAt < today()) return { cls: 'late', text: `已到期 ${u.expiresAt.slice(5)}` };
-  if (u.expiresAt) return { cls: 'on', text: `有效到 ${u.expiresAt}` };
+  if (u.expiresAt) return { cls: 'on', text: `至 ${u.expiresAt}` };
   return { cls: 'on', text: '在用' };
 }
 
