@@ -117,3 +117,8 @@
 .wk-filters { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 18px; }
 .wk-filters button { font: inherit; font-size: 14px; font-weight: 600; border: 1px solid #e2d9c8; background: #fff; color: #1b2430; border-radius: 999px; padding: 6px 14px; cursor: pointer; }
 .wk-filters button.on { background: #1b2430; color: #f7f2e6; border-color: #1b2430; }
+
+/* 空状态按钮别被拉成整行；顶栏按钮文字不换行 */
+.wk-empty .wk-btn { width: auto; min-width: 180px; height: 40px; }
+.wk-btn { white-space: nowrap; }
+
