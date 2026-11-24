@@ -41,33 +41,34 @@
         <h2>开新号</h2>
         <form class="form" id="createForm" autocomplete="off">
           <label class="field"><span>账号</span>
-            <input name="username" placeholder="手机号、邮箱或拼音" required />
+            <input name="username" type="text" placeholder="手机号、邮箱或拼音" required />
           </label>
           <label class="field"><span>备注</span>
-            <input name="name" placeholder="谁在用，只有你看得见" />
+            <input name="name" type="text" placeholder="比如：张老师 · 少儿美术" />
           </label>
           <label class="field"><span>初始密码</span>
-            <span class="inline">
-              <input name="password" required placeholder="至少 6 位" />
-              <button class="chip" type="button" id="genPw">随机</button>
+            <span class="with-action">
+              <input name="password" type="password" required placeholder="至少 6 位" />
+              <button class="field-action" type="button" id="genPw">随机</button>
             </span>
           </label>
           <label class="field"><span>有效期</span>
-            <select name="preset">
-              <option value="">永久</option>
-              <option value="1m">1 个月</option>
-              <option value="3m">3 个月</option>
-              <option value="6m">6 个月</option>
-              <option value="1y">1 年</option>
-              <option value="custom">指定到期日</option>
-            </select>
-          </label>
-          <label class="field hidden" id="dateField"><span>到期日</span>
-            <input type="date" name="expiresAt" />
+            <span class="inline">
+              <select name="preset">
+                <option value="">永久</option>
+                <option value="1m">1 个月</option>
+                <option value="3m">3 个月</option>
+                <option value="6m">6 个月</option>
+                <option value="1y">1 年</option>
+                <option value="custom">指定到期日</option>
+              </select>
+              <input type="date" name="expiresAt" class="hidden" />
+              <button class="field-action back hidden" type="button" id="backPreset" title="改回快捷选项">快捷</button>
+            </span>
           </label>
           <button class="primary" type="submit">开号</button>
         </form>
-        <p class="note">开完把账号密码发给客户。他第一次登录要填自己的 DeepSeek 密钥，写文案只花他自己的额度。<b>这个页面服务端要求管理员身份</b>，链接泄露也做不了任何操作。</p>
+        <p class="note">开完把账号密码发给客户。他第一次登录要填自己的 DeepSeek 密钥，写文案只花他自己的额度。</p>
       </section>
 
       <section class="sheet">

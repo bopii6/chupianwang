@@ -132,15 +132,26 @@ function addMonths(months) {
   d.setMonth(d.getMonth() + months);
   return d.toISOString().slice(0, 10);
 }
+function showCustomDate(on) {
+  const f = $('#createForm');
+  f.preset.classList.toggle('hidden', on);
+  f.expiresAt.classList.toggle('hidden', !on);
+  $('#backPreset').classList.toggle('hidden', !on);
+  if (on) { if (!f.expiresAt.value) f.expiresAt.value = addMonths(3); f.expiresAt.focus(); }
+}
 $('#genPw').addEventListener('click', () => {
   const f = $('#createForm');
   f.password.value = randomPassword();
   f.password.focus();
 });
 $('#createForm').preset.addEventListener('change', (e) => {
-  const custom = e.target.value === 'custom';
-  $('#dateField').classList.toggle('hidden', !custom);
-  if (custom) $('#createForm').expiresAt.focus();
+  showCustomDate(e.target.value === 'custom');
+});
+$('#backPreset').addEventListener('click', () => {
+  const f = $('#createForm');
+  f.preset.value = '';
+  f.expiresAt.value = '';
+  showCustomDate(false);
 });
 $('#createForm').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -160,7 +171,7 @@ $('#createForm').addEventListener('submit', async (e) => {
   try {
     const d = await api('/api/admin/users', { method: 'POST', body: JSON.stringify(body) });
     f.reset();
-    $('#dateField').classList.add('hidden');
+    showCustomDate(false);
     await load();
     openCreated(d.user.username, body.password);
   } catch (err) {
