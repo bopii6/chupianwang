@@ -211,6 +211,7 @@ $('#list').addEventListener('click', async (e) => {
 
 // ---------- 弹窗 ----------
 function closeModal() { $('#modalHost').innerHTML = ''; }
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('#modalHost').innerHTML) closeModal(); });
 function openModal(html) {
   const host = $('#modalHost');
   host.innerHTML = `<div class="modal"><div class="modal-card">${html}</div></div>`;

@@ -122,3 +122,13 @@ test('写文案拒绝未知的形式（不能读别的文件）', async () => {
   const r = await req('POST', '/api/script', { headers: sameOrigin, body: { form: '../package', input: '测试' } });
   assert.equal(r.status, 400);
 });
+
+test('安全响应头 + 坏请求体回 400 而不是 500', async () => {
+  const home = await req('GET', '/');
+  assert.equal(home.headers['x-content-type-options'], 'nosniff');
+  assert.equal(home.headers['x-frame-options'], 'SAMEORIGIN');
+  const bad = await req('POST', '/api/tts', { headers: sameOrigin, body: '{不是json' });
+  assert.equal(bad.status, 400);
+  const weird = await req('GET', '/%E0%A4%A');
+  assert.ok(weird.status < 500, `乱码路径不该 500，实际 ${weird.status}`);
+});

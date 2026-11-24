@@ -1173,3 +1173,74 @@ body { background: var(--surface); }
   #photoPanel.is-footage .ph-tile, #photoPanel.is-footage .ph-tile.add { width: 48px; height: 64px; }
 }
 #photoPanel.is-footage .ph-ghead em.over { color: #c2410c; font-weight: 600; }
+
+/* ===== v0.6 交互打磨 ===== */
+/* 键盘操作时看得清焦点在哪（鼠标点不显示） */
+:where(button, a, [tabindex]):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+
+/* 回首页后「刚才那条还在」：点一下回去接着改 */
+.resume-bar { display: flex; align-items: center; gap: 10px; width: 100%; margin: 0 0 14px; padding: 12px 16px; border: 1px solid rgba(255, 90, 31, .22); border-radius: 16px; background: linear-gradient(90deg, var(--accent-soft), rgba(255, 90, 31, .02)); color: var(--text); font-size: 14px; text-align: left; cursor: pointer; transition: border-color .2s, transform .2s var(--ease), box-shadow .2s; animation: fadeIn .4s var(--ease) both; }
+.resume-bar:hover { border-color: rgba(255, 90, 31, .5); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+.resume-bar .rs-k { flex: none; color: var(--text-3); font-size: 12.5px; }
+.resume-bar b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.resume-bar .rs-go { flex: none; color: var(--accent); font-weight: 700; font-size: 13.5px; }
+
+/* 登录框：显示密码、大写锁定提示、输错时抖一下 */
+.lg-pass { position: relative; display: flex; }
+.lg-pass input { flex: 1; min-width: 0; padding-right: 48px !important; }
+.lg-eye { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; border: 0; border-radius: 10px; background: transparent; color: var(--text-3); display: grid; place-items: center; cursor: pointer; transition: color .2s, background .2s; }
+.lg-eye:hover { color: var(--text); background: var(--surface-2); }
+.lg-eye svg { width: 20px; height: 20px; }
+.lg-eye.on .lg-eye-x { display: none; }
+.lg-caps { margin: 2px 0 0; color: #b45309; font-size: 12.5px; text-align: left; }
+.lg-step input.shake { animation: shakeX .4s; border-color: var(--danger); }
+
+/* ===== 首页 v0.6：一眼“高级” ===== */
+/* 1. 放映区：光晕跟着画面变色，慢慢呼吸 */
+@property --glow { syntax: '<color>'; inherits: true; initial-value: rgb(255, 106, 43); }
+.show { transition: --glow 1.6s ease; isolation: isolate; }
+.show::before { content: ""; position: absolute; left: 50%; top: 46%; width: min(780px, 120%); aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; z-index: -1; pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--glow) 34%, transparent), color-mix(in srgb, var(--glow) 10%, transparent) 55%, transparent);
+  filter: blur(10px); animation: glowBreath 7s ease-in-out infinite; }
+.show::after { content: ""; position: absolute; left: 50%; bottom: 13%; width: 46%; height: 60px; transform: translateX(-50%); border-radius: 50%; z-index: -1; pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--glow) 45%, transparent), transparent); filter: blur(18px); opacity: .7; }
+@keyframes glowBreath { 0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: .9; } 50% { transform: translate(-50%, -50%) scale(1.08); opacity: 1; } }
+
+/* 2. 手机：跟着鼠标微微转动，屏幕上扫过一道反光；换套路时“换片”一下 */
+.show-phone { animation-fill-mode: backwards; transform: perspective(1200px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(var(--lift, 0px));
+  transition: transform .7s var(--ease), box-shadow 1.6s ease;
+  box-shadow: 0 0 0 6px #1d1c1a, 0 0 0 7px rgba(255, 255, 255, .12), 0 50px 100px -30px rgba(0, 0, 0, .9), 0 0 160px -24px color-mix(in srgb, var(--glow) 60%, transparent); }
+.show-phone.tilting { transition: transform .15s linear, box-shadow 1.6s ease; }
+.show-phone:hover { --lift: -4px; transform: perspective(1200px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(var(--lift)); }
+.show-phone::after { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; border-radius: inherit; opacity: 0; transition: opacity .5s;
+  background: radial-gradient(circle at var(--gx, 50%) var(--gy, 30%), rgba(255, 255, 255, .22), transparent 46%), linear-gradient(115deg, rgba(255, 255, 255, .08), transparent 40%); mix-blend-mode: screen; }
+.show-phone.tilting::after { opacity: 1; }
+.show-phone.swap canvas { animation: heroSwap .55s var(--ease); }
+@keyframes heroSwap { 0% { opacity: .25; transform: scale(1.04); filter: blur(6px); } 100% { opacity: 1; transform: none; filter: none; } }
+.show-play { z-index: 3; }
+
+/* 3. 主标题：重点词有流动的光泽 + 手写下划线画出来 */
+.home h1 em { position: relative; display: inline-block; isolation: isolate; color: var(--accent);
+  background: linear-gradient(100deg, #ff5a1f 0%, #ff8f3a 28%, #ff4a1a 52%, #ffa04d 76%, #ff5a1f 100%); background-size: 240% 100%;
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: emFlow 6s ease-in-out infinite alternate; }
+.home h1 em::after { content: ""; position: absolute; left: -2%; right: -2%; bottom: -.08em; height: .34em; z-index: -1; pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 14' preserveAspectRatio='none'%3E%3Cpath d='M3 10.5C46 4.5 118 2.5 197 7' stroke='%23ff5a1f' stroke-width='5' fill='none' stroke-linecap='round' opacity='.28'/%3E%3C/svg%3E") no-repeat center / 100% 100%;
+  clip-path: inset(0 100% 0 0); animation: drawLine .9s .7s var(--ease) forwards; }
+@keyframes emFlow { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
+@keyframes drawLine { to { clip-path: inset(0 0 0 0); } }
+
+/* 4. 输入框：示例句在里面“打字”时，字色淡一点 */
+.say-input textarea::placeholder { color: var(--text-3); transition: color .2s; }
+
+/* 5. 生成按钮：填了内容就“亮起来”，呼吸光 + 隔一会儿扫一道光 */
+.box-bar .go.ready { animation: goBreath 2.6s ease-in-out infinite; }
+.box-bar .go.ready::after { animation: goShine 3.6s 1s var(--ease) infinite; }
+@keyframes goShine { 0% { transform: translateX(-120%) skewX(-20deg); } 32%, 100% { transform: translateX(260%) skewX(-20deg); } }
+.box-bar .go.ready svg { animation: goNudge 2.6s ease-in-out infinite; }
+@keyframes goBreath { 0%, 100% { box-shadow: 0 14px 28px -14px rgba(255, 90, 31, .85), 0 0 0 0 rgba(255, 90, 31, 0); } 50% { box-shadow: 0 18px 34px -12px rgba(255, 90, 31, .95), 0 0 0 6px rgba(255, 90, 31, .12); } }
+@keyframes goNudge { 0%, 70%, 100% { transform: none; } 80% { transform: translateX(4px); } 90% { transform: translateX(0); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .home h1 em::after { clip-path: none; }
+  .show-phone { transform: none !important; }
+}

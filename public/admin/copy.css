@@ -18,7 +18,7 @@ body.cl { min-height: 100vh; }
 
 /* ---------- 收录：一个输入框 ---------- */
 .cl-drop { position: relative; }
-.cl-drop textarea { font-size: 16px; line-height: 1.8; min-height: 168px; max-height: 46vh; resize: vertical; }
+.cl-drop textarea { font-size: 16px; line-height: 1.8; min-height: 168px; max-height: 46vh; resize: none; }
 .cl-drop-mask { position: absolute; inset: 0; border-radius: inherit; display: none; place-items: center; background: var(--surface); opacity: .96; border: 2px dashed var(--accent); color: var(--accent); font-weight: 700; font-size: 17px; }
 .cl-drop.over .cl-drop-mask { display: grid; }
 .cl-status { color: var(--text-3); font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }

@@ -111,7 +111,7 @@
             <div class="seg dur" id="minutes"><i class="seg-thumb"></i><button data-v="1" type="button">1 分钟</button><button data-v="2" type="button">2 分钟</button><button data-v="3" type="button">3 分钟</button></div>
           </div>
           <label class="acct"><span>@</span><input id="account" placeholder="你的账号名" maxlength="16" /></label>
-          <button class="go" id="btnGo" type="button"><span>生成视频</span><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="go" id="btnGo" type="button" title="也可以按 Ctrl + Enter"><span>生成视频</span><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         </div>
       </div>
       <p class="err" id="createErr"></p>
@@ -195,7 +195,11 @@
       <p class="lg-sub" id="lgSub">账号由管理员开通</p>
       <div class="lg-step" id="lgStep1">
         <input id="lgUser" placeholder="账号" autocomplete="username" spellcheck="false" autocapitalize="off" />
-        <input id="lgPass" type="password" placeholder="密码" autocomplete="current-password" />
+        <div class="lg-pass">
+          <input id="lgPass" type="password" placeholder="密码" autocomplete="current-password" />
+          <button class="lg-eye" id="lgEye" type="button" aria-label="显示密码" title="显示密码"><svg viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path class="lg-eye-x" d="M4 4l16 16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+        </div>
+        <p class="lg-caps hidden" id="lgCaps">大写锁定开着，密码会输成大写</p>
         <button class="go lg-go" id="lgLogin" type="button"><span>登录</span></button>
       </div>
       <p class="lg-err" id="lgErr"></p>

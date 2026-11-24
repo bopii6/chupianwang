@@ -166,3 +166,19 @@ test('停用 / 到期 / 改密码 / 删除', async () => {
   const after = await req('GET', '/api/admin/users', { cookie: admin });
   assert.equal(after.json.items.length, 1);
 });
+
+test('公网版关掉后台出片和调试接口（不用登录就能写硬盘的那些）', async () => {
+  for (const [m, p] of [['POST', '/mcp'], ['GET', '/api/jobs'], ['POST', '/api/jobs'], ['POST', '/api/debug-frame'], ['POST', '/api/debug-file']]) {
+    const r = await req(m, p, { body: {} });
+    assert.equal(r.status, 404, `${m} ${p} 应该是 404，实际 ${r.status}`);
+  }
+});
+
+test('同一个账号连续输错密码会被暂时锁住，换 IP 头也没用', async () => {
+  let last;
+  for (let i = 0; i < 21; i++) {
+    last = await req('POST', '/api/auth/login', { body: { username: 'locktest', password: 'wrong' + i } });
+  }
+  assert.equal(last.status, 429);
+  assert.match(last.json.error, /试错太多/);
+});

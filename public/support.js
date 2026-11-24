@@ -5,9 +5,14 @@
 const css = `
 .sup-bar{position:sticky;top:0;z-index:60;background:#fff4ec;color:#8a2c00;border-bottom:1px solid rgba(255,90,31,.25);padding:10px 16px;font-size:13px;line-height:1.5;text-align:center}
 .sup-bar b{color:#c2410c}
-.sup-ver{position:fixed;right:12px;bottom:10px;z-index:40;font:12px/1 system-ui,sans-serif;color:var(--text-3,#908c84);background:transparent;border:0;padding:6px 8px;border-radius:8px;cursor:pointer;opacity:.75}
+.sup-ver{position:fixed;right:10px;bottom:0;z-index:40;font:11px/1 system-ui,sans-serif;color:var(--text-3,#908c84);background:transparent;border:0;padding:1px 8px 2px;border-radius:6px 6px 0 0;cursor:pointer;opacity:.75}
 .sup-ver:hover{opacity:1;background:var(--surface-2,#f3f2ee)}
-.sup-mask{position:fixed;inset:0;z-index:70;background:rgba(20,18,14,.35);display:flex;align-items:center;justify-content:center;padding:16px}
+.sup-mask{position:fixed;inset:0;z-index:70;background:rgba(20,18,14,.35);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px;animation:supFade .2s ease-out}
+.sup-mask .sup-card{animation:supIn .32s cubic-bezier(.2,.8,.2,1)}
+@keyframes supFade{from{opacity:0}}
+@keyframes supIn{from{opacity:0;transform:translateY(12px) scale(.98)}}
+@media (prefers-reduced-motion:reduce){.sup-mask,.sup-mask .sup-card{animation:none}}
+.sup-row button:focus-visible{outline:2px solid var(--accent,#ff5a1f);outline-offset:2px}
 .sup-card{background:var(--surface,#fff);color:var(--text,#141310);border-radius:var(--r-lg,20px);box-shadow:var(--shadow-lg,0 30px 60px -24px rgba(0,0,0,.3));width:min(520px,100%);max-height:86vh;display:flex;flex-direction:column;padding:22px;gap:12px;font-size:14px}
 .sup-card h3{margin:0;font-size:17px}
 .sup-card p{margin:0;color:var(--text-2,#57544e);line-height:1.6}
@@ -263,3 +268,13 @@ async function openDiag() {
   };
 }
 ver.addEventListener('click', openDiag);
+// Esc 关掉最上面那个弹窗（设置框走它自己的「关闭」，好顺便刷新账号状态）
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  const masks = document.querySelectorAll('.sup-mask');
+  const top = masks[masks.length - 1];
+  if (!top) return;
+  e.preventDefault();
+  const x = top.querySelector('[data-x]');
+  if (x) x.click(); else top.remove();
+});

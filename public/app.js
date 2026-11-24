@@ -60,6 +60,7 @@ const state = {
   t: 0, playing: false, playStartCtx: 0, playStartT: 0, playStartPerf: 0, source: null,
   exporting: null, voiceJob: 0, attachments: [],
 };
+const busy = { writing: false }; // 正在等 AI 写文案（导出中看 state.exporting）
 const INPUT_PLACEHOLDER = '比如：我教成人钢琴，想讲讲为什么很多人练了半年还弹不完一首曲子';
 let aiReady = false;
 let asrBase = '/models/asr/'; let asrModel = 'whisper-base'; // 听写模型的位置（正式上线可放 CDN，服务端设 ASR_MODEL_BASE）
@@ -68,10 +69,37 @@ let asrBase = '/models/asr/'; let asrModel = 'whisper-base'; // 听写模型的�
 // 只有两个页面：首页（一个大框）→ 看成片
 function show(view) {
   for (const v of ['gallery', 'studio']) $('#' + v).classList.toggle('hidden', v !== view);
-  if (view !== 'gallery') stopHero(); else { drawCovers(); startHero(state.form); }
+  renderResume(view);
+  if (view !== 'gallery') stopHero(); else { drawCovers(); startHero(state.form); try { ghostStart(1200); } catch { /* 还没初始化完 */ } }
   if (view !== 'studio') stop();
   $('#crumb').innerHTML = view === 'gallery' ? '' : `<span>/</span><b>${state.remix ? '爆款变原创' : state.form?.name || ''}</b>`;
   window.scrollTo(0, 0);
+}
+// 从成片页点「返回修改」回到首页：刚才那条（连同改过的字、选的声音）还留着，点一下就回去接着改，不用重新生成
+let resumeForm = null;
+function renderResume(view) {
+  let bar = $('#resumeBar');
+  const can = view === 'gallery' && state.script && state.tl && !busy.writing;
+  if (view === 'studio') resumeForm = state.form;
+  if (!can) { bar?.classList.add('hidden'); return; }
+  if (!bar) {
+    bar = document.createElement('button');
+    bar.type = 'button'; bar.id = 'resumeBar'; bar.className = 'resume-bar';
+    bar.addEventListener('click', resumeStudio);
+    $('#box').before(bar);
+  }
+  bar.innerHTML = `<span class="rs-k">刚才那条还在</span><b>${esc(state.script.title || '未命名')}</b><span class="rs-go">接着改 →</span>`;
+  bar.classList.remove('hidden');
+}
+function resumeStudio() {
+  if (!state.script) return;
+  if (resumeForm && state.form !== resumeForm) {
+    // 回首页后点了别的套路：先切回刚才那条用的套路，不然画面会按新套路去画
+    selectForm(resumeForm.id);
+  }
+  refresh();
+  show('studio');
+  drawNow();
 }
 document.addEventListener('click', (e) => {
   const nav = e.target.closest('[data-nav]');
@@ -156,8 +184,11 @@ async function startHero(f) {
   if (heroFor !== f || $('#gallery').classList.contains('hidden')) return;
   const ctx = $('#heroCanvas').getContext('2d'); const bar = $('#heroProg');
   const dur = Math.min(d.tl.duration, 40);
-  const t0 = performance.now(); let last = 0;
+  const t0 = performance.now(); let last = 0; let lastGlow = 0;
+  if (heroShown && heroShown !== f) { const p = $('#heroPhone'); p.classList.remove('swap'); void p.offsetWidth; p.classList.add('swap'); }
+  heroShown = f;
   drawPreview(ctx, f, d, coverTime(d, f)); // 先有一帧，不黑屏
+  sampleGlow();
   const loop = (now) => {
     heroLoop = requestAnimationFrame(loop);
     if (now - last < 1000 / 30) return;
@@ -165,10 +196,58 @@ async function startHero(f) {
     const t = ((now - t0) / 1000) % dur;
     drawPreview(ctx, f, d, t);
     bar.style.width = `${(t / dur) * 100}%`;
+    if (now - lastGlow > 700) { lastGlow = now; sampleGlow(); }
   };
   heroLoop = requestAnimationFrame(loop);
 }
 function stopHero() { cancelAnimationFrame(heroLoop); heroFor = null; }
+let heroShown = null;
+// 手机背后的光晕跟着画面变色：从正在放的画面里挑最鲜艳的颜色（白底的就退回品牌橙）
+const glowCanvas = document.createElement('canvas'); glowCanvas.width = 27; glowCanvas.height = 48;
+const glowCtx = glowCanvas.getContext('2d', { willReadFrequently: true });
+function sampleGlow() {
+  try {
+    glowCtx.drawImage($('#heroCanvas'), 0, 0, 27, 48);
+    const px = glowCtx.getImageData(0, 0, 27, 48).data;
+    // 按“鲜艳程度”加权平均：大片的主色说了算，零星的小点不会把光晕带偏
+    let r = 0, g = 0, b = 0, w = 0;
+    for (let i = 0; i < px.length; i += 4) {
+      const mx = Math.max(px[i], px[i + 1], px[i + 2]), mn = Math.min(px[i], px[i + 1], px[i + 2]);
+      const s = mx ? (mx - mn) / mx : 0;
+      const k = s * s * (mx / 255) ** 2;
+      r += px[i] * k; g += px[i + 1] * k; b += px[i + 2] * k; w += k;
+    }
+    // 只取色相，饱和度和亮度固定：浅色画面也能出一圈鲜亮的光，不会发灰发脏
+    let hue = 18; // 品牌橙
+    if (w > 18) {
+      const R = r / w / 255, G = g / w / 255, B = b / w / 255;
+      const mx = Math.max(R, G, B), d = mx - Math.min(R, G, B);
+      if (d > 0.04) hue = Math.round(60 * (mx === R ? ((G - B) / d) % 6 : mx === G ? (B - R) / d + 2 : (R - G) / d + 4) + 360) % 360;
+    }
+    $('#show').style.setProperty('--glow', `hsl(${hue} 90% 56%)`);
+  } catch { /* 画面还没画好 */ }
+}
+// 鼠标在放映区移动：手机跟着微微转动，屏幕上有一道反光扫过（触屏、减少动效时不做）
+const canTilt = matchMedia('(hover: hover) and (pointer: fine)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (canTilt) {
+  const showEl = $('#show'); const phone = $('#heroPhone');
+  let raf = 0; let tx = 0; let ty = 0;
+  const apply = () => {
+    raf = 0;
+    phone.style.setProperty('--rx', `${(-ty * 7).toFixed(2)}deg`);
+    phone.style.setProperty('--ry', `${(tx * 9).toFixed(2)}deg`);
+    phone.style.setProperty('--gx', `${50 + tx * 60}%`);
+    phone.style.setProperty('--gy', `${50 + ty * 60}%`);
+  };
+  showEl.addEventListener('pointermove', (e) => {
+    const r = phone.getBoundingClientRect();
+    tx = Math.max(-1, Math.min(1, (e.clientX - (r.left + r.width / 2)) / (r.width * 1.2)));
+    ty = Math.max(-1, Math.min(1, (e.clientY - (r.top + r.height / 2)) / (r.height * 0.9)));
+    phone.classList.add('tilting');
+    if (!raf) raf = requestAnimationFrame(apply);
+  });
+  showEl.addEventListener('pointerleave', () => { tx = 0; ty = 0; phone.classList.remove('tilting'); if (!raf) raf = requestAnimationFrame(apply); });
+}
 function startHover(el) { startHero(formOf(el.dataset.id)); }
 function stopHover(el) { if (!el) return stopHero(); if (heroFor !== state.form) startHero(state.form); }
 
@@ -427,7 +506,7 @@ function openCatMenu() {
 }
 /** 输入框里的示例句：选了品类就用页面上第一条，别另抽一条，免得说的和看到的不一样 */
 function syncInputPlaceholder() {
-  if (state.attachments.length || $('#input').value.trim()) return;
+  if (state.attachments.length) return;
   const first = pickedCat() ? $('#ideas .sp') : null;
   $('#input').placeholder = first ? `比如：${first.dataset.full || first.textContent}` : INPUT_PLACEHOLDER;
 }
@@ -462,12 +541,13 @@ let typeTimer = 0;
 function typeInto(text) {
   const ta = $('#input');
   clearInterval(typeTimer);
+  ghostStop(); syncInputPlaceholder();
   ta.value = ''; let i = 0;
   ta.classList.add('typing');
   typeTimer = setInterval(() => {
     i = Math.min(text.length, i + 2);
     ta.value = text.slice(0, i); autoGrow(ta);
-    if (i >= text.length) { clearInterval(typeTimer); ta.classList.remove('typing'); ta.focus(); ta.setSelectionRange(text.length, text.length); $('#createErr').textContent = ''; }
+    if (i >= text.length) { clearInterval(typeTimer); ta.classList.remove('typing'); ta.focus(); ta.setSelectionRange(text.length, text.length); $('#createErr').textContent = ''; updateGo(); }
   }, 22);
 }
 /** 两种开始方式：say = 说一句你要讲什么；video = 用别人的爆款做 */
@@ -503,6 +583,8 @@ function updateGo() {
     b.disabled = !rm.file || !!rm.error;
     b.firstChild.textContent = rm.wantGo && rm.busy ? '听完就开始写…' : '生成我的原创视频';
   } else { b.disabled = false; b.firstChild.textContent = '生成视频'; }
+  const ready = state.mode === 'video' ? !b.disabled && !!$('#rmIndustry').value.trim() : !!($('#input').value.trim() || state.attachments.length);
+  b.classList.toggle('ready', ready);
 }
 // 拖文件进首页：视频 → 用别人的爆款做；PPT/文档 → 当资料
 const isVideoFile = (f) => /^(video|audio)\//.test(f.type) || /\.(mp4|mov|m4v|webm|mkv|avi|mp3|m4a|wav|aac)$/i.test(f.name);
@@ -529,7 +611,39 @@ $('#ideas').addEventListener('click', (e) => {
   document.querySelectorAll('#ideas .sp').forEach((x) => x.classList.toggle('picked', x === b));
   typeInto(b.dataset.full || b.textContent);
 });
-$('#input').addEventListener('input', (e) => { autoGrow(e.target); $('#createErr').textContent = ''; });
+$('#input').addEventListener('input', (e) => { autoGrow(e.target); $('#createErr').textContent = ''; updateGo(); });
+$('#rmIndustry').addEventListener('input', () => updateGo());
+
+// 输入框里的示例句自己“打字”：一句句演示可以怎么说，看着就知道往里填什么；一开始打字就停，删空了过一会儿再接着演示
+const ghost = { timer: 0, idx: 0 };
+const ghostOn = () => !matchMedia('(prefers-reduced-motion: reduce)').matches;
+function ghostLines() {
+  const shown = [...document.querySelectorAll('#ideas .sp')].map((b) => b.dataset.full || b.textContent).filter(Boolean);
+  return shown.length ? shown : [INPUT_PLACEHOLDER.replace(/^比如：/, '')];
+}
+function ghostIdle() {
+  const ta = $('#input');
+  return state.mode === 'say' && !ta.value && !state.attachments.length && !$('#gallery').classList.contains('hidden');
+}
+function ghostStop() { clearTimeout(ghost.timer); ghost.timer = 0; }
+function ghostStart(delay = 900) {
+  ghostStop();
+  if (!ghostOn()) return;
+  const ta = $('#input');
+  let line = ''; let i = 0; let dir = 1;
+  const step = () => {
+    if (!ghostIdle()) { ghost.timer = 0; syncInputPlaceholder(); return; }
+    if (!line) { const ls = ghostLines(); line = ls[ghost.idx++ % ls.length]; i = 0; dir = 1; }
+    i += dir;
+    ta.placeholder = `比如：${line.slice(0, Math.max(0, i))}${dir > 0 && i < line.length ? '▍' : ''}`;
+    let wait = dir > 0 ? 55 + Math.random() * 45 : 14;
+    if (dir > 0 && i >= line.length) { dir = -1; wait = 2600; }
+    else if (dir < 0 && i <= 0) { line = ''; wait = 380; }
+    ghost.timer = setTimeout(step, wait);
+  };
+  ghost.timer = setTimeout(step, delay);
+}
+$('#input').addEventListener('input', () => { if (ghostIdle() && !ghost.timer) ghostStart(1600); });
 $('#input').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) generate(); });
 $('#account').addEventListener('input', (e) => { prefs.account = e.target.value.trim(); savePrefs(); });
 $('#minutes').addEventListener('click', (e) => {
@@ -565,6 +679,8 @@ function renderAttachments() {
   $('#input').placeholder = state.attachments.length
     ? '想重点讲哪部分？不写也行，AI 会从资料里挑最能获客的内容'
     : INPUT_PLACEHOLDER;
+  updateGo();
+  if (!state.attachments.length && !ghost.timer) ghostStart(1500);
 }
 async function addMaterial(job, label, kind) {
   if (state.attachments.filter((a) => !a.loading).length >= 6) { $('#createErr').textContent = '最多添加 6 份资料'; return; }
@@ -617,7 +733,8 @@ async function generate(input = $('#input').value.trim()) {
   state.input = input;
   primeAudio();
   enterStudio();
-  overlaySpin(materials.length ? 'AI 正在读你的资料' : 'AI 正在写文案', materials.length ? '挑出最能获客的内容，按「' + state.form.name + '」的结构来写，一般 10–30 秒' : '按「' + state.form.name + '」的结构来写，一般 10–30 秒');
+  overlayStages(materials.length ? 'AI 正在读你的资料' : 'AI 正在写文案', writeStages(state.form.name, materials.length ? ['通读你的资料', '挑出最能打动人的几点'] : ['读懂你想讲什么']));
+  busy.writing = true;
   try {
     const r = await fetch('/api/script', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -630,9 +747,11 @@ async function generate(input = $('#input').value.trim()) {
     // 客户自己选了品类：画面配色、行业徽章都按这一行来，不让 AI 再猜
     if (pickedCat()) data.theme = { key: pickedCat(), emoji: [] };
     state.flags = Array.isArray(data._flags) ? data._flags : [];
+    busy.writing = false;
     await startWithScript(state.form.module.normalize ? state.form.module.normalize(data, splitLongLine) : normalize(data));
     await afterJobExport();
   } catch (err) {
+    busy.writing = false;
     failJob(err.message);
     overlayMessage('没写成功', err.message, [
       { label: '返回修改', primary: true, fn: () => show('gallery') },
@@ -808,7 +927,8 @@ async function replicate() {
   state.input = '';
   primeAudio();
   enterStudio();
-  overlaySpin('AI 正在写你的原创文案', `学爆款的文案套路，内容换成「${industry}」，一般 10–30 秒`);
+  overlayStages('AI 正在写你的原创文案', writeStages(state.form.name, ['学爆款的套路', `把内容换成「${industry}」`]));
+  busy.writing = true;
   try {
     const r = await fetch('/api/script', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -819,9 +939,11 @@ async function replicate() {
     if (!r.ok) throw new Error(data.error || '生成失败');
     data.account = prefs.account || data.account || '';
     state.flags = Array.isArray(data._flags) ? data._flags : [];
+    busy.writing = false;
     await startWithScript(prepScript(state.form, data));
     await afterJobExport();
   } catch (err) {
+    busy.writing = false;
     failJob(err.message);
     overlayMessage('没写成功', err.message, [
       { label: '返回修改', primary: true, fn: () => openRemix() },
@@ -900,7 +1022,8 @@ function openLogin(reason) {
   if (dlg.open) return;
   $('#lgSub').textContent = reason || '账号由管理员开通';
   $('#lgUser').value = prefs.username || '';
-  $('#lgPass').value = '';
+  $('#lgPass').value = ''; $('#lgPass').type = 'password'; $('#lgEye').classList.remove('on');
+  $('#lgCaps').classList.add('hidden');
   $('#lgErr').textContent = '';
   dlg.showModal();
   setTimeout(() => ($('#lgUser').value ? $('#lgPass') : $('#lgUser')).focus(), 60);
@@ -941,6 +1064,15 @@ async function doLogin() {
   loggingIn = false;
 }
 $('#lgLogin').addEventListener('click', doLogin);
+$('#lgEye').addEventListener('click', () => {
+  const p = $('#lgPass'); const show = p.type === 'password';
+  p.type = show ? 'text' : 'password';
+  $('#lgEye').classList.toggle('on', show);
+  $('#lgEye').setAttribute('aria-label', show ? '隐藏密码' : '显示密码'); $('#lgEye').title = show ? '隐藏密码' : '显示密码';
+  p.focus();
+});
+// 大写锁定开着：密码明明对却登不上，很多人想不到是这个
+for (const ev of ['keydown', 'keyup']) $('#lgPass').addEventListener(ev, (e) => { if (e.getModifierState) $('#lgCaps').classList.toggle('hidden', !e.getModifierState('CapsLock')); });
 $('#lgPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); doLogin(); } });
 $('#lgUser').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('#lgPass').focus(); } });
 /** 接口说没登录 / 没密钥 / 账号停用：清理状态，该弹登录弹登录，该弹设置弹设置 */
@@ -1306,7 +1438,7 @@ async function exportVideo({ skipAccountPrompt = false, saveToWorks = true, jobI
     const blob = await exportInWorker({
       formUrl: state.form.url, frameData, width: W, height: H, fps: FPS, duration: state.tl.duration,
       audioBuffer: state.master, signal,
-      onProgress: (p, left) => overlayProgress(p, '正在生成视频', `${p < 0.06 ? `一般要 1–3 分钟（视频越长越久）` : left > 90 ? `还要约 ${Math.round(left / 60)} 分钟` : `还要约 ${Math.max(5, Math.ceil(left / 5) * 5)} 秒`} · 可以先去忙别的`),
+      onProgress: (p, left) => (tabTitle(`${Math.round(p * 100)}% 正在导出`), overlayProgress(p, '正在生成视频', `${p < 0.06 ? `一般要 1–3 分钟（视频越长越久）` : left > 90 ? `还要约 ${Math.round(left / 60)} 分钟` : `还要约 ${Math.max(5, Math.ceil(left / 5) * 5)} 秒`} · 可以先去忙别的`)),
     });
     const name = `${state.script.title || '我的视频'}.mp4`.replace(/[\\/:*?"<>|]/g, '');
     const file = new File([blob], name, { type: 'video/mp4' });
@@ -1327,6 +1459,7 @@ async function exportVideo({ skipAccountPrompt = false, saveToWorks = true, jobI
         method: 'POST', headers: { 'content-type': 'video/mp4' }, body: blob,
       }).catch(() => {});
     }
+    if (document.hidden) { titleDone = true; tabTitle('✓ 视频好了'); } else tabTitle('');
     overlayDone('视频已导出', `${name} · ${(blob.size / 1048576).toFixed(0)} MB · ${canShare ? '点下面按钮存到相册或发给微信' : '已保存到下载文件夹，也存进了我的作品'}`, [
       ...(canShare ? [{ label: '存到手机 / 分享', primary: true, fn: () => navigator.share({ files: [file], title: state.script?.title || '' }).catch(() => {}) }] : []),
       { label: '再做一条', primary: !canShare, fn: () => { hideOverlay(); show('gallery'); } },
@@ -1340,15 +1473,26 @@ async function exportVideo({ skipAccountPrompt = false, saveToWorks = true, jobI
     return null;
   } finally {
     state.exporting = null;
+    if (!titleDone) tabTitle('');
     $('#btnExport').disabled = false;
   }
 }
 
 $('#btnExport').addEventListener('click', () => { exportVideo({}); });
 
+// ---------- 标签页标题 + 离开提醒 ----------
+// 导出要 1–3 分钟，客户常切去别的标签页：标题上直接显示进度，好了显示 ✓，不用切回来看
+const BASE_TITLE = document.title;
+let titleDone = false;
+function tabTitle(text) { document.title = text ? `${text} · 出片王` : BASE_TITLE; }
+document.addEventListener('visibilitychange', () => { if (!document.hidden && titleDone) { titleDone = false; tabTitle(''); } });
+// 正在写文案 / 正在导出时关页面、刷新：先拦一下，免得白等
+window.addEventListener('beforeunload', (e) => { if (state.exporting || busy.writing) { e.preventDefault(); e.returnValue = ''; } });
+
 // ---------- 浮层 ----------
 const RING = 213.6;
 function overlayBase(cls, title, sub, actions = []) {
+  clearInterval(stageTimer);
   const ov = $('#overlay');
   ov.className = 'overlay ' + cls;
   $('#ovTitle').textContent = title;
@@ -1364,6 +1508,18 @@ function overlayBase(cls, title, sub, actions = []) {
   }
 }
 const overlaySpin = (title, sub) => overlayBase('spin', title, sub);
+// AI 写文案那十几二十秒：一句一句告诉客户“现在在干嘛”，再带上已经等了几秒，不让人觉得卡住了
+let stageTimer = 0;
+function overlayStages(title, stages, { every = 4.5 } = {}) {
+  overlayBase('spin', title, stages[0]);
+  const t0 = performance.now();
+  stageTimer = setInterval(() => {
+    const sec = Math.floor((performance.now() - t0) / 1000);
+    const line = sec >= 45 ? 'AI 那边这会儿有点忙，再等一下，一般不超过 1 分钟' : stages[Math.min(stages.length - 1, Math.floor(sec / every))];
+    $('#ovSub').textContent = sec >= 3 ? `${line} · ${sec} 秒` : line;
+  }, 500);
+}
+const writeStages = (formName, extra = []) => [...extra, '想一个能让人停下来的开头', `按「${formName}」的结构排段落`, '给每一段挑画面', '检查广告法用语、核对有没有乱编数字', '快好了，正在收尾'];
 const overlayMessage = (title, sub, actions) => overlayBase('msg', title, sub, actions);
 const overlayDone = (title, sub, actions) => { overlayBase('done', title, sub, actions); $('#ovPct').textContent = '✓'; };
 function overlayProgress(p, title, sub, actions) {
@@ -1372,7 +1528,7 @@ function overlayProgress(p, title, sub, actions) {
   $('#ovPct').textContent = Math.round(p * 100) + '%';
   $('#ringFill').style.strokeDashoffset = String(RING * (1 - p));
 }
-function hideOverlay() { $('#overlay').className = 'overlay hidden'; }
+function hideOverlay() { clearInterval(stageTimer); $('#overlay').className = 'overlay hidden'; }
 
 // ---------- 播放 ----------
 const pctx = $('#preview').getContext('2d');
@@ -1431,10 +1587,14 @@ const toggle = () => { if ($('#overlay').classList.contains('hidden')) (state.pl
 $('#btnPlay').addEventListener('click', toggle);
 $('#tap').addEventListener('click', toggle);
 $('#scrub').addEventListener('input', (e) => { if (state.tl) seek((e.target.value / 1000) * state.tl.duration); });
+// 看成片时的快捷键：空格 播放/暂停，← → 退/进 5 秒（在输入框里打字时不抢）
 document.addEventListener('keydown', (e) => {
-  if (e.code !== 'Space' || $('#studio').classList.contains('hidden')) return;
-  if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
-  e.preventDefault(); toggle();
+  if ($('#studio').classList.contains('hidden') || !$('#overlay').classList.contains('hidden')) return;
+  const el = document.activeElement;
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(el?.tagName) && el.type !== 'range') return;
+  if (el?.isContentEditable || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.code === 'Space') { e.preventDefault(); toggle(); }
+  else if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && state.tl) { e.preventDefault(); seek(state.t + (e.key === 'ArrowLeft' ? -5 : 5)); }
 });
 
 let lastActive = -1;
@@ -1693,6 +1853,7 @@ selectForm(prefs.formId);
 $('#input').placeholder = INPUT_PLACEHOLDER;
 renderCatBtn();
 syncInputPlaceholder();
+ghostStart(1400);
 $('#account').value = prefs.account;
 setSeg('#minutes', String(prefs.minutes));
 $('#rmIndustry').value = prefs.industry || '';

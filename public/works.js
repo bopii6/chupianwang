@@ -4,7 +4,8 @@
   // 管理员从后台点「看作品」会带 ?owner=<账号id>；服务端会校验权限
   const owner = new URLSearchParams(location.search).get('owner') || '';
   const withOwner = (u) => (owner ? `${u}${u.includes('?') ? '&' : '?'}owner=${encodeURIComponent(owner)}` : u);
-  const state = { items: [], order: [], q: '', sort: 'new', idx: -1, industry: 'all' };
+  const state = { items: [], order: [], q: '', sort: 'new', idx: -1, industry: 'all', hosted: false };
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const industryOf = (it) => {
     const t = String(it.title || '');
     const i = t.indexOf('｜');
@@ -50,7 +51,7 @@
     if (!total) {
       grid.innerHTML = '';
       empty.classList.remove('hidden');
-      $('#wkSub').textContent = '还没有作品 · 导出的成片会自动存到你账号下';
+      $('#wkSub').textContent = state.hosted ? '还没有作品 · 导出的成片会自动存到你账号下' : '还没有作品 · 导出的成片会自动存到这里';
       return;
     }
     empty.classList.add('hidden');
@@ -58,20 +59,20 @@
     if (state.industry !== 'all' && !inds.includes(state.industry)) state.industry = 'all';
     const bar = $('#wkFilters');
     if (bar) {
-      bar.innerHTML = ['all', ...inds].map((k) => `<button type="button" class="${state.industry === k ? 'on' : ''}" data-ind="${k}">${k === 'all' ? '全部行业' : k}</button>`).join('');
+      bar.innerHTML = ['all', ...inds].map((k) => `<button type="button" class="${state.industry === k ? 'on' : ''}" data-ind="${esc(k)}">${k === 'all' ? '全部行业' : esc(k)}</button>`).join('');
       bar.querySelectorAll('button').forEach((b) => { b.onclick = () => { state.industry = b.dataset.ind; render(); }; });
     }
-    $('#wkSub').textContent = `共 ${total} 条${state.q ? ` · 匹配 ${list.length} 条` : ''} · 只显示你自己账号下的`;
+    $('#wkSub').textContent = `共 ${total} 条${state.q ? ` · 匹配 ${list.length} 条` : ''}${state.hosted ? ' · 只显示你自己账号下的' : ''}`;
 
     grid.innerHTML = list.map((it) => `
       <article class="wk-card" data-id="${encodeURIComponent(it.id)}">
-        <button class="wk-thumb" type="button" data-play="${encodeURIComponent(it.id)}" aria-label="播放 ${it.title}">
-          <video src="${it.url}#t=2" preload="metadata" muted playsinline></video>
+        <button class="wk-thumb" type="button" data-play="${encodeURIComponent(it.id)}" aria-label="播放 ${esc(it.title)}">
+          <video src="${esc(it.url)}#t=2" preload="metadata" muted playsinline></video>
           <span class="wk-play"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg></span>
           <span class="wk-dur"></span>
         </button>
         <div class="wk-meta">
-          <b title="${it.title.replace(/"/g, '&quot;')}">${it.title}</b>
+          <b title="${esc(it.title)}">${esc(it.title)}</b>
           <span>${fmtDate(it.mtime)} · ${fmtSize(it.size)}</span>
         </div>
         <div class="wk-ops">
@@ -92,6 +93,8 @@
     try {
       const r = await fetch(withOwner('/api/works'), { cache: 'no-store' });
       const data = await r.json();
+      if (r.status === 401) { $('#wkSub').innerHTML = '还没登录 · <a href="/">回制作台登录</a>后就能看到自己的作品'; return; }
+      if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
       state.items = data.items || [];
       render();
     } catch (e) {
@@ -201,7 +204,7 @@
   async function del(id) {
     const it = state.items.find((x) => x.id === id);
     if (!it) return;
-    if (!confirm(`删除「${it.title}」？\n文件会从 works/ 目录直接删掉，不能恢复。`)) return;
+    if (!confirm(`删除「${it.title}」？\n删掉就找不回来了。`)) return;
     const r = await fetch(withOwner('/api/works/' + encodeURIComponent(id)), { method: 'DELETE' });
     if (!r.ok) {
       let msg = `HTTP ${r.status}`;
@@ -271,6 +274,7 @@
     if (e.dataTransfer?.files?.length) importFiles(e.dataTransfer.files);
   });
 
+  fetch('/api/status', { cache: 'no-store' }).then((r) => r.json()).then((d) => { state.hosted = !!d.hosted; if (state.items.length) render(); }).catch(() => {});
   load();
 })();
 

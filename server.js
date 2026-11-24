@@ -113,6 +113,18 @@ async function withTtsSlot(fn) {
   }
 }
 
+// 公网版：每个账号作品总量上限（MB）
+const WORKS_QUOTA_MB = Number(process.env.WORKS_QUOTA_MB || 2048);
+async function dirBytes(dir) {
+  let total = 0;
+  try {
+    for (const n of await fsp.readdir(dir)) {
+      try { const st = await fsp.stat(path.join(dir, n)); if (st.isFile()) total += st.size; } catch { /* 刚删 */ }
+    }
+  } catch { /* 还没有目录 */ }
+  return total;
+}
+
 // 公网版：服务器上的作品副本只留最近 N 天（本地版绝不动客户自己的文件）
 const WORKS_RETENTION_DAYS = Number(process.env.WORKS_RETENTION_DAYS ?? 30);
 async function cleanupOldWorks() {
@@ -167,17 +179,27 @@ const STATIC_MOUNTS = [
   ['/', path.join(ROOT, 'public/')],
 ];
 
+// 发文件：读文件出错（比如刚好被删）时只断开这个请求，不让整个服务崩掉
+function pipeFile(file, res, opts) {
+  const rs = fs.createReadStream(file, opts);
+  rs.on('error', () => { if (!res.headersSent) res.writeHead(404); res.destroy(); });
+  rs.pipe(res);
+  return rs;
+}
+
 async function serveStatic(req, res, pathname) {
   for (const [prefix, dir, cache = 'no-cache'] of STATIC_MOUNTS) {
     if (!pathname.startsWith(prefix)) continue;
-    let rel = decodeURIComponent(pathname.slice(prefix.length)) || 'index.html';
+    let rel;
+    try { rel = decodeURIComponent(pathname.slice(prefix.length)) || 'index.html'; } catch { return false; }
     const file = path.normalize(path.join(dir, rel));
     if (!file.startsWith(dir)) break;
     try {
       const st = await fsp.stat(file);
       if (!st.isFile()) continue;
       res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Content-Length': st.size, 'Cache-Control': cache });
-      fs.createReadStream(file).pipe(res);
+      if (req.method === 'HEAD') { res.end(); return true; }
+      pipeFile(file, res);
       return true;
     } catch { /* try next mount */ }
   }
@@ -185,12 +207,28 @@ async function serveStatic(req, res, pathname) {
 }
 
 // ---------- 工具 ----------
+// 读 JSON 请求体：太大回 413、格式不对回 400（以前太大时请求会一直挂着）
 function readJson(req) {
   return new Promise((resolve, reject) => {
-    let body = '';
-    req.on('data', (c) => { body += c; if (body.length > 2e6) req.destroy(); });
-    req.on('end', () => { try { resolve(JSON.parse(body || '{}')); } catch (e) { reject(e); } });
-    req.on('error', reject);
+    const chunks = [];
+    let size = 0;
+    let failed = false;
+    req.on('data', (c) => {
+      if (failed) return;
+      size += c.length;
+      if (size > 2e6) {
+        failed = true;
+        reject(Object.assign(new Error('提交的内容太大了'), { status: 413 }));
+        req.resume();
+        return;
+      }
+      chunks.push(c);
+    });
+    req.on('end', () => {
+      if (failed) return;
+      try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')); } catch { reject(Object.assign(new Error('提交的内容格式不对'), { status: 400 })); }
+    });
+    req.on('error', (e) => { if (!failed) { failed = true; reject(e); } });
   });
 }
 function sendJson(res, code, obj) {
@@ -232,12 +270,18 @@ async function handleTts(req, res) {
   const key = crypto.createHash('sha1').update(`${voice}|${rate}|${text}`).digest('hex');
   const file = path.join(TTS_CACHE, key + '.mp3');
   if (!fs.existsSync(file)) {
-    const tmp = file + '.' + process.pid + '.tmp.mp3';
-    await withTtsSlot(() => runEdgeTts(text, voice, rate, tmp));
-    await fsp.rename(tmp, file);
+    // 临时文件名带随机数：同一句话同时被两个人请求时不会互相覆盖
+    const tmp = `${file}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp.mp3`;
+    try {
+      await withTtsSlot(() => runEdgeTts(text, voice, rate, tmp));
+      await fsp.rename(tmp, file);
+    } catch (e) {
+      await fsp.rm(tmp, { force: true }).catch(() => {});
+      throw e;
+    }
   }
   res.writeHead(200, { 'Content-Type': 'audio/mpeg' });
-  fs.createReadStream(file).pipe(res);
+  pipeFile(file, res);
 }
 
 // 批量配音：只启动一次 Python，并发合成，返回每句的缓存 key
@@ -283,7 +327,7 @@ async function handleTtsFile(res, key) {
   const file = path.join(TTS_CACHE, key + '.mp3');
   if (!fs.existsSync(file)) { res.writeHead(404); return res.end(); }
   res.writeHead(200, { 'Content-Type': 'audio/mpeg', 'Cache-Control': 'public, max-age=31536000, immutable' });
-  fs.createReadStream(file).pipe(res);
+  pipeFile(file, res);
 }
 
 // ---------- 网页链接抓取（公众号文章、官网页面等公开网页） ----------
@@ -388,7 +432,8 @@ async function handleStock(req, res, query, keyOverride = '') {
   } catch { /* 没缓存 */ }
   const u = new URL('https://api.pexels.com/v1/search');
   u.search = new URLSearchParams({ query: q, orientation: 'landscape', per_page: '15', size: 'medium' }).toString();
-  const r = await fetch(u, { headers: { Authorization: key } });
+  let r;
+  try { r = await fetch(u, { headers: { Authorization: key }, signal: AbortSignal.timeout(15000) }); } catch { return sendJson(res, 502, { error: '素材库连不上，稍后再试' }); }
   if (!r.ok) return sendJson(res, 502, { error: r.status === 429 ? '素材库这会儿太忙，稍后再试' : `素材库返回错误 ${r.status}` });
   const d = await r.json();
   const out = {
@@ -407,11 +452,21 @@ async function handleStock(req, res, query, keyOverride = '') {
 // key：公网版传客户自己的密钥；本地版不传，用 .env 里的
 async function deepseek(messages, { temperature = 0.7, max_tokens = 8000, key = '', who = '' } = {}) {
   const auth = key || process.env.DEEPSEEK_API_KEY;
-  const r = await fetch('https://api.deepseek.com/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth}` },
-    body: JSON.stringify({ model: process.env.DEEPSEEK_MODEL || 'deepseek-chat', messages, response_format: { type: 'json_object' }, temperature, max_tokens }),
-  });
+  let r;
+  try {
+    // 带超时：DeepSeek 偶尔卡住不回，不能让页面一直转圈
+    r = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth}` },
+      body: JSON.stringify({ model: process.env.DEEPSEEK_MODEL || 'deepseek-chat', messages, response_format: { type: 'json_object' }, temperature, max_tokens }),
+      signal: AbortSignal.timeout(Number(process.env.AI_TIMEOUT_MS || 240000)),
+    });
+  } catch (e) {
+    const timeout = e?.name === 'TimeoutError' || e?.name === 'AbortError';
+    throw Object.assign(new Error(timeout ? 'AI 这会儿太忙，等了 4 分钟没回，稍后再点一次' : '连不上 DeepSeek，检查一下网络再试'), { status: 502 });
+  }
+  if (r.status === 401) throw Object.assign(new Error('DeepSeek 不认这个密钥（可能填错了或被删了），去设置里换一把'), { status: 400, code: 'no-key' });
+  if (r.status === 402) throw Object.assign(new Error('DeepSeek 账户余额不足，充值后再来'), { status: 400 });
   if (!r.ok) throw Object.assign(new Error(`DeepSeek 返回错误 ${r.status}: ${(await r.text()).slice(0, 300)}`), { status: 502 });
   const j = await r.json();
   const content = j.choices[0].message.content;
@@ -607,7 +662,7 @@ ${ref}` : '';
     data._flags = [...c.illegal.map((x) => ({ word: x.word, why: x.reason || '广告法风险' })), ...c.fab, ...c.copied.map((x) => ({ word: x, why: '和原视频一样' }))].slice(0, 10);
     sendJson(res, 200, data);
   } catch (e) {
-    sendJson(res, e.status || 500, { error: String(e.message || e) });
+    sendJson(res, e.status || 500, { error: String(e.message || e), ...(e.code ? { code: e.code } : {}) });
   }
 }
 
@@ -634,7 +689,11 @@ function rejectReason(req) {
 
 // ---------- 诊断信息（客户出问题时一键复制给我们） ----------
 const clientErrors = []; // 页面上最近的报错，最多留 30 条
+let errBurst = { at: 0, n: 0 }; // 每分钟最多记 60 条，防止有人刷爆日志
 function pushClientError(e) {
+  const now = Date.now();
+  if (now - errBurst.at > 60e3) errBurst = { at: now, n: 0 };
+  if (++errBurst.n > 60) return;
   clientErrors.push(e);
   if (clientErrors.length > 30) clientErrors.shift();
   console.error(`[页面出错] ${e.page} ${e.message}${e.stack ? '\n' + e.stack : ''}`);
@@ -670,6 +729,9 @@ async function handleDiag(req, res) {
   });
 }
 
+// 漏掉没接住的异步错误：记日志，不让整个服务退出（公网版一崩所有人都用不了）
+process.on('unhandledRejection', (e) => console.error('[未处理的异步错误]', e));
+
 // ---------- 路由 ----------
 // 公网版：按 .env 里的 ADMIN_USER / ADMIN_PASSWORD 建管理员（已经有的不重复建，也不会改密码）
 if (HOSTED) {
@@ -681,6 +743,10 @@ http.createServer(async (req, res) => {
   // 跨源隔离：浏览器里转文字要用多线程（SharedArrayBuffer）。用 credentialless，外站图片（Pexels）照常能加载
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
   res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
+  // 基本的安全头：不许别的网站把页面嵌进去（防点击劫持）、不许浏览器乱猜文件类型、跳到外站时不带完整地址
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   const why = rejectReason(req);
   if (why) { res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end(why); }
   try {
@@ -755,14 +821,18 @@ http.createServer(async (req, res) => {
     if (pathname.startsWith('/api/copy/')) {
       let user = null;
       if (HOSTED) { const g = await gate(); if (g.fail) return deny(g.fail); user = g.user; } else user = await currentUser(req);
-      return await handleCopyApi(req, res, pathname, { readJson, sendJson, user }); // 文案库：每个客户自己的
+      // 拆解文案要调 AI：公网版用客户自己的密钥，不花平台的钱
+      const aiKey = HOSTED && user ? deepseekKeyOf(user) : process.env.DEEPSEEK_API_KEY;
+      return await handleCopyApi(req, res, pathname, { readJson, sendJson, user, aiKey, hosted: HOSTED }); // 文案库：每个客户自己的
     }
     if (req.method === 'GET' && pathname === '/api/stock') {
       let key = '';
       if (HOSTED) { const g = await gate(); if (g.fail) return deny(g.fail); key = pexelsKeyOf(g.user); }
       return await handleStock(req, res, params, key);
     }
-    if (req.method === 'POST' && pathname === '/api/debug-frame' && process.env.NODE_ENV !== 'production') {
+    // 开发调试接口：公网版一律关掉（它们不用登录就能往硬盘写文件）
+    const DEBUG_API = !HOSTED && process.env.NODE_ENV !== 'production';
+    if (req.method === 'POST' && pathname === '/api/debug-frame' && DEBUG_API) {
       // 开发调试：把浏览器里渲染的某一帧存成图片
       const { name, data } = await readJson(req);
       const dir = path.join(CACHE_DIR, 'frames');
@@ -770,7 +840,7 @@ http.createServer(async (req, res) => {
       await fsp.writeFile(path.join(dir, String(name).replace(/[^\w.-]/g, '') + '.png'), Buffer.from(String(data).split(',')[1], 'base64'));
       return sendJson(res, 200, { ok: true });
     }
-    if (req.method === 'POST' && pathname === '/api/debug-file' && process.env.NODE_ENV !== 'production') {
+    if (req.method === 'POST' && pathname === '/api/debug-file' && DEBUG_API) {
       const dir = path.join(CACHE_DIR, 'frames');
       await fsp.mkdir(dir, { recursive: true });
       const fname = (params.get('name') || 'export').replace(/[^\w.-]/g, '');
@@ -778,8 +848,12 @@ http.createServer(async (req, res) => {
       req.pipe(out);
       return out.on('finish', () => sendJson(res, 200, { ok: true }));
     }
-    if (pathname === '/mcp') return await handleMcp(req, res, { readJson });
-    if (pathname.startsWith('/api/jobs')) return await handleJobs(req, res, pathname, params);
+    // 后台出片（MCP / 任务队列）只给本机脚本版用；公网版不开，免得陌生人下单、上传大文件
+    if (pathname === '/mcp' || pathname.startsWith('/api/jobs')) {
+      if (HOSTED) return sendJson(res, 404, { error: '没有这个接口' });
+      if (pathname === '/mcp') return await handleMcp(req, res, { readJson });
+      return await handleJobs(req, res, pathname, params);
+    }
     // 作品墙：公网版每人一个目录，管理员可以带 ?owner=<账号id> 看别人的
     if (pathname.startsWith('/api/works') || pathname.startsWith('/works/')) {
       if (HOSTED) {
@@ -792,6 +866,9 @@ http.createServer(async (req, res) => {
           if (req.method === 'POST') {
             const limited = overRate('upload', owner.id);
             if (limited) return sendJson(res, 429, { error: limited, code: 'rate' });
+            // 每个账号在服务器上的作品总量有上限，一个人传满不能把硬盘占光
+            const used = await dirBytes(worksDirOf(owner));
+            if (used > WORKS_QUOTA_MB * 1048576) return sendJson(res, 413, { error: `你在服务器上的作品已经超过 ${(WORKS_QUOTA_MB / 1024).toFixed(1)}GB，先删几条旧的再存（自己电脑「下载」文件夹里的不受影响）`, code: 'quota' });
           }
           return await handleWorks(req, res, pathname, worksDirOf(owner), params, `/works/${owner.id}/`);
         }
@@ -824,7 +901,9 @@ http.createServer(async (req, res) => {
     if (req.method === 'GET' && (await serveStatic(req, res, pathname))) return;
     res.writeHead(404); res.end('not found');
   } catch (e) {
-    console.error(e);
-    if (!res.headersSent) sendJson(res, 500, { error: String(e.message || e) });
+    const status = Number.isInteger(e?.status) && e.status >= 400 && e.status < 600 ? e.status : 500;
+    if (status >= 500) console.error(e);
+    if (!res.headersSent) sendJson(res, status, { error: String(e.message || e), ...(e.code && typeof e.code === 'string' && !/^E[A-Z]+$/.test(e.code) ? { code: e.code } : {}) });
+    else res.destroy();
   }
 }).listen(PORT, HOST, () => console.log(`出片王 v${PKG.version}${COMMIT ? ` (${COMMIT})` : ''} 已启动: http://localhost:${PORT}${LOCAL_ONLY ? '（只允许本机访问）' : `（局域网可访问，HOST=${HOST}）`}${HOSTED ? '（公网版：账号密码登录）' : ''}`));
