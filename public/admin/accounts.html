@@ -19,28 +19,60 @@
   </header>
 
   <main>
-    <section class="card">
-      <h2>开一个新号</h2>
-      <form class="new" id="createForm" autocomplete="off">
-        <input name="username" placeholder="账号（字母数字，2–32 位）" required />
-        <input name="name" placeholder="备注 / 姓名（如：张老师）" />
-        <input name="password" type="password" placeholder="初始密码（至少 6 位，别用纯数字）" required />
-        <input name="expiresAt" type="date" title="到期日（不填就是永久）" />
-        <button class="pri" type="submit">开号</button>
-      </form>
-      <p class="hint">开好后把「账号 + 初始密码」发给客户。他登录后能自己改密码、填自己的 DeepSeek 密钥；你能随时停用、续期。</p>
+    <!-- 没登录 / 不是管理员 -->
+    <section class="card deny hidden" id="deny">
+      <h2 id="denyTitle">需要管理员登录</h2>
+      <p id="denyText">这个页面只有管理员能用。别人就算拿到链接，也改不了任何东西。</p>
+      <button class="pri" id="denyBtn" type="button">去登录</button>
     </section>
 
-    <section class="card">
-      <div class="head">
-        <h2>所有账号</h2>
-        <span class="grow"></span>
-        <input id="q" type="text" placeholder="搜账号 / 姓名" />
-        <span class="stat" id="stat"></span>
-      </div>
-      <div class="list" id="list"><div class="empty">正在读取…</div></div>
-    </section>
+    <!-- 管理界面 -->
+    <div id="app" class="hidden">
+      <section class="card">
+        <h2>开一个新号</h2>
+        <p class="sub">开好后把账号和密码发给客户，他登录后能自己改密码、填自己的 DeepSeek 密钥。</p>
+        <form class="form" id="createForm" autocomplete="off">
+          <label class="field"><span>账号</span>
+            <input name="username" placeholder="手机号 / 邮箱 / 拼音都行" required />
+          </label>
+          <label class="field"><span>备注（给自己看）</span>
+            <input name="name" placeholder="比如：张老师 · 少儿美术" />
+          </label>
+          <label class="field"><span>初始密码</span>
+            <span class="with-btn"><input name="password" required placeholder="至少 6 位" />
+              <button class="ghost" type="button" id="genPw" title="生成一个随机密码">随机</button></span>
+          </label>
+          <label class="field"><span>有效期</span>
+            <select name="preset">
+              <option value="">永久有效</option>
+              <option value="1m">1 个月</option>
+              <option value="3m">3 个月</option>
+              <option value="6m">6 个月</option>
+              <option value="1y">1 年</option>
+              <option value="custom">指定到期日…</option>
+            </select>
+          </label>
+          <button class="pri" type="submit">开号</button>
+          <label class="field hidden" id="dateField" style="grid-column:span 2"><span>到期日</span>
+            <input type="date" name="expiresAt" />
+          </label>
+        </form>
+        <p class="hint">客户填自己的 DeepSeek 密钥后，写文案只花他自己的额度，不占我们的。到期或停用的账号会立刻登不上，作品和文案都还在。<b>这个页面服务端要求管理员身份</b>，链接泄露也做不了任何操作。</p>
+      </section>
+
+      <section class="card">
+        <div class="head">
+          <h2>所有账号</h2>
+          <span class="grow"></span>
+          <input id="q" type="text" placeholder="搜账号 / 备注" />
+          <span class="stat" id="stat"></span>
+        </div>
+        <div class="list" id="list"><div class="empty">正在读取…</div></div>
+      </section>
+    </div>
   </main>
+
+  <div id="modalHost"></div>
   <div class="toast" id="toast"></div>
   <script type="module" src="/admin/accounts.js"></script>
 </body>

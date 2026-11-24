@@ -40,7 +40,7 @@ const cookieOf = (r) => (r.headers['set-cookie'] || []).map((c) => c.split(';')[
 before(async () => {
   server = spawn(process.execPath, [path.join(ROOT, 'server.js'), '--port', String(PORT)], {
     cwd: ROOT,
-    env: { ...process.env, HOST: '127.0.0.1', CPW_DATA_DIR: DATA, PUBLIC_BASE_URL: 'https://getcut.cn', ADMIN_USER: 'admin', ADMIN_PASSWORD: 'Admin12345', NODE_ENV: 'test' },
+    env: { ...process.env, HOST: '127.0.0.1', CPW_DATA_DIR: DATA, PUBLIC_BASE_URL: 'https://getcut.cn', ADMIN_USER: 'admin', ADMIN_PASSWORD: 'Admin12345', LOGIN_MAX_PER_10MIN: '200', NODE_ENV: 'test' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let out = '';
@@ -108,6 +108,29 @@ test('没填自己的密钥就写不了文案；作品墙按账号隔离', async
   assert.deepEqual(w.json.items, []);
   const badKey = await req('POST', '/api/settings', { cookie: user, body: { deepseekKey: 'not-a-key' } });
   assert.equal(badKey.status, 400);
+});
+
+test('账号管理页面本身也不给陌生人看', async () => {
+  const anon = await req('GET', '/admin/accounts.html');
+  assert.equal(anon.status, 302);
+  assert.match(anon.headers.location || '', /admin=1/);
+  const adminLogin = await req('POST', '/api/auth/login', { body: { username: 'admin', password: 'Admin12345' } });
+  const admin = cookieOf(adminLogin);
+  const page = await req('GET', '/admin/accounts.html', { cookie: admin });
+  assert.equal(page.status, 200);
+  assert.match(page.text, /账号管理/);
+});
+
+test('账号可以用邮箱/手机号当账号名', async () => {
+  const adminLogin = await req('POST', '/api/auth/login', { body: { username: 'admin', password: 'Admin12345' } });
+  const admin = cookieOf(adminLogin);
+  const created = await req('POST', '/api/admin/users', { cookie: admin, body: { username: 'Teacher.Wang+1@example.com', password: 'wang123456', name: '王老师' } });
+  assert.equal(created.status, 200);
+  assert.equal(created.json.user.username, 'teacher.wang+1@example.com');
+  const login = await req('POST', '/api/auth/login', { body: { username: 'Teacher.Wang+1@example.com', password: 'wang123456' } });
+  assert.equal(login.status, 200);
+  // 用完删掉，后面的测试按“只剩 admin + zhang”来数
+  assert.equal((await req('DELETE', '/api/admin/users/' + created.json.user.id, { cookie: admin })).status, 200);
 });
 
 test('停用 / 到期 / 改密码 / 删除', async () => {

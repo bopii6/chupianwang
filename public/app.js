@@ -840,6 +840,15 @@ const acctName = () => (me ? (me.name || me.username || '') : '');
 async function loadMe() {
   try { const d = await (await fetch('/api/auth/me', { cache: 'no-store' })).json(); me = d.user; hosted = !!d.hosted; } catch { me = null; }
   renderAcct();
+  if (!redirectToAdminIfNeeded()) { /* 正常首页 */ }
+}
+// 从账号管理页被踢回来（?admin=1）：是管理员就直接进去，不是就提示
+function redirectToAdminIfNeeded() {
+  if (new URLSearchParams(location.search).get('admin') !== '1') return false;
+  if (me && me.role === 'admin') { location.href = '/admin/accounts.html'; return true; }
+  if (!me) openLogin('用管理员账号登录');
+  else toast('这个账号不是管理员，管理后台打不开');
+  return true;
 }
 window.cpwRefreshMe = loadMe;
 function renderAcct() {
@@ -905,6 +914,8 @@ async function doLogin() {
     renderAcct();
     dlg.close();
     toast(`登录成功，${acctName()}`);
+    // 是从账号管理页被踢回来登录的：管理员登录完直接进后台
+    if (redirectToAdminIfNeeded()) return;
     // 还没填自己的 DeepSeek 密钥：直接弹设置，不然点生成会报错
     if (!me.hasKey) setTimeout(() => window.cpwOpenSettings?.(true), 350);
   } catch (err) {

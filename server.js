@@ -702,6 +702,11 @@ http.createServer(async (req, res) => {
       if (pathname.startsWith('/works/')) return await serveWorkFile(req, res, pathname, WORKS);
     }
     if (req.method === 'GET' && pathname === '/api/status') { if (!process.env.PEXELS_API_KEY) loadEnv(); return sendJson(res, 200, { ai: !!process.env.DEEPSEEK_API_KEY, stock: !!process.env.PEXELS_API_KEY, hosted: HOSTED, asrBase: process.env.ASR_MODEL_BASE || '/models/asr/', asrModel: process.env.ASR_MODEL || 'whisper-base', authRequired: HOSTED, jobWorker: process.env.JOB_WORKER === '1', version: PKG.version, commit: COMMIT }); }
+    // 账号管理页面本身也不给陌生人看：没登录或不管理员就回首页登录（接口那边还有一道校验）
+    if (pathname === '/admin/accounts.html' && HOSTED) {
+      const g = await gate();
+      if (g.fail || !isAdminUser(g.user)) { res.writeHead(302, { Location: '/?admin=1' }); return res.end(); }
+    }
     // 听写模型走国内镜像（省服务器带宽）：.env 里设了 ASR_MIRROR=https://hf-mirror.com 就 302 过去，
     // 没设就用本地 .cache 里的模型文件（本地版/离线部署）
     if ((req.method === 'GET' || req.method === 'HEAD') && process.env.ASR_MIRROR && pathname.startsWith('/models/asr/')) {
