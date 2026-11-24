@@ -1313,10 +1313,10 @@ async function exportVideo({ skipAccountPrompt = false, saveToWorks = true, jobI
         method: 'POST', headers: { 'content-type': 'video/mp4' }, body: blob,
       }).catch(() => {});
     }
-    overlayDone('视频已导出', `${name} · ${(blob.size / 1048576).toFixed(0)} MB · ${canShare ? '点下面按钮存到相册或发给微信' : '已保存到下载文件夹，也存进了作品墙'}`, [
+    overlayDone('视频已导出', `${name} · ${(blob.size / 1048576).toFixed(0)} MB · ${canShare ? '点下面按钮存到相册或发给微信' : '已保存到下载文件夹，也存进了我的作品'}`, [
       ...(canShare ? [{ label: '存到手机 / 分享', primary: true, fn: () => navigator.share({ files: [file], title: state.script?.title || '' }).catch(() => {}) }] : []),
       { label: '再做一条', primary: !canShare, fn: () => { hideOverlay(); show('gallery'); } },
-      { label: '去作品墙', fn: () => { location.href = '/works.html'; } },
+      { label: '看我的作品', fn: () => { location.href = '/works.html'; } },
       { label: '继续修改', fn: hideOverlay },
     ]);
     return blob;

@@ -3,12 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>作品墙 · 出片王</title>
+  <title>我的作品 · 出片王</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="/vendor/noto-sans-sc/400.css" />
-  <link rel="stylesheet" href="/vendor/noto-sans-sc/500.css" />
-  <link rel="stylesheet" href="/vendor/noto-sans-sc/700.css" />
-  <link rel="stylesheet" href="/vendor/noto-sans-sc/900.css" />
+  <!-- 界面文字用系统字体，不在这页加载中文字体分片（出片时会按需加载） -->
   <link rel="stylesheet" href="/style.css" />
   <link rel="stylesheet" href="/works.css" />
 </head>
@@ -18,7 +15,7 @@
     <nav class="topnav">
       <a href="/">制作台</a>
       <a href="/admin/copy.html">文案库</a>
-      <a href="/works.html">作品墙</a>
+      <a href="/works.html">我的作品</a>
     </nav>
     <div class="wk-head-actions">
       <button class="wk-btn primary" id="btnImport" type="button">导入视频</button>
@@ -30,8 +27,8 @@
   <main class="wk-main">
     <div class="wk-head">
       <div>
-        <h1>作品墙</h1>
-        <p id="wkSub">正在读取…</p>
+        <h1>我的作品</h1>
+        <p id="wkSub">只显示你自己账号下的成片，别人看不到。</p>
       </div>
       <div class="wk-tools">
         <input type="search" id="search" placeholder="搜标题…" autocomplete="off" />
@@ -43,11 +40,11 @@
     </div>
 
     <div class="wk-empty hidden" id="empty">
-      <h2>作品墙还是空的</h2>
+      <h2>还没有作品</h2>
       <p>
-        以前导出的视频不会自动留在电脑上——成片只在浏览器里生成后下载，服务端没有存。<br />
-        从现在起，每次点「生成视频」都会自动存进这里。<br />
-        手里已有的 MP4，可以直接拖到这个页面上，或者点右上角「导入视频」。
+        每次点「生成视频」，导出的成片会自动存到你自己账号下，就在这里。<br />
+        手里已有的 MP4，可以直接拖到这个页面上，或者点右上角「导入视频」。<br />
+        这个列表只有你自己看得到，别的账号看不到。
       </p>
       <button class="wk-btn primary" id="btnImport2" type="button">选视频导入</button>
     </div>

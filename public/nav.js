@@ -1,5 +1,5 @@
-// 顶栏导航：制作台 / 文案库 / 作品墙，三个页面共用一份
-// 每个标签带图标和实时状态：文案库显示上次看过之后新增几条，作品墙显示最近的成片缩略图
+// 顶栏导航：制作台 / 文案库 / 我的作品，三个页面共用一份
+// 每个标签带图标和实时状态：文案库显示上次看过之后新增几条，我的作品显示最近的成片缩略图
 import './support.js'; // 浏览器检测、报错上报、版本号和诊断信息
 const ICON = {
   make: '<path d="M4 20 15 9M14 4l1.5 3L19 8.5 15.5 10 14 13l-1.5-3L9 8.5 12.5 7z" />',
@@ -9,7 +9,7 @@ const ICON = {
 const ITEMS = [
   { key: 'make', href: '/', name: '制作台' },
   { key: 'copy', href: '/admin/copy.html', name: '文案库' },
-  { key: 'works', href: '/works.html', name: '作品墙' },
+  { key: 'works', href: '/works.html', name: '我的作品' },
 ];
 const ls = {
   get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
@@ -60,7 +60,7 @@ async function fillCopy(onPage) {
   } catch { /* 状态是锦上添花，失败不影响导航 */ }
 }
 
-// 作品墙：最近两条成片做成小缩略图
+// 我的作品：最近两条成片做成小缩略图
 async function fillWorks() {
   try {
     const r = await fetch('/api/works', { cache: 'no-store' });

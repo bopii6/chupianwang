@@ -1,4 +1,4 @@
-// 作品墙前端：读 /api/works，支持导入、播放、直播模式轮播、删除
+// 我的作品：读 /api/works，支持导入、播放、直播模式轮播、删除（只显示自己账号下的）
 (() => {
   const $ = (s) => document.querySelector(s);
   // 管理员从后台点「看作品」会带 ?owner=<账号id>；服务端会校验权限
@@ -50,7 +50,7 @@
     if (!total) {
       grid.innerHTML = '';
       empty.classList.remove('hidden');
-      $('#wkSub').textContent = '共 0 条 · 导出的成片会自动存到这里';
+      $('#wkSub').textContent = '还没有作品 · 导出的成片会自动存到你账号下';
       return;
     }
     empty.classList.add('hidden');
@@ -61,7 +61,7 @@
       bar.innerHTML = ['all', ...inds].map((k) => `<button type="button" class="${state.industry === k ? 'on' : ''}" data-ind="${k}">${k === 'all' ? '全部行业' : k}</button>`).join('');
       bar.querySelectorAll('button').forEach((b) => { b.onclick = () => { state.industry = b.dataset.ind; render(); }; });
     }
-    $('#wkSub').textContent = `共 ${total} 条${state.q ? ` · 匹配 ${list.length} 条` : ''} · 存在本机 works/ 目录`;
+    $('#wkSub').textContent = `共 ${total} 条${state.q ? ` · 匹配 ${list.length} 条` : ''} · 只显示你自己账号下的`;
 
     grid.innerHTML = list.map((it) => `
       <article class="wk-card" data-id="${encodeURIComponent(it.id)}">
@@ -258,7 +258,7 @@
   let dragDepth = 0;
   const drop = document.createElement('div');
   drop.className = 'wk-drop hidden';
-  drop.innerHTML = '<b>松手，视频就存进作品墙</b>';
+  drop.innerHTML = '<b>松手，视频就存进我的作品</b>';
   document.body.appendChild(drop);
   window.addEventListener('dragenter', (e) => {
     if (![...(e.dataTransfer?.types || [])].includes('Files')) return;
