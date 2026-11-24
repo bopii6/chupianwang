@@ -51,6 +51,17 @@ loadEnv();
 const HOST = process.env.HOST || '127.0.0.1';
 const LOCAL_ONLY = ['127.0.0.1', 'localhost', '::1'].includes(HOST);
 
+// 公网部署（比如 getcut.cn 架在服务器上，Caddy/Nginx 反代到本机端口）：
+// 在 .env 里写 PUBLIC_BASE_URL=https://getcut.cn，服务仍然只听 127.0.0.1，但允许这个域名的请求进来。
+// 还有别名域名（比如 www.getcut.cn）就写 PUBLIC_EXTRA_HOSTS=www.getcut.cn，逗号分隔。
+const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL || '').replace(/\/+$/, '');
+const PUBLIC_HOST = (() => { try { return PUBLIC_BASE_URL ? new URL(PUBLIC_BASE_URL).host.toLowerCase() : ''; } catch { return ''; } })();
+const PUBLIC_EXTRA_HOSTS = (process.env.PUBLIC_EXTRA_HOSTS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+function isPublicHost(host) {
+  const h = String(host || '').toLowerCase().replace(/:\d+$/, '');
+  return !!PUBLIC_HOST && (h === PUBLIC_HOST || PUBLIC_EXTRA_HOSTS.includes(h));
+}
+
 // ---------- 静态文件 ----------
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
@@ -505,10 +516,17 @@ ${ref}` : '';
 const LOCAL_HOST_RE = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i;
 function rejectReason(req) {
   const host = String(req.headers.host || '');
-  if (LOCAL_ONLY && !LOCAL_HOST_RE.test(host)) return '只能在这台电脑上用 http://localhost 打开';
+  const hosted = isPublicHost(host); // 公网域名（PUBLIC_BASE_URL）来的请求
+  if (LOCAL_ONLY && !hosted && !LOCAL_HOST_RE.test(host)) return '只能在这台电脑上用 http://localhost 打开';
   if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return '';
   const origin = req.headers.origin;
-  if (origin && origin !== `http://${host}`) return '不接受其他网站发来的请求';
+  // 公网模式下反代是 https，浏览器发来的 Origin 是 https://getcut.cn，只要同域名就认（www 和主域都算）
+  const sameOrigin = (() => {
+    if (!origin) return true;
+    if (!hosted) return origin === `http://${host}`;
+    try { return new URL(origin).host.toLowerCase() === host.toLowerCase(); } catch { return false; }
+  })();
+  if (!sameOrigin) return '不接受其他网站发来的请求';
   if (!origin && req.headers['sec-fetch-site'] === 'cross-site') return '不接受其他网站发来的请求';
   return '';
 }
