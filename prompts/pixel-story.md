@@ -39,7 +39,7 @@
 
 {
   "title": "系列大标题，≤12字，要有钩子",
-  "theme": {"key": "行业，从 k12、exam、language（外语、口才、主持）、music、dance、art、coding、driving、beauty、fitness、cooking、business 里选一个，按客户自己的行业选", "emoji": ["2-3个行业表情"]},
+  "theme": {"key": "行业，从 k12、art（美术、书法、手工）、music、dance、coding、driving、beauty、fitness、cooking、language、exam、business、legal（法律、律所）、health（大健康、中医、营养）、counsel（升学、留学、教育咨询）、vocation（职业技能、家政母婴）、finance（财税、代账）里选一个，按客户自己的行业选", "emoji": ["2-3个行业表情"]},
   "sections": [
     {
       "tag": "镜头小标签，≤5字",

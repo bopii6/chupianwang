@@ -1,4 +1,5 @@
 import { forms, categories } from './forms/registry.js';
+import { THEMES, THEME_KEYS } from './forms/themes.js';
 import { W, H } from './engine/draw.js';
 import { buildTimeline, synthesize, mixAudio, mixWithBgm, envelope, getAudioCtx } from './engine/timeline.js';
 import { BGM_STYLES, renderBgm, warmBgm } from './engine/music.js';
@@ -9,7 +10,7 @@ warmFonts();
 
 const $ = (s) => document.querySelector(s);
 const FPS = 24; // 与对标样片一致；图文动效 24 帧足够流畅，比 30 帧少 20% 渲染量
-const IDEAS = ['成人学钢琴晚不晚', '少儿编程有什么用', '科目二怎么一次过', '美甲新手接第一单'];
+const IDEAS = ['成人学钢琴晚不晚', '少儿编程有什么用', '科目二怎么一次过', '美甲新手接第一单', '律师第一次咨询问什么', '体检报告怎么看', '志愿填错能改吗', '零基础转行学什么'];
 const VOICES = [
   { id: 'zh-CN-YunxiNeural', name: '云希', desc: '阳光男声 · 适合知识讲解', av: '希' },
   { id: 'zh-CN-XiaoxiaoNeural', name: '晓晓', desc: '温暖女声 · 适合家长沟通', av: '晓' },
@@ -21,10 +22,10 @@ const VOICES = [
 function autoVoice(script) {
   const key = script?.theme?.key || '';
   const kid = /少儿|孩子|幼儿|小朋友|宝宝|宝贝/.test(state.input + (script?.title || ''));
-  if (kid && ['coding', 'art', 'music', 'dance', 'language', 'k12'].includes(key)) return 'zh-CN-XiaoyiNeural'; // 活泼女声
-  if (['driving', 'fitness'].includes(key)) return 'zh-CN-YunjianNeural'; // 激情男声
-  if (['beauty', 'cooking', 'music', 'dance', 'art'].includes(key)) return 'zh-CN-XiaoxiaoNeural'; // 温暖女声
-  if (state.form?.id === 'deep-dive' || state.form?.id === 'data-card' || key === 'business') return 'zh-CN-YunyangNeural'; // 播音腔
+  if (kid && ['coding', 'art', 'music', 'dance', 'language', 'k12', 'counsel'].includes(key)) return 'zh-CN-XiaoyiNeural'; // 活泼女声
+  if (['driving', 'fitness', 'vocation'].includes(key)) return 'zh-CN-YunjianNeural'; // 激情男声
+  if (['beauty', 'cooking', 'music', 'dance', 'art', 'health', 'counsel'].includes(key)) return 'zh-CN-XiaoxiaoNeural'; // 温暖女声
+  if (state.form?.id === 'deep-dive' || state.form?.id === 'data-card' || ['business', 'legal', 'finance'].includes(key)) return 'zh-CN-YunyangNeural'; // 播音腔
   return 'zh-CN-YunxiNeural';
 }
 const SCENE_NAMES = { field: '野外', room: '书房', classroom: '教室', exam: '考场', home: '客厅', street: '街市', river: '河边', studio: '练习室', lab: '电脑教室', road: '练车场' };
@@ -191,7 +192,10 @@ function selectForm(id) {
   $('#photoPanel .photos-head b').textContent = PHOTO_TEXT[photoKind()].name;
   $('#photoPanel .photos-head span').textContent = PHOTO_TEXT[photoKind()].hint;
   $('#photoPanel').title = state.form.photoHint || '3–6 张半身照，换不同手势，会自动抠图。照片只存在你自己的电脑里。';
-  $('#photoInput').accept = photoKind() === 'footage' ? 'image/*,video/*' : 'image/*';
+  $('#photoPanel').classList.toggle('is-footage', photoKind() === 'footage');
+  $('#photoInput').accept = 'image/*';
+  $('#videoInput').accept = 'video/*';
+  syncAttach();
   renderDurLabels();
   renderPhotoRows();
   warmBgm(bgmOf().style, getAudioCtx().sampleRate); // 用户打字时，后台先把音乐合成好
@@ -201,25 +205,135 @@ $('#tplStrip').addEventListener('click', (e) => {
   if (state.mode === 'video') rm.userPicked = true;
   selectForm(el.dataset.id);
 });
-// 灵感句：覆盖各种培训（不只是学科），按模板的用途分组；客户刚来没想法，点一点就能出片
-// 灵感：“短标签|点了以后填进去的完整一句”。标签短，一行放得下，不显得乱
+// 灵感句：覆盖各种行业（不只学科和手艺），按模板的用途分组；客户刚来没想法、手里也没文案，点一点就能出片
+// 灵感：“短标签|点了以后填进去的完整一句|品类 key”。标签短（≤9 字），一行放得下，不显得乱
+// 第三段是品类：客户在上面的下拉里选了行业，就只抽这一类的句子。17 类都至少给 3 条，选哪个都不空。
+// 加行业时记得 themes.js、prompts/*.md 和这里一起加。
 const IDEA_POOL = {
-  'photo-talk': ['钢琴暑假班招生|成人钢琴暑假班招生，一对一小课', '美甲新一期开班|美甲培训新一期开班，零基础也能学', '驾校周末班报名|驾校周末班开始报名了', '教资冲刺 30 天|考教资冲刺班，最后 30 天怎么学', '编程体验课|少儿编程体验课，带孩子来试一节', '下班学口语|成人英语口语班，下班后也能学'],
-  'series-intro': ['每晚一个乐理知识|每晚 10 分钟，带你学一个乐理知识', '30 天学会美甲|30 天学会美甲基础', '每天一道科目一题|每天一道科目一易错题', '每天练一句口语|每天 1 分钟，练一句地道英语口语', '睡前讲一道数学题|每晚睡前讲一个数学解题思路'],
-  'footage-mix': ['带你看钢琴课现场|带大家看看我们成人钢琴课的上课现场', '美甲学员第一周|美甲零基础学员，第一周都在练什么', '驾校练车日常|带你看看我们驾校学员的练车日常', '舞蹈班开课第一天|少儿舞蹈暑假班开课第一天'],
-  'deep-dive': ['学半年钢琴弹不完一首|为什么很多人学了半年钢琴，还弹不完一首曲子', '教资越来越难考？|为什么考教资一次过的人越来越少', '美甲学徒为何出不了师|为什么有的美甲学徒三年都出不了师', '成年人为何爱上跳舞|为什么越来越多成年人开始学跳舞'],
-  'pixel-story': ['方法比努力重要|学习方法比努力更重要', '别等考前才复习|别等到考前才开始复习', '学手艺怕三天打鱼|学手艺最怕三天打鱼两天晒网', '零基础三个月接单|一个零基础学员，三个月开始接单的故事'],
-  'sketch-talk': ['新手学琴 4 个错|新手学钢琴最容易犯的 4 个错', '考三次没过的原因|为什么有人科目二考了三次都没过', '孩子主动练习|让孩子主动练习的 3 个办法', '美甲接单难在哪|美甲新手接不到单，问题出在哪'],
-  'data-card': ['科目二最常挂 3 点|驾考科目二最常挂的 3 个点', '学美甲 3 个坑|学美甲最容易踩的 3 个坑', '初中数学 3 个真相|初中数学提分的 3 个真相', '成人学琴 4 个误区|成人学钢琴的 4 个误区'],
+  'photo-talk': [
+    '成人钢琴暑假班招生|成人钢琴暑假班招生，一对一小课|music',
+    '美甲新一期开班|美甲培训新一期开班，零基础也能学|beauty',
+    '驾校周末班报名|驾校周末班开始报名了|driving',
+    '教资冲刺 30 天|考教资冲刺班，最后 30 天怎么学|exam',
+    '少儿编程体验课|少儿编程体验课，带孩子来试一节|coding',
+    '下班学口语|成人英语口语班，下班后也能学|language',
+    '律所免费咨询|本地律所，第一次咨询不收费，先看看有没有必要打官司|legal',
+    '营养师配餐|营养师给你配一周三餐，比办健身卡有用|health',
+    '志愿填报一对一|高考志愿一对一，先出一份能落地的方案|counsel',
+    '30 岁转行学编程|30 岁想转行写代码，先来上一节试听课|coding',
+    '中医调理体验|中医馆调理体验，先号脉再谈方案|health',
+    '会计实操班招生|会计实操班招生，会做账比考完证更有用|finance',
+    '招生方案怎么做|机构的招生方案，别一上来就投广告|business',
+    '游泳第一节课|游泳第一节课，先学的是怎么不呛水|fitness',
+  ],
+  'series-intro': [
+    '每晚一个乐理知识|每晚 10 分钟，带你学一个乐理知识|music',
+    '30 天学会美甲|30 天学会美甲基础|beauty',
+    '每天一道科目一题|每天一道科目一易错题|driving',
+    '每天练一句口语|每天 1 分钟，练一句地道英语口语|language',
+    '睡前讲一道数学题|每晚睡前讲一个数学解题思路|k12',
+    '每天一条法律常识|每天 1 分钟，讲一个看得懂的法律常识|legal',
+    '每天一个营养搭配|每天 1 分钟，教你搭一顿不胖的饭|health',
+    '每天一个编程技巧|每天 1 分钟，讲一个能马上用的编程技巧|coding',
+    '每周一条升学政策|每周 5 分钟，讲清一条升学政策|counsel',
+    '每天一个健身动作|每天 1 分钟，学会一个在家能做的动作|fitness',
+  ],
+  'footage-mix': [
+    '带你看钢琴课现场|带大家看看我们成人钢琴课的上课现场|music',
+    '美甲学员第一周|美甲零基础学员，第一周都在练什么|beauty',
+    '驾校练车日常|带你看看我们驾校学员的练车日常|driving',
+    '舞蹈班开课第一天|少儿舞蹈暑假班开课第一天|dance',
+    '律所的一天|带你看看我们律所一天是怎么过的|legal',
+    '中医馆的上午|带大家看看我们中医馆上午的号是怎么排的|health',
+    '康复中心评估|带你看康复中心的第一次评估，都测什么|health',
+    '编程课第一节课|带你看少儿编程第一节课，孩子都在干什么|coding',
+    '育婴师实操课|育婴师培训第一节课，先练怎么抱孩子|vocation',
+    '烘焙班第一次出手|烘焙班学员第一次自己出手做蛋糕|cooking',
+    '月子中心的日常|月子中心的一天，护士都在忙什么|vocation',
+    '代账公司的一天|代账公司的一天，客户最常问的三个问题|finance',
+    '画室集训第一天|美术集训第一天，画室里的真实状态|art',
+    '健身房晚高峰|下班后的健身房，器械区基本排不上队|fitness',
+    '电工实操课|带你看电工培训班的实操课，先练什么|vocation',
+    '成人口语角|每周一次英语角，来了就得开口说|language',
+    '咖啡拉花第一杯|咖啡拉花第一杯，先把奶泡打好|cooking',
+    '书法课第一次落笔|书法课第一次落笔，先练横竖|art',
+  ],
+  'deep-dive': [
+    '学半年钢琴弹不完一首|为什么很多人学了半年钢琴，还弹不完一首曲子|music',
+    '教资越来越难考？|为什么考教资一次过的人越来越少|exam',
+    '美甲学徒为何出不了师|为什么有的美甲学徒三年都出不了师|beauty',
+    '成年人为何爱上跳舞|为什么越来越多成年人开始学跳舞|dance',
+    '律师费为什么这么贵|为什么律师费这么贵，钱到底花在哪|legal',
+    '体检报告一半不用怕|为什么体检报告上的箭头，一半都不用怕|health',
+    '志愿填错最难受|为什么志愿填错的人，四年后最难受|counsel',
+    '30 岁转行为何难|为什么 30 岁转行的人，一半卡在第一步|coding',
+    '孩子越补越差？|为什么补课补得越多，孩子成绩越差|k12',
+    '书法练多久能写春联|练书法多久能自己写一副春联|art',
+    '成年人学舞的松弛感|成年人学舞蹈，最难的是松弛感|dance',
+    '做知识付费先想清|做知识付费之前，先想清楚这三件事|business',
+  ],
+  'pixel-story': [
+    '方法比努力重要|学习方法比努力更重要|k12',
+    '别等考前才复习|别等到考前才开始复习|exam',
+    '学手艺怕三天打鱼|学手艺最怕三天打鱼两天晒网|beauty',
+    '零基础三个月接单|一个零基础学员，三个月开始接单的故事|beauty',
+    '复读这一年|复读这一年，最难的不是成绩|k12',
+    '第一次上庭|第一次上庭的年轻律师，前一晚没睡着|legal',
+    '考了三次才上岸|考了三次才上岸的人，中间都想放弃|exam',
+    '从后厨到开店|从后厨学徒到自己开店，用了四年|cooking',
+  ],
+  'sketch-talk': [
+    '新手学琴 4 个错|新手学钢琴最容易犯的 4 个错|music',
+    '考三次没过的原因|为什么有人科目二考了三次都没过|driving',
+    '孩子主动练习|让孩子主动练习的 3 个办法|k12',
+    '美甲接单难在哪|美甲新手接不到单，问题出在哪|beauty',
+    '工伤别私了|工伤私了最容易吃亏的 3 种情况|legal',
+    '体检报告看 3 项|拿到体检报告，先看这 3 项指标|health',
+    '血糖高怎么吃|血糖偏高，主食到底该怎么吃|health',
+    '零基础学 Python|零基础学 Python，第一个月该学什么|coding',
+    '志愿填报 3 个误区|志愿填报最容易踩的 3 个误区|counsel',
+    '劳动合同 3 个坑|签劳动合同最容易踩的 3 个坑|legal',
+    '减肥先练力量|减肥别只跑步，先练力量的 3 个理由|fitness',
+    '带货选品 3 个坑|带货选品最容易踩的 3 个坑|business',
+    '代账客户最常问|代账客户最常问的 3 个问题|finance',
+  ],
+  'data-card': [
+    '科目二最常挂 3 点|驾考科目二最常挂的 3 个点|driving',
+    '学美甲 3 个坑|学美甲最容易踩的 3 个坑|beauty',
+    '初中数学 3 个真相|初中数学提分的 3 个真相|k12',
+    '成人学琴 4 个误区|成人学钢琴的 4 个误区|music',
+    '律师收费 3 种方式|律师费一般怎么收，3 种方式说清|legal',
+    '体检套餐怎么选|体检套餐怎么选，别只看项目数量|health',
+    '升学 3 条路|中考之后的三条路，各适合什么样的孩子|counsel',
+    '学编程 3 个阶段|从零学编程的 3 个阶段，别跳着走|coding',
+    '康复 3 个阶段|康复训练一般分 3 个阶段，别急着加量|health',
+    '初级会计考什么|初级会计考什么，3 门课怎么排|finance',
+    '月嫂培训第一周|月嫂培训第一周，都练些什么|vocation',
+    '美术集训课表|美术集训一天的课表，要画几张|art',
+  ],
 };
 let ideaSeen = new Set();
-function pickIdeas(n = 4) {
+/** “短标签|整句|品类 key”，第三段可以没有（老内容不受影响） */
+const parseIdea = (s) => { const [label, full = label, cat = ''] = String(s).split('|'); return { label, full, cat }; };
+const shuffleList = (a) => a.map((x) => [Math.random(), x]).sort((x, y) => x[0] - y[0]).map((x) => x[1]);
+const uniqList = (a) => [...new Set(a)];
+/** 抽 3 条灵感句：选了品类就只抽这一类的；这一类句子不够 3 条时，先用别的补位，不空着 */
+function pickIdeas(n = 3) {
+  const cat = prefs.category || '';
   const own = [...(IDEA_POOL[state.form?.id] || IDEAS)];
   const others = Object.entries(IDEA_POOL).filter(([k]) => k !== state.form?.id).flatMap(([, v]) => v);
-  const shuffle = (a) => a.map((x) => [Math.random(), x]).sort((x, y) => x[0] - y[0]).map((x) => x[1]);
-  let pool = [...shuffle(own.filter((x) => !ideaSeen.has(x))), ...shuffle(others.filter((x) => !ideaSeen.has(x)))];
-  if (pool.length < n) { ideaSeen = new Set(); pool = [...shuffle(own), ...shuffle(others)]; }
-  const out = pool.slice(0, n); out.forEach((x) => ideaSeen.add(x));
+  const fresh = (list) => list.filter((x) => !ideaSeen.has(x));
+  let pool;
+  if (cat) {
+    const same = [...own, ...others].filter((x) => parseIdea(x).cat === cat);
+    pool = uniqList([...shuffleList(fresh(same)), ...shuffleList(same)]);
+    if (pool.length < n) pool = uniqList([...pool, ...shuffleList(fresh([...own, ...others]))]);
+  } else {
+    pool = uniqList([...shuffleList(fresh(own)), ...shuffleList(fresh(others))]);
+    if (pool.length < n) { ideaSeen = new Set(); pool = uniqList([...shuffleList(own), ...shuffleList(others)]); }
+  }
+  const out = pool.slice(0, n);
+  out.forEach((x) => ideaSeen.add(x));
   return out;
 }
 const SPARK = '<svg viewBox="0 0 24 24"><path d="M12 3.5c.4 3.9 2.6 6.1 6.5 6.5-3.9.4-6.1 2.6-6.5 6.5-.4-3.9-2.6-6.1-6.5-6.5 3.9-.4 6.1-2.6 6.5-6.5zM18.5 15.5c.2 1.6 1 2.4 2.5 2.5-1.6.2-2.4 1-2.5 2.5-.2-1.6-1-2.4-2.5-2.5 1.6-.2 2.4-1 2.5-2.5z" fill="currentColor"/></svg>';
@@ -227,12 +341,119 @@ const SHUFFLE = '<svg viewBox="0 0 24 24"><path d="M4 7h3.5c2.2 0 3.5 1.2 4.6 3.
 let ideasFor = '';
 function renderIdeas(force = false) {
   $('#ideas').classList.toggle('hidden', state.mode !== 'say');
+  $('#catRow')?.classList.toggle('hidden', state.mode !== 'say');
   if (!force && ideasFor === state.form?.id && $('#ideas').children.length) return; // 切标签不重新抽
   ideasFor = state.form?.id || '';
   $('#ideas').innerHTML = `<span class="sp-label" title="不知道说什么？点一个试试">${SPARK}试试</span>`
-    + pickIdeas(3).map((q, i) => { const [label, full = label] = q.split('|'); return `<button class="sp" type="button" style="--i:${i}" data-full="${esc(full)}" title="${esc(full)}">${esc(label)}</button>`; }).join('')
+    + pickIdeas(3).map((q, i) => {
+      const { label, full } = parseIdea(q);
+      return `<button class="sp" type="button" style="--i:${i}" data-full="${esc(full)}" title="${esc(full)}">${esc(label)}</button>`;
+    }).join('')
     + `<button class="sp-more" type="button" title="换一批" aria-label="换一批">${SHUFFLE}</button>`;
 }
+
+// ---------- 品类小下拉：客户连话都不会说时，先点一个行业，例子和出片配色都跟着走 ----------
+const CAT_CARET = '<svg class="cat-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+// 下拉里分两组：客户一看就知道自己是“做培训的”还是“做专业服务的”，17 类不用一条条读
+const CAT_GROUPS = [
+  { label: '培训 · 手艺', keys: ['k12', 'art', 'music', 'dance', 'coding', 'driving', 'beauty', 'fitness', 'cooking', 'language', 'exam', 'business', 'vocation'] },
+  { label: '专业服务', keys: ['legal', 'health', 'counsel', 'finance'] },
+];
+let catMenuEl = null;
+/** 客户选了的品类；没选就是空字符串 */
+const pickedCat = () => (prefs.category && THEMES[prefs.category] ? prefs.category : '');
+function catHintText() {
+  const k = pickedCat();
+  return k ? `例子只出这一类，出片也按这个行业配色` : '说不出自己是哪个行业？点这里挑一个';
+}
+function renderCatBtn() {
+  const b = $('#catBtn'); if (!b) return;
+  const k = pickedCat();
+  const short = k ? THEMES[k].name.split(' · ')[0] : '全部品类';
+  b.innerHTML = `<i class="cat-dot" style="background:${k ? THEMES[k].red : 'var(--text-3)'}"></i><span>${esc(short)}</span>${CAT_CARET}`;
+  b.classList.toggle('on', !!k);
+  b.title = k ? `只看「${THEMES[k].name}」的例子` : '先挑一个行业，例子就只出这个行业的';
+  const hint = $('#catHint'); if (hint) hint.textContent = catHintText();
+}
+function closeCatMenu() {
+  if (!catMenuEl) return;
+  catMenuEl.remove(); catMenuEl = null;
+  const b = $('#catBtn'); b?.setAttribute('aria-expanded', 'false'); b?.classList.remove('open');
+}
+function openCatMenu() {
+  closeCatMenu();
+  const b = $('#catBtn'); if (!b) return;
+  const r = b.getBoundingClientRect();
+  const cur = pickedCat();
+  const el = document.createElement('div');
+  el.className = 'cat-menu'; el.setAttribute('role', 'listbox'); el.setAttribute('aria-label', '选品类');
+  const item = (k, extra = '') => {
+    const th = k ? THEMES[k] : null;
+    const on = k === cur;
+    return `<button type="button" role="option" aria-selected="${on}" class="cat-opt${on ? ' on' : ''}${extra}" data-cat="${k}">`
+      + `<span class="cat-emoji">${th ? (th.emoji[0] || '') : '✨'}</span>`
+      + `<span class="cat-name">${esc(th ? th.name : '全部品类')}</span>`
+      + '</button>';
+  };
+  // 万一以后加了新行业忘了分组，也照样列出来，不能让它消失
+  const grouped = new Set(CAT_GROUPS.flatMap((g) => g.keys));
+  const rest = THEME_KEYS.filter((k) => !grouped.has(k));
+  const groups = rest.length ? [...CAT_GROUPS.slice(0, -1), { ...CAT_GROUPS.at(-1), keys: [...CAT_GROUPS.at(-1).keys, ...rest] }] : CAT_GROUPS;
+  // 两列铺开，不用滚：一屏把 17 个行业全看到
+  el.innerHTML = item('', ' cat-all') + '<div class="cat-sep" role="presentation"></div>'
+    + groups.map((g) => `<div class="cat-group">${esc(g.label)}</div>` + g.keys.filter((k) => THEMES[k]).map((k) => item(k)).join('')).join('');
+  document.body.appendChild(el);
+  catMenuEl = el;
+  [...el.querySelectorAll('.cat-opt, .cat-group')].forEach((n, i) => n.style.setProperty('--i', i)); // 一条条淡进来
+  const w = Math.min(400, innerWidth - 24);
+  el.style.width = w + 'px';
+  el.style.left = Math.max(12, Math.min(r.left, innerWidth - w - 12)) + 'px';
+  const h = el.offsetHeight;
+  const flip = r.bottom + 8 + h > innerHeight - 12; // 下面放不下就往上弹
+  el.style.top = (flip ? Math.max(12, r.top - h - 8) : r.bottom + 8) + 'px';
+  el.classList.toggle('up', flip);
+  b.setAttribute('aria-expanded', 'true'); b.classList.add('open');
+  requestAnimationFrame(() => {
+    el.classList.add('in');
+    el.querySelector('.cat-opt.on')?.scrollIntoView({ block: 'center' }); // 再打开时，直接滚到你选的那个
+  });
+  el.addEventListener('click', (e) => {
+    const o = e.target.closest('.cat-opt'); if (!o) return;
+    setCategory(o.dataset.cat);
+  });
+}
+/** 输入框里的示例句：选了品类就用页面上第一条，别另抽一条，免得说的和看到的不一样 */
+function syncInputPlaceholder() {
+  if (state.attachments.length || $('#input').value.trim()) return;
+  const first = pickedCat() ? $('#ideas .sp') : null;
+  $('#input').placeholder = first ? `比如：${first.dataset.full || first.textContent}` : INPUT_PLACEHOLDER;
+}
+/** 选品类：记住选择，例子立刻换成这一行；出片时也按这一行配色 */
+function setCategory(key) {
+  prefs.category = THEMES[key] ? key : '';
+  savePrefs();
+  closeCatMenu();
+  renderCatBtn();
+  ideaSeen = new Set();
+  renderIdeas(true);
+  $('#createErr').textContent = '';
+  syncInputPlaceholder();
+}
+$('#catBtn')?.addEventListener('click', (e) => { e.stopPropagation(); catMenuEl ? closeCatMenu() : openCatMenu(); });
+document.addEventListener('mousedown', (e) => {
+  if (!catMenuEl) return;
+  if (e.target.closest('.cat-menu') || e.target.closest('#catBtn')) return;
+  closeCatMenu();
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeCatMenu(); });
+// 页面滚动就收起菜单；但菜单自己在里面滚，不算
+window.addEventListener('scroll', (e) => {
+  if (!catMenuEl) return;
+  const t = e.target;
+  if (t && t.nodeType === 1 && catMenuEl.contains(t)) return;
+  closeCatMenu();
+}, { passive: true, capture: true });
+window.addEventListener('resize', closeCatMenu);
 // 点灵感：像打字一样填进输入框（快速，不让人等）
 let typeTimer = 0;
 function typeInto(text) {
@@ -255,6 +476,7 @@ function setMode(m) {
   $('#paneSay').classList.toggle('hidden', m !== 'say');
   $('#paneVideo').classList.toggle('hidden', m !== 'video');
   $('#sayTools').classList.toggle('hidden', m !== 'say');
+  syncAttach();
   $('#tplHint').textContent = '';
   $('#createErr').textContent = aiReady ? '' : $('#createErr').textContent;
   renderIdeas(); updateGo();
@@ -262,6 +484,11 @@ function setMode(m) {
   if (m === 'video') loadLib();
 }
 $('#modeTabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b && b.dataset.mode !== state.mode) setMode(b.dataset.mode); });
+/** “加资料”是给纯文字形式补 PPT/Word 的；实拍混剪靠照片和视频就够，底下这块按钮就不显示了，省得挤 */
+function syncAttach() {
+  const show = state.mode === 'say' && photoKind() !== 'footage';
+  $('#sayTools').classList.toggle('hidden', !show);
+}
 function moveTabInd() {
   const on = $('#modeTabs button.on'); if (!on) return;
   const ind = $('#tabInd'); ind.style.width = on.offsetWidth + 'px'; ind.style.transform = `translateX(${on.offsetLeft - 3}px)`;
@@ -389,6 +616,8 @@ async function generate(input = $('#input').value.trim()) {
     onAuthFail(r);
     if (!r.ok) throw new Error(data.error || '生成失败');
     data.account = prefs.account || data.account || '';
+    // 客户自己选了品类：画面配色、行业徽章都按这一行来，不让 AI 再猜
+    if (pickedCat()) data.theme = { key: pickedCat(), emoji: [] };
     state.flags = Array.isArray(data._flags) ? data._flags : [];
     onQuota(data);
     await startWithScript(state.form.module.normalize ? state.form.module.normalize(data, splitLongLine) : normalize(data));
@@ -1267,7 +1496,7 @@ const photoKind = () => state.form?.photoKind || 'photos';
 const PHOTO_TEXT = {
   photos: { name: '我的形象照', hint: '可选，不传就用卡通讲师', hint2: '每个镜头轮流换一张', max: 8, add: '添加照片' },
   scenes: { name: '现场照片', hint: '可选，讲到“我们”时用', hint2: '讲到“我们”时优先用；改完点镜头上的「换图」', max: 20, add: '添加照片' },
-  footage: { name: '我的照片和视频', hint: '课堂、校区、学员、作品，越多越好', hint2: '按上传顺序铺到各个镜头；点镜头上的「换图」可以换', max: 30, add: '加照片<br/>或视频' },
+  footage: { name: '我的照片和视频', hint: '课堂、校区、学员、作品；照片最多 30 张、视频最多 10 条', hint2: '按上传顺序铺到各个镜头；点镜头上的「换图」可以换', max: 40, maxPhotos: 30, maxVideos: 10, add: '加照片', addVideo: '加视频' },
 };
 async function loadPhotos(kind = photoKind()) {
   const list = await listPhotos(kind);
@@ -1289,21 +1518,50 @@ async function loadPhotos(kind = photoKind()) {
 const fmtSec = (s) => `0:${String(Math.round(s)).padStart(2, '0')}`;
 function renderPhotoRows() {
   const kind = photoKind(); const list = state.photoLists[kind]; const tx = PHOTO_TEXT[kind];
-  const tiles = list.map((p) => `<div class="ph-tile ${kind}"><img src="${p.url}" alt="" />${p.clip ? `<span class="vd">▶ ${fmtSec(p.clip.dur)}</span>` : ''}<button class="del" data-del-photo="${p.id}" title="删除">×</button></div>`).join('')
-    + Array.from({ length: state.photoBusy }, (_, k) => `<div class="ph-tile busy"><div><i></i>${kind === 'photos' ? '抠图中' : k === 0 && state.photoPct ? `处理中 ${state.photoPct}%` : '处理中'}</div></div>`).join('')
-    + (list.length + state.photoBusy < tx.max ? `<button class="ph-tile add" data-add-photo>＋<br/>${tx.add}</button>` : '');
-  document.querySelectorAll('[data-photo-row]').forEach((el) => { el.innerHTML = tiles; });
+  const cnt = document.getElementById('phCount');
+  const tile = (p) => `<div class="ph-tile ${kind}"><img src="${p.url}" alt="" />${p.clip ? `<span class="vd">▶ ${fmtSec(p.clip.dur)}</span>` : ''}<button class="del" data-del-photo="${p.id}" title="删除">×</button></div>`;
+  const busy = Array.from({ length: state.photoBusy }, (_, k) => `<div class="ph-tile busy"><div><i></i>${kind === 'photos' ? '抠图中' : k === 0 && state.photoPct ? `处理中 ${state.photoPct}%` : '处理中'}</div></div>`).join('');
+  let html;
+  if (kind === 'footage') {
+    // 照片和视频分两行，各走各的入口，各自有上限；行高固定，传多少都不变高
+    const photos = list.filter((p) => !p.clip); const videos = list.filter((p) => p.clip);
+    if (cnt) cnt.textContent = list.length ? `已加 ${list.length} 个` : '';
+    const group = (label, items, max, attr, addText, extra) => `<div class="ph-group">
+        <div class="ph-ghead"><b>${label}</b><em class="${items.length > max ? 'over' : ''}">${items.length > max ? `${items.length} 个，超了` : `${items.length} / ${max}`}</em></div>
+        <div class="ph-gline">${items.map(tile).join('')}${items.length >= max ? '<div class="ph-tile add full">已满</div>' : `<button class="ph-tile add" ${attr}>＋<br/>${addText}</button>`}${extra}</div>
+      </div>`;
+    html = group('照片', photos, tx.maxPhotos, 'data-add-photo', tx.add, '')
+      + group('视频', videos, tx.maxVideos, 'data-add-video', tx.addVideo, busy);
+  } else {
+    if (cnt) cnt.textContent = '';
+    html = list.map(tile).join('') + busy
+      + (list.length + state.photoBusy < tx.max ? `<button class="ph-tile add" data-add-photo>＋<br/>${tx.add}</button>` : '');
+  }
+  document.querySelectorAll('[data-photo-row]').forEach((el) => { el.innerHTML = html; });
 }
 document.addEventListener('click', async (e) => {
   if (e.target.closest('[data-add-photo]')) { $('#photoInput').click(); return; }
+  if (e.target.closest('[data-add-video]')) { $('#videoInput').click(); return; }
   const del = e.target.closest('[data-del-photo]');
   if (del) { await deletePhoto(del.dataset.delPhoto, photoKind()); await loadPhotos(); }
 });
-$('#photoInput').addEventListener('change', async (e) => {
-  const kind = photoKind();
-  const files = [...e.target.files].slice(0, Math.max(0, PHOTO_TEXT[kind].max - state.photoLists[kind].length));
-  e.target.value = '';
-  if (!files.length) return;
+async function addPhotoFiles(raw) {
+  const kind = photoKind(); const tx = PHOTO_TEXT[kind];
+  const isVid = (f) => f.type.startsWith('video/') || /\.(mp4|mov|m4v|webm|mkv|avi)$/i.test(f.name);
+  let files = [...raw];
+  if (kind === 'footage') {
+    // 照片、视频各算各的上限，别让客户一口气传 100 个进来
+    const list = state.photoLists.footage;
+    const roomP = Math.max(0, tx.maxPhotos - list.filter((p) => !p.clip).length);
+    const roomV = Math.max(0, tx.maxVideos - list.filter((p) => p.clip).length);
+    const imgs = files.filter((f) => !isVid(f)); const vids = files.filter(isVid);
+    if (imgs.length > roomP) toast(`照片最多 ${tx.maxPhotos} 张，多的没加`);
+    if (vids.length > roomV) toast(`视频最多 ${tx.maxVideos} 条，多的没加`);
+    files = [...imgs.slice(0, roomP), ...vids.slice(0, roomV)];
+  } else {
+    files = files.filter((f) => !isVid(f)).slice(0, Math.max(0, tx.max - state.photoLists[kind].length));
+  }
+  if (!files.length) { toast(kind === 'footage' ? '照片或视频已经加满了，先删几个再传' : `最多 ${tx.max} 个`); return; }
   state.photoBusy += files.length; renderPhotoRows();
   let cutoutPerson;
   if (kind === 'photos') {
@@ -1323,7 +1581,24 @@ $('#photoInput').addEventListener('change', async (e) => {
     } catch (err) { toast(err.message || '这个文件处理失败，换一个试试'); }
     state.photoBusy--; state.photoPct = 0; await loadPhotos(kind);
   }
-});
+}
+$('#photoInput').addEventListener('change', (e) => { const files = [...e.target.files]; e.target.value = ''; addPhotoFiles(files); });
+$('#videoInput').addEventListener('change', (e) => { const files = [...e.target.files]; e.target.value = ''; addPhotoFiles(files); });
+// 直接把照片和视频拖到上传区也能加（只在这个形式里这样处理，别和首页“拖视频做爆款”打架）
+(() => {
+  const panel = $('#photoPanel');
+  const on = () => photoKind() === 'footage';
+  panel.addEventListener('dragenter', (e) => { if (!on()) return; e.preventDefault(); e.stopPropagation(); panel.classList.add('dropping'); });
+  panel.addEventListener('dragover', (e) => { if (!on()) return; e.preventDefault(); e.stopPropagation(); panel.classList.add('dropping'); });
+  panel.addEventListener('dragleave', (e) => { if (!panel.contains(e.relatedTarget)) panel.classList.remove('dropping'); });
+  panel.addEventListener('drop', (e) => {
+    if (!on()) return;
+    e.preventDefault(); e.stopPropagation();
+    panel.classList.remove('dropping');
+    const files = [...(e.dataTransfer?.files || [])];
+    if (files.length) addPhotoFiles(files);
+  });
+})();
 
 // ---------- 画面素材：现场照片优先，其余从正版素材库按关键词找 ----------
 let stockMod = null;
@@ -1394,6 +1669,8 @@ window.__app = { state, seek, drawNow, prefs, load: (s) => startWithScript(state
 renderStrip();
 selectForm(prefs.formId);
 $('#input').placeholder = INPUT_PLACEHOLDER;
+renderCatBtn();
+syncInputPlaceholder();
 $('#account').value = prefs.account;
 setSeg('#minutes', String(prefs.minutes));
 $('#rmIndustry').value = prefs.industry || '';

@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
@@ -56,6 +56,12 @@
               <textarea id="input" rows="3" placeholder=""></textarea>
               <div class="attachments hidden" id="attachments"></div>
             </div>
+            <!-- 品类：客户说不出自己算什么行业时，先点一个，下面的例子和出片配色都跟着走 -->
+            <div class="cat-row" id="catRow">
+              <span class="cat-k">品类</span>
+              <button class="cat-btn" id="catBtn" type="button" aria-haspopup="listbox" aria-expanded="false" title="先挑一个行业"></button>
+              <span class="cat-hint" id="catHint">不知道算哪个行业？点左边选一个，例子就只出这一行的</span>
+            </div>
             <!-- 灵感：不知道说什么，点一个就填进去 -->
             <div class="sparks" id="ideas"></div>
           </div>
@@ -81,7 +87,7 @@
             </div>
             <div class="rm-ask">
               <label for="rmIndustry">换成我的行业</label>
-              <input id="rmIndustry" maxlength="40" placeholder="比如：成人钢琴、美甲、驾校" />
+              <input id="rmIndustry" maxlength="40" placeholder="比如：成人钢琴、美甲、驾校、律所、中医馆、少儿编程" />
             </div>
             <div class="rm-plan hidden" id="rmPlan"></div>
           </div>
@@ -93,7 +99,7 @@
             <button class="tpl-nav next" id="tplNext" type="button" aria-label="往右"><svg viewBox="0 0 24 24"><path d="m9.5 6 6 6-6 6" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           </div>
           <div class="photos hidden" id="photoPanel">
-            <div class="photos-head"><b>我的形象照</b><span></span></div>
+            <div class="photos-head"><b>我的形象照</b><span></span><em class="ph-count" id="phCount"></em></div>
             <div class="photo-row" data-photo-row></div>
           </div>
         </div>
@@ -113,6 +119,7 @@
       <p class="err" id="createErr"></p>
     </div>
     <input type="file" id="photoInput" accept="image/*" multiple hidden />
+    <input type="file" id="videoInput" accept="video/*" multiple hidden />
     <input type="file" id="docInput" accept=".pptx,.docx,.pdf,.txt,.md,.ppt,.doc" multiple hidden />
   </main>
 

@@ -59,7 +59,7 @@
   28. tug：{"type":"tug","left":"≤7字","right":"≤7字","lean":"left 或 right（占上风的一边）","note":"≤16字的结论"}  —— 两种想法拉扯，哪个更重要
 
 ## 行业（theme 字段）
-从这 12 类里选一个 key：k12（学科、升学）、exam（考证、考公、教资）、language（外语、口才、主持播音）、music（乐器、声乐）、dance（舞蹈）、art（美术、书法）、coding（编程、机器人）、driving（驾校）、beauty（美甲、化妆、美发）、fitness（健身、游泳、球类、武术）、cooking（烘焙、厨艺、咖啡茶艺）、business（知识付费、创业、带货、管理）。再给 2-3 个这个行业的表情。**按客户自己的行业选**，不要照抄别的行业。
+从这 17 类里选一个 key：k12（学科、升学、托管）、art（美术、书法、手工）、music（乐器、声乐）、dance（舞蹈、形体）、coding（编程、机器人、AI）、driving（驾校、学车）、beauty（美甲、化妆、美发）、fitness（健身、游泳、球类、武术）、cooking（烘焙、厨艺、咖啡茶艺）、language（外语、口才、主持播音）、exam（考证、考公、学历）、business（知识付费、创业、带货、管理）、legal（法律、律所、法务）、health（大健康、中医、营养、口腔、康复）、counsel（升学、留学、教育咨询）、vocation（职业技能、家政、母婴、技工）、finance（财税、代账、保险金融）。再给 2-3 个这个行业的表情。**按客户自己的行业选**，不要照抄别的行业。
 如果“客户说的话”后面附了【这条的画面安排】，照着它来。
 
 ## 输出格式
@@ -68,7 +68,7 @@
 {
   "title": "视频标题（文件名），≤14字",
   "headline": ["白字第一行", "黄字第二行？"],
-  "theme": {"key": "见上方 12 类之一", "emoji": ["2-3个行业表情"]},
+  "theme": {"key": "见上方 17 类之一", "emoji": ["2-3个行业表情"]},
   "sections": [
     { "label": "深夜写作业", "kw": "asian student homework night", "ours": false, "visual": { "type": "shot" }, "lines": ["口播一句。"] }
   ]

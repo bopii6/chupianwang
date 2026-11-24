@@ -1,18 +1,24 @@
 // 行业主题（五个模板共用）：同一个模板，钢琴、驾校、编程做出来要一眼看得出是不同行业
-// AI 从 12 类里选一个 key，再给 2-3 个这个行业的表情。各模板按自己的风格用：主色、图标、背景、道具。
+// AI 从这 17 类里选一个 key，再给 2-3 个这个行业的表情。各模板按自己的风格用：主色、图标、背景、道具。
+// 顺序、名称和 prompts/*.md 里的品类清单保持一致，加新行业两边一起加，别只改一边。
 export const THEMES = {
-  k12: { name: '学科辅导', red: '#e5252a', pill: '#ffd0d8', pillInk: '#c2183f', emoji: ['📚', '✏️', '📐'] },
-  exam: { name: '考证考公', red: '#1f4fd1', pill: '#dbe4ff', pillInk: '#1e3a8a', emoji: ['📝', '🎓', '📖'] },
-  language: { name: '语言外语', red: '#0b9aa6', pill: '#d1f3f5', pillInk: '#086a73', emoji: ['🗣️', '🌍', '💬'] },
-  music: { name: '音乐乐器', red: '#6d4ae0', pill: '#e8e1ff', pillInk: '#4b2fb5', emoji: ['🎹', '🎼', '🎵'] },
-  dance: { name: '舞蹈', red: '#d6337f', pill: '#ffdbeb', pillInk: '#a2185a', emoji: ['💃', '🩰', '✨'] },
-  art: { name: '美术书法', red: '#e8581a', pill: '#ffe0d0', pillInk: '#ad3d0b', emoji: ['🎨', '🖌️', '🖼️'] },
-  coding: { name: '编程科技', red: '#2563eb', pill: '#d9e6ff', pillInk: '#1c46c4', emoji: ['💻', '🤖', '🧩'] },
-  driving: { name: '驾校', red: '#e08600', pill: '#ffedc2', pillInk: '#8a5000', emoji: ['🚗', '🛞', '🚦'] },
-  beauty: { name: '美业手艺', red: '#e14b7d', pill: '#ffdbe7', pillInk: '#ad2858', emoji: ['💅', '💄', '✨'] },
-  fitness: { name: '运动健身', red: '#139a45', pill: '#d3f4df', pillInk: '#0c6b30', emoji: ['🏋️', '🏃', '💪'] },
-  cooking: { name: '烹饪烘焙', red: '#b4530a', pill: '#fde3c4', pillInk: '#873c05', emoji: ['🍰', '🧁', '☕'] },
-  business: { name: '商业知识付费', red: '#b8860b', pill: '#fff0bf', pillInk: '#755500', emoji: ['💼', '📈', '💡'] },
+  k12: { name: '学科辅导 · 托管', red: '#e5252a', pill: '#ffd0d8', pillInk: '#c2183f', emoji: ['📚', '✏️', '📐'] },
+  art: { name: '美术 · 书法 · 手工', red: '#e8581a', pill: '#ffe0d0', pillInk: '#ad3d0b', emoji: ['🎨', '🖌️', '🖼️'] },
+  music: { name: '乐器 · 声乐', red: '#6d4ae0', pill: '#e8e1ff', pillInk: '#4b2fb5', emoji: ['🎹', '🎼', '🎵'] },
+  dance: { name: '舞蹈 · 形体', red: '#d6337f', pill: '#ffdbeb', pillInk: '#a2185a', emoji: ['💃', '🩰', '✨'] },
+  coding: { name: '编程 · 机器人', red: '#2563eb', pill: '#d9e6ff', pillInk: '#1c46c4', emoji: ['💻', '🤖', '🧩'] },
+  driving: { name: '驾校 · 学车', red: '#e08600', pill: '#ffedc2', pillInk: '#8a5000', emoji: ['🚗', '🛞', '🚦'] },
+  beauty: { name: '美甲 · 化妆 · 美发', red: '#e14b7d', pill: '#ffdbe7', pillInk: '#ad2858', emoji: ['💅', '💄', '✨'] },
+  fitness: { name: '健身 · 游泳 · 武术', red: '#139a45', pill: '#d3f4df', pillInk: '#0c6b30', emoji: ['🏋️', '🏃', '💪'] },
+  cooking: { name: '烹饪 · 烘焙 · 咖啡', red: '#b4530a', pill: '#fde3c4', pillInk: '#873c05', emoji: ['🍰', '🧁', '☕'] },
+  language: { name: '语言 · 口才 · 主持', red: '#0b9aa6', pill: '#d1f3f5', pillInk: '#086a73', emoji: ['🗣️', '🌍', '💬'] },
+  exam: { name: '考证 · 考公 · 学历', red: '#1f4fd1', pill: '#dbe4ff', pillInk: '#1e3a8a', emoji: ['📝', '🎓', '📖'] },
+  business: { name: '商业 · 知识付费', red: '#b8860b', pill: '#fff0bf', pillInk: '#755500', emoji: ['💼', '📈', '💡'] },
+  legal: { name: '法律 · 律所 · 法务', red: '#2b4c7e', pill: '#dbe4f2', pillInk: '#1d3557', emoji: ['⚖️', '📜', '🏛️'] },
+  health: { name: '大健康 · 中医 · 营养', red: '#0e8a5f', pill: '#d2f0e3', pillInk: '#0a5f44', emoji: ['🩺', '🌿', '💊'] },
+  counsel: { name: '升学 · 留学 · 教育咨询', red: '#8a4fbf', pill: '#ecdcf9', pillInk: '#5f2f8a', emoji: ['🎓', '📋', '🎯'] },
+  vocation: { name: '职业技能 · 家政母婴', red: '#0f6b8a', pill: '#d4ebf3', pillInk: '#0a4c63', emoji: ['🔧', '👷', '🧰'] },
+  finance: { name: '财税 · 代账 · 保险', red: '#9a6a00', pill: '#fbeecb', pillInk: '#6f4c00', emoji: ['💰', '📊', '🧾'] },
 };
 export const THEME_KEYS = Object.keys(THEMES);
 export const EMOJI_FONT = '"Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
