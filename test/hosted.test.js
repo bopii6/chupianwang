@@ -153,8 +153,12 @@ test('停用 / 到期 / 改密码 / 删除', async () => {
   const login = await req('POST', '/api/auth/login', { body: { username: 'zhang', password: 'zhang123456' } });
   assert.equal(login.status, 200);
   const user = cookieOf(login);
-  const changed = await req('POST', '/api/auth/password', { cookie: user, body: { oldPassword: 'zhang123456', newPassword: 'newpass123' } });
-  assert.equal(changed.status, 200);
+  // 客户自己不能改密码（一个号一个密码，管理员统一发）
+  const selfChange = await req('POST', '/api/auth/password', { cookie: user, body: { oldPassword: 'zhang123456', newPassword: 'newpass123' } });
+  assert.equal(selfChange.status, 403);
+  assert.equal((await req('POST', '/api/auth/login', { body: { username: 'zhang', password: 'zhang123456' } })).status, 200);
+  // 管理员改密码才行，改完旧密码立刻失效
+  assert.equal((await req('PATCH', '/api/admin/users/' + zhang.id, { cookie: admin, body: { password: 'newpass123' } })).status, 200);
   assert.equal((await req('POST', '/api/auth/login', { body: { username: 'zhang', password: 'zhang123456' } })).status, 401);
   assert.equal((await req('POST', '/api/auth/login', { body: { username: 'zhang', password: 'newpass123' } })).status, 200);
 

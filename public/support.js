@@ -110,13 +110,6 @@ async function openSettings(first = false) {
       <p style="margin-top:8px">到 <b>pexels.com/api</b> 免费申请，填进来后“深度解读”模板会自动配实拍图。</p>
       <input class="sup-in" type="password" placeholder="Pexels 密钥（选填）" autocomplete="off" spellcheck="false" data-px>
     </details>
-    ${hosted ? `<details><summary>改密码</summary>
-      <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
-        <input class="sup-in" type="password" placeholder="现在的密码" autocomplete="current-password" data-old>
-        <input class="sup-in" type="password" placeholder="新密码（至少 6 位，别用纯数字）" autocomplete="new-password" data-new>
-        <input class="sup-in" type="password" placeholder="再输一次新密码" autocomplete="new-password" data-new2>
-      </div>
-    </details>` : ''}
     <p class="sup-msg"></p>
     <div class="sup-row"><button type="button" data-x>${first ? '先看看示例' : '关闭'}</button><button type="button" class="pri" data-save>保存</button></div>
   </div>`;
@@ -137,32 +130,16 @@ async function openSettings(first = false) {
     const btn = $('[data-save]');
     const msg = $('.sup-msg');
     const ds = $('[data-ds]').value.trim(); const px = $('[data-px]').value.trim();
-    const oldPw = $('[data-old]')?.value || ''; const newPw = $('[data-new]')?.value || ''; const newPw2 = $('[data-new2]')?.value || '';
     const body = {};
     if (ds) body.deepseekKey = ds;
     if (px) body.pexelsKey = px;
-    if (newPw || newPw2 || oldPw) {
-      if (newPw !== newPw2) { msg.innerHTML = '<span class="bad">两次输的新密码不一样</span>'; return; }
-      if (!oldPw) { msg.innerHTML = '<span class="bad">改密码要先填现在的密码</span>'; return; }
-    }
-    if (!Object.keys(body).length && !newPw) { msg.innerHTML = '<span class="bad">还没填内容</span>'; return; }
+    if (!Object.keys(body).length) { msg.innerHTML = '<span class="bad">还没填内容</span>'; return; }
     btn.disabled = true; btn.textContent = '正在检查…';
     try {
-      let saved = '';
-      if (Object.keys(body).length) {
-        const r = await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-        const d = await r.json();
-        if (!r.ok) throw new Error(d.error || '保存失败');
-        saved = `✓ 已保存${d.deepseek?.balance ? `，DeepSeek 余额 ${esc(d.deepseek.balance)}` : ''}`;
-      }
-      if (newPw) {
-        const r = await fetch('/api/auth/password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oldPassword: oldPw, newPassword: newPw }) });
-        const d = await r.json();
-        if (!r.ok) throw new Error(d.error || '改密码失败');
-        saved = `${saved ? saved + '；' : ''}✓ 密码已改`;
-        if ($('[data-old]')) { $('[data-old]').value = ''; $('[data-new]').value = ''; $('[data-new2]').value = ''; }
-      }
-      msg.innerHTML = saved;
+      const r = await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || '保存失败');
+      msg.innerHTML = `✓ 已保存${d.deepseek?.balance ? `，DeepSeek 余额 ${esc(d.deepseek.balance)}` : ''}`;
       unrefreshed = true;
       btn.textContent = '好了';
       btn.disabled = false;
