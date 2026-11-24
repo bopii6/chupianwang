@@ -605,10 +605,13 @@ async function generate(input = $('#input').value.trim()) {
   if (state.attachments.some((a) => a.loading)) { $('#createErr').textContent = '资料还在读取，稍等一下'; return; }
   const materials = state.attachments.map((a) => ({ name: a.name, text: a.text }));
   if (!input && !materials.length) { $('#createErr').textContent = '先写一句你想讲什么，或者添加一份资料'; $('#input').focus(); return; }
-  if (hosted && (!me || !me.hasKey)) {
-    $('#createErr').textContent = me ? '先填你自己的 DeepSeek 密钥才能出片' : '先登录才能出片';
-    if (!me) openLogin('登录后就能生成视频'); else setTimeout(() => window.cpwOpenSettings?.(true), 150);
-    return;
+  if (hosted) {
+    if (!(await hasMyKey())) {
+      $('#createErr').textContent = me ? '先填你自己的 DeepSeek 密钥才能出片' : '先登录才能出片';
+      if (!me) openLogin('登录后就能生成视频'); else setTimeout(() => window.cpwOpenSettings?.(true), 150);
+      return;
+    }
+    $('#createErr').textContent = ''; // 密钥刚填好，把“先填密钥”那句提示清掉
   }
   if (!aiReady && !hosted) { $('#createErr').textContent = '服务端还没配置 AI 密钥，可以先看示例。'; return; }
   state.input = input;
@@ -783,12 +786,15 @@ $('#rmChange').addEventListener('click', () => $('#rmInput').click());
 $('#rmInput').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) pickRemixFile(f); });
 $('#rmIndustry').addEventListener('input', (e) => { prefs.industry = e.target.value.trim(); savePrefs(); $('#createErr').textContent = ''; });
 $('#rmIndustry').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#btnGo').click(); });
-function goRemix() {
+async function goRemix() {
   if (!$('#rmIndustry').value.trim()) { $('#createErr').textContent = '先写一下你是做什么培训的，AI 才知道换成什么内容'; $('#rmIndustry').focus(); return; }
-  if (hosted && (!me || !me.hasKey)) {
-    $('#createErr').textContent = me ? '先填你自己的 DeepSeek 密钥才能出片' : '先登录才能出片';
-    if (!me) openLogin('登录后才能用别人的爆款做视频'); else setTimeout(() => window.cpwOpenSettings?.(true), 150);
-    return;
+  if (hosted) {
+    if (!(await hasMyKey())) {
+      $('#createErr').textContent = me ? '先填你自己的 DeepSeek 密钥才能出片' : '先登录才能出片';
+      if (!me) openLogin('登录后才能用别人的爆款做视频'); else setTimeout(() => window.cpwOpenSettings?.(true), 150);
+      return;
+    }
+    $('#createErr').textContent = '';
   }
   if (!aiReady && !hosted) { $('#createErr').textContent = '服务端还没配置 AI 密钥'; return; }
   if (rm.busy) { rm.wantGo = true; updateGo(); return; } // 还在听，听完自动开始
@@ -851,6 +857,14 @@ function redirectToAdminIfNeeded() {
   return true;
 }
 window.cpwRefreshMe = loadMe;
+// 出片前确认“自己的密钥”：页面里记的可能是旧的（刚在设置里填过、另开了标签页），先问一次服务器再决定弹不弹设置
+async function hasMyKey() {
+  if (!hosted) return true;
+  if (!me) return false;
+  if (me.hasKey) return true;
+  await loadMe();
+  return !!(me && me.hasKey);
+}
 function renderAcct() {
   const area = $('#acctArea');
   if (!hosted) { area.innerHTML = ''; return; } // 本地版：不用登录

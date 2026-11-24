@@ -107,7 +107,7 @@ async function openSettings(first = false) {
     <p class="sup-now">正在读取…</p>
     <input class="sup-in" type="password" placeholder="sk-…（你自己的 DeepSeek 密钥）" autocomplete="off" spellcheck="false" data-ds>
     <details><summary>深度解读模板的实拍图（选填）</summary>
-      <p style="margin-top:8px">到 <b>pexels.com/api</b> 免费申请，填进来后“深度解读”模板会自动配实拍图。</p>
+      <p style="margin-top:8px" data-px-hint>到 <b>pexels.com/api</b> 免费申请，填进来后“深度解读”模板会自动配实拍图。</p>
       <input class="sup-in" type="password" placeholder="Pexels 密钥（选填）" autocomplete="off" spellcheck="false" data-px>
     </details>
     <p class="sup-msg"></p>
@@ -115,7 +115,9 @@ async function openSettings(first = false) {
   </div>`;
   document.body.appendChild(mask);
   const $ = (s) => mask.querySelector(s);
-  const close = () => mask.remove();
+  let hadKey = false; // 打开时账号里已经有密钥了
+  // 关框（不管点“关闭”、点“保存”、点框外）时，保存过就把账号状态重新拉一遍
+  const close = () => { mask.remove(); refreshMeIfChanged(); };
   $('[data-x]').onclick = close;
   mask.addEventListener('click', (e) => { if (e.target === mask) close(); });
   fetch('/api/settings?check=1').then((r) => r.json()).then((d) => {
@@ -124,7 +126,17 @@ async function openSettings(first = false) {
     $('.sup-now').innerHTML = ds.filled
       ? `现在用的：${esc(ds.masked)}${ds.ok ? `　余额 <b>${esc(ds.balance)}</b>${ds.available ? '' : '（<span class="bad">余额不足，写不了文案</span>）'}` : ds.error ? `　<span class="bad">${esc(ds.error)}</span>` : ''}`
       : '<span class="bad">还没填你自己的密钥，填了才能出片</span>';
-    if (d.pexels?.filled) $('[data-px]').placeholder = `已填写 ${d.pexels.masked}（不改就留空）`;
+    // 已经填过：输入框只是“要换一把才用”，别让人以为还得重填一次
+    if (ds.filled) {
+      hadKey = true;
+      $('[data-ds]').placeholder = `已经填好了（${ds.masked}）· 要换新的才在这儿贴，留空不改`;
+    }
+    if (d.pexels?.filled) {
+      $('[data-px]').placeholder = `已填写 ${d.pexels.masked}（不改就留空）`;
+      $('[data-px-hint]').innerHTML = '现在用的是你自己申请的 Pexels 密钥，只走你自己的额度。';
+    } else if (d.hosted) {
+      $('[data-px-hint]').innerHTML = '不填也能用：出片时走平台内置的那把 Pexels 密钥（免费额度大家共用，用多了会提示“素材库这会儿太忙”）。填了自己申请的，就只走你自己的额度，不受别人影响。';
+    }
   }).catch(() => { $('.sup-now').textContent = ''; });
   $('[data-save]').onclick = async () => {
     const btn = $('[data-save]');
@@ -133,7 +145,10 @@ async function openSettings(first = false) {
     const body = {};
     if (ds) body.deepseekKey = ds;
     if (px) body.pexelsKey = px;
-    if (!Object.keys(body).length) { msg.innerHTML = '<span class="bad">还没填内容</span>'; return; }
+    if (!Object.keys(body).length) {
+      msg.innerHTML = hadKey ? '没改动。要换密钥就把新的贴进来，不换直接点「关闭」。' : '<span class="bad">还没填内容</span>';
+      return;
+    }
     btn.disabled = true; btn.textContent = '正在检查…';
     try {
       const r = await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -141,6 +156,8 @@ async function openSettings(first = false) {
       if (!r.ok) throw new Error(d.error || '保存失败');
       msg.innerHTML = `✓ 已保存${d.deepseek?.balance ? `，DeepSeek 余额 ${esc(d.deepseek.balance)}` : ''}`;
       unrefreshed = true;
+      // 保存成功马上就刷新：不然页面里还是“没填密钥”，点生成又把这个框弹出来
+      refreshMeIfChanged();
       btn.textContent = '好了';
       btn.disabled = false;
       btn.onclick = close;
@@ -151,9 +168,13 @@ async function openSettings(first = false) {
   };
   setTimeout(() => $('[data-ds]').focus(), 50);
 }
-let unrefreshed = false;
+let unrefreshed = false; // 这次打开设置里保存过东西，关框时要把页面上的账号状态重新拉一遍
+function refreshMeIfChanged() {
+  if (!unrefreshed) return;
+  unrefreshed = false;
+  try { window.cpwRefreshMe?.(); } catch { /* 这个页面没有账号状态 */ }
+}
 window.cpwOpenSettings = openSettings;
-document.addEventListener('click', (e) => { if (unrefreshed && e.target.closest('[data-x]')) { unrefreshed = false; window.cpwRefreshMe?.(); } });
 
 function browserName() {
   const b = navigator.userAgentData?.brands?.find((x) => !/Not.?A.?Brand|Chromium/i.test(x.brand));
