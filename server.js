@@ -91,7 +91,8 @@ const STATIC_MOUNTS = [
   ['/vendor/ort/', path.join(ROOT, 'node_modules/onnxruntime-web/dist/'), LONG_CACHE],
   ['/vendor/opencc/', path.join(ROOT, 'node_modules/opencc-js/dist/esm/')],
   ['/vendor/mp4box/', path.join(ROOT, 'node_modules/mp4box/dist/')],
-  ['/models/asr/', MODELS_DIR + path.sep, LONG_CACHE], // 约 250MB，正式上线建议放 CDN（设 ASR_MODEL_BASE）
+  ['/fonts/', path.join(ROOT, 'public/fonts/'), LONG_CACHE], // 像素字体分片，一年缓存（首页不再加载，出片时才按需拉）
+  ['/models/asr/', MODELS_DIR + path.sep, LONG_CACHE], // 听写模型，正式上线建议放 CDN（服务端设 ASR_MODEL_BASE）
   ['/', path.join(ROOT, 'public/')],
 ];
 
@@ -701,6 +702,17 @@ http.createServer(async (req, res) => {
       if (pathname.startsWith('/works/')) return await serveWorkFile(req, res, pathname, WORKS);
     }
     if (req.method === 'GET' && pathname === '/api/status') { if (!process.env.PEXELS_API_KEY) loadEnv(); return sendJson(res, 200, { ai: !!process.env.DEEPSEEK_API_KEY, stock: !!process.env.PEXELS_API_KEY, hosted: HOSTED, asrBase: process.env.ASR_MODEL_BASE || '/models/asr/', asrModel: process.env.ASR_MODEL || 'whisper-base', authRequired: HOSTED, jobWorker: process.env.JOB_WORKER === '1', version: PKG.version, commit: COMMIT }); }
+    // 听写模型走国内镜像（省服务器带宽）：.env 里设了 ASR_MIRROR=https://hf-mirror.com 就 302 过去，
+    // 没设就用本地 .cache 里的模型文件（本地版/离线部署）
+    if ((req.method === 'GET' || req.method === 'HEAD') && process.env.ASR_MIRROR && pathname.startsWith('/models/asr/')) {
+      const rest = pathname.slice('/models/asr/'.length);
+      const m = rest.match(/^([^/]+\/[^/]+)\/(.+)$/);
+      if (m) {
+        const base = String(process.env.ASR_MIRROR).replace(/\/+$/, '');
+        res.writeHead(302, { Location: `${base}/${m[1]}/resolve/main/${m[2]}`, 'Cache-Control': 'no-store' });
+        return res.end();
+      }
+    }
     if (req.method === 'GET' && (await serveStatic(req, res, pathname))) return;
     res.writeHead(404); res.end('not found');
   } catch (e) {

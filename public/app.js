@@ -5,8 +5,9 @@ import { buildTimeline, synthesize, mixAudio, mixWithBgm, envelope, getAudioCtx 
 import { BGM_STYLES, renderBgm, warmBgm } from './engine/music.js';
 import { listPhotos, savePhoto, deletePhoto, shrinkPhoto } from './engine/photos.js';
 import { exportInWorker, exportSupported } from './engine/exporter.js';
-import { warmFonts } from './engine/font-preload.js';
-warmFonts();
+
+// 注意：这里故意不预先下载字体。中文字体按 unicode-range 拆成上百个分片，页面一打开就抢带宽会让首页更慢；
+// 真正出片/预览时由 engine/font-preload.js 的 loadFontFaces 按文案里用到的字按需加载。
 
 const $ = (s) => document.querySelector(s);
 const FPS = 24; // 与对标样片一致；图文动效 24 帧足够流畅，比 30 帧少 20% 渲染量
@@ -88,7 +89,9 @@ function loadPreview(form) {
   if (!previewCache.has(form.id)) {
     previewCache.set(form.id, (async () => {
       const script = prepScript(form, await (await fetch(form.sample)).json());
-      await form.module.preloadFonts(script);
+      // 首页这些示例预览故意不等字体：中文正文字体是按 unicode-range 拆的，七个模板的示例一起加载要一两兆，
+      // 慢网下首屏会卡十几秒。预览先用系统字体画（雅黑/苹方，看着接近），
+      // 用户真点「生成」或「看完整示例」时再加载真字体，导出的成片也用真字体。
       const tl = buildTimeline(script, null);
       const d = { script, tl, planData: form.module.plan(script, tl), assets: null };
       // 实拍类套路：示例里写好了图片地址。封面那张先加载，其余后台慢慢加载（首页卡片用小图）

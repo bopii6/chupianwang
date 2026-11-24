@@ -5,11 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>出片王 · 教培老师的视频获客工具</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="/vendor/noto-sans-sc/400.css" />
-  <link rel="stylesheet" href="/vendor/noto-sans-sc/500.css" />
-  <link rel="stylesheet" href="/vendor/noto-sans-sc/700.css" />
-  <link rel="stylesheet" href="/vendor/noto-sans-sc/900.css" />
-  <link rel="stylesheet" href="/fonts/fusion-pixel-12/font.css" />
+  <!-- 字体不再在首页加载：中文字体按 unicode-range 拆成上百个分片，冷启动会把带宽吃干净。
+       界面用系统字体（macOS 萍方 / Windows 微软雅黑）；出片要用到的 Noto Sans SC 700/900 和像素字体，
+       在真正生成视频前由 engine/font-preload.js 按需插入并只下载用到的分片。 -->
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
