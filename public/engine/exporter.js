@@ -49,7 +49,7 @@ async function pickVideoCodec(width, height, fps) {
     const cores = self.navigator?.hardwareConcurrency || 4;
     const order = cores >= 8 ? ['prefer-software', 'prefer-hardware', 'no-preference'] : ['prefer-hardware', 'prefer-software', 'no-preference'];
     for (const hardwareAcceleration of order) {
-      const cfg = { codec, width, height, bitrate: 2_500_000, framerate: fps, avc: { format: 'avc' }, hardwareAcceleration };
+      const cfg = { codec, width, height, bitrate: 1_500_000, framerate: fps, avc: { format: 'avc' }, hardwareAcceleration };
       try {
         if ((await VideoEncoder.isConfigSupported(cfg)).supported) return cfg;
       } catch { /* next */ }

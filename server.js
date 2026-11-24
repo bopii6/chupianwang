@@ -15,7 +15,7 @@ import https from 'node:https';
 import { handleCopyApi, scanRisks } from './lib/copylib.js';
 import { handleRelay } from './lib/relay.js';
 import { handleAuth, currentUser, requireUser, isAdminUser, noteGeneration } from './lib/auth.js';
-import { bootstrapAdmin, readUser as readAccount, userDir as accountDir } from './lib/accounts.js';
+import { bootstrapAdmin, readUser as readAccount, userDir as accountDir, listUsers } from './lib/accounts.js';
 import { handleWorks, serveWorkFile } from './lib/works.js';
 import { handleJobs } from './lib/jobs.js';
 import { handleMcp } from './lib/mcp.js';
@@ -70,6 +70,77 @@ const HOSTED = !!PUBLIC_BASE_URL || process.env.AUTH_REQUIRED === '1';
 const ownerDir = (id, sub) => (sub ? path.join(accountDir(id), sub) : accountDir(id));
 function worksDirOf(user) { return HOSTED && user ? ownerDir(user.id, 'works') : WORKS; }
 fs.mkdirSync(WORKS, { recursive: true });
+
+// ---------- 公网版：限流 + 资源保护（本地版完全不生效） ----------
+// 服务器只有 4 核 1Mbps 出口，一个客户连点「生成」就能把所有人拖慢，所以按账号限一下频率
+const RATE_LIMITS = {
+  script: { per10min: Number(process.env.RATE_SCRIPT_10MIN || 6), perDay: Number(process.env.RATE_SCRIPT_DAY || 60), what: '生成' },
+  tts: { per10min: Number(process.env.RATE_TTS_10MIN || 40), perDay: 0, what: '配音' },
+  upload: { per10min: 0, perDay: Number(process.env.RATE_UPLOAD_DAY || 80), what: '上传视频' },
+};
+const rateHits = new Map(); // `${类型}:${账号id}` → [时间戳]
+function overRate(kind, id) {
+  if (!HOSTED || !id) return null;
+  const conf = RATE_LIMITS[kind];
+  if (!conf) return null;
+  const now = Date.now();
+  const key = `${kind}:${id}`;
+  const arr = (rateHits.get(key) || []).filter((t) => now - t < 864e5);
+  const in10 = arr.filter((t) => now - t < 600e3).length;
+  let msg = '';
+  if (conf.per10min && in10 >= conf.per10min) msg = `「${conf.what}」点得有点快，歇 10 分钟再来（10 分钟内最多 ${conf.per10min} 次）`;
+  else if (conf.perDay && arr.length >= conf.perDay) msg = `今天「${conf.what}」的次数用完了（每天最多 ${conf.perDay} 次），明天再来`;
+  if (msg) return msg;
+  arr.push(now);
+  rateHits.set(key, arr);
+  if (rateHits.size > 3000) {
+    for (const [k, v] of rateHits) if (!v.some((t) => now - t < 864e5)) rateHits.delete(k);
+  }
+  return null;
+}
+
+// 配音是启动 Python 子进程，同时开太多会把 4G 内存吃光；排个队，最多同时跑 4 个
+const TTS_CONCURRENCY = Math.max(1, Number(process.env.TTS_CONCURRENCY || 4));
+let ttsRunning = 0;
+const ttsWaiters = [];
+async function withTtsSlot(fn) {
+  if (ttsRunning >= TTS_CONCURRENCY) await new Promise((resolve) => ttsWaiters.push(resolve));
+  ttsRunning++;
+  try { return await fn(); } finally {
+    ttsRunning--;
+    const next = ttsWaiters.shift();
+    if (next) next();
+  }
+}
+
+// 公网版：服务器上的作品副本只留最近 N 天（本地版绝不动客户自己的文件）
+const WORKS_RETENTION_DAYS = Number(process.env.WORKS_RETENTION_DAYS ?? 30);
+async function cleanupOldWorks() {
+  if (!HOSTED || !(WORKS_RETENTION_DAYS > 0)) return;
+  const cutoff = Date.now() - WORKS_RETENTION_DAYS * 864e5;
+  let removed = 0;
+  let bytes = 0;
+  try {
+    for (const u of await listUsers()) {
+      const dir = ownerDir(u.id, 'works');
+      let names = [];
+      try { names = await fsp.readdir(dir); } catch { continue; }
+      for (const n of names) {
+        if (!n.endsWith('.mp4')) continue;
+        const f = path.join(dir, n);
+        try {
+          const st = await fsp.stat(f);
+          if (st.mtimeMs < cutoff) { await fsp.unlink(f); removed++; bytes += st.size; }
+        } catch { /* 文件刚好被删 */ }
+      }
+    }
+  } catch (e) { console.error('[清理] 出错：', e.message); }
+  if (removed) console.log(`[清理] 删掉 ${removed} 条超过 ${WORKS_RETENTION_DAYS} 天的作品，释放 ${(bytes / 1048576).toFixed(1)}MB`);
+}
+if (HOSTED) {
+  setTimeout(cleanupOldWorks, 120e3).unref();
+  setInterval(cleanupOldWorks, 6 * 3600e3).unref();
+}
 
 // ---------- 静态文件 ----------
 const MIME = {
@@ -151,7 +222,7 @@ async function handleTts(req, res) {
   const file = path.join(TTS_CACHE, key + '.mp3');
   if (!fs.existsSync(file)) {
     const tmp = file + '.' + process.pid + '.tmp.mp3';
-    await runEdgeTts(text, voice, rate, tmp);
+    await withTtsSlot(() => runEdgeTts(text, voice, rate, tmp));
     await fsp.rename(tmp, file);
   }
   res.writeHead(200, { 'Content-Type': 'audio/mpeg' });
@@ -186,7 +257,7 @@ async function handleTtsBatch(req, res) {
     if (!seen.has(k) && !fs.existsSync(out)) todo.push({ text: texts[i], out });
     seen.add(k);
   });
-  if (todo.length) await runBatch({ voice, rate, items: todo });
+  if (todo.length) await withTtsSlot(() => runBatch({ voice, rate, items: todo }));
   sendJson(res, 200, { keys, generated: todo.length });
 }
 
@@ -629,6 +700,10 @@ http.createServer(async (req, res) => {
     // 配音、转写文件、抓网页、手机上传：公网版要登录，别让陌生人白用服务器
     if (HOSTED && (pathname.startsWith('/api/tts') || pathname === '/api/fetch-url' || pathname === '/api/qr' || pathname.startsWith('/api/relay'))) {
       const g = await gate(); if (g.fail) return deny(g.fail);
+      if (pathname === '/api/tts' || pathname === '/api/tts-batch') {
+        const limited = overRate('tts', g.user.id);
+        if (limited) return sendJson(res, 429, { error: limited, code: 'rate' });
+      }
     }
     if (req.method === 'POST' && pathname === '/api/tts') return await handleTts(req, res);
     if (req.method === 'POST' && pathname === '/api/tts-batch') return await handleTtsBatch(req, res);
@@ -641,6 +716,8 @@ http.createServer(async (req, res) => {
         const g = await gate(); if (g.fail) return deny(g.fail);
         user = g.user; key = deepseekKeyOf(user);
         if (!key) return sendJson(res, 400, { error: '还没填你自己的 DeepSeek 密钥。点右上角账号 →「我的设置」，填进去就能出片了。', code: 'no-key' });
+        const limited = overRate('script', user.id);
+        if (limited) return sendJson(res, 429, { error: limited, code: 'rate' });
       }
       return await handleScript(req, res, { key, acct: user });
     }
@@ -650,6 +727,8 @@ http.createServer(async (req, res) => {
         const g = await gate(); if (g.fail) return deny(g.fail);
         key = deepseekKeyOf(g.user); who = g.user.username;
         if (!key) return sendJson(res, 400, { error: '还没填你自己的 DeepSeek 密钥。点右上角账号 →「我的设置」，填进去就能用了。', code: 'no-key' });
+        const limited = overRate('script', g.user.id);
+        if (limited) return sendJson(res, 429, { error: limited, code: 'rate' });
       }
       return await handleRemixPlan(req, res, key, who);
     }
@@ -691,7 +770,13 @@ http.createServer(async (req, res) => {
         let owner = me;
         const oid = params.get('owner');
         if (oid && isAdminUser(me) && /^[0-9a-f]{24}$/.test(oid)) { const ou = await readAccount(oid); if (ou) owner = ou; }
-        if (pathname.startsWith('/api/works')) return await handleWorks(req, res, pathname, worksDirOf(owner), params, `/works/${owner.id}/`);
+        if (pathname.startsWith('/api/works')) {
+          if (req.method === 'POST') {
+            const limited = overRate('upload', owner.id);
+            if (limited) return sendJson(res, 429, { error: limited, code: 'rate' });
+          }
+          return await handleWorks(req, res, pathname, worksDirOf(owner), params, `/works/${owner.id}/`);
+        }
         const m = pathname.match(/^\/works\/([0-9a-f]{24})\/(.+)$/);
         if (!m) { res.writeHead(404); return res.end('not found'); }
         let target = m[1] === me.id ? me : (isAdminUser(me) ? await readAccount(m[1]) : null);
