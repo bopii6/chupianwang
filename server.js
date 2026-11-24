@@ -203,13 +203,24 @@ const TTS_CACHE = path.join(CACHE_DIR, 'tts');
 fs.mkdirSync(TTS_CACHE, { recursive: true });
 const VOICES = new Set(['zh-CN-YunxiNeural', 'zh-CN-YunyangNeural', 'zh-CN-XiaoxiaoNeural', 'zh-CN-XiaoyiNeural', 'zh-CN-YunjianNeural']);
 
+// 配音子进程必须带超时：微软那边偶尔“连上了但一直不回”，没有超时会把整批卡死、还占着并发位
+const TTS_ONE_TIMEOUT_MS = Number(process.env.TTS_ONE_TIMEOUT_MS || 30000);
+const TTS_BATCH_TIMEOUT_MS = Number(process.env.TTS_BATCH_TIMEOUT_MS || 180000);
+
 function runEdgeTts(text, voice, rate, out) {
   return new Promise((resolve, reject) => {
     const p = spawn(process.env.PYTHON || 'python', ['-m', 'edge_tts', '--voice', voice, `--rate=${rate}`, '--text', text, '--write-media', out], { windowsHide: true });
     let err = '';
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; p.kill('SIGKILL'); }, TTS_ONE_TIMEOUT_MS);
     p.stderr.on('data', (d) => { err += d; });
-    p.on('error', reject);
-    p.on('close', (code) => (code === 0 ? resolve() : reject(new Error(err || `edge-tts exit ${code}`))));
+    p.on('error', (e) => { clearTimeout(timer); reject(e); });
+    p.on('close', (code) => {
+      clearTimeout(timer);
+      if (timedOut) return reject(new Error('配音超时（微软那边没响应），再点一次重试'));
+      if (code === 0) return resolve();
+      reject(new Error(err || `edge-tts exit ${code}`));
+    });
   });
 }
 
@@ -236,9 +247,16 @@ function runBatch(job) {
   return new Promise((resolve, reject) => {
     const p = spawn(process.env.PYTHON || 'python', [path.join(ROOT, 'scripts', 'tts_batch.py')], { windowsHide: true, env: { ...process.env, PYTHONIOENCODING: 'utf-8' } });
     let err = '';
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; p.kill('SIGKILL'); }, TTS_BATCH_TIMEOUT_MS);
     p.stderr.on('data', (d) => { err += d; });
-    p.on('error', reject);
-    p.on('close', (code) => (code === 0 ? resolve() : reject(new Error(err.split('\n').filter(Boolean).pop() || `配音进程退出 ${code}`))));
+    p.on('error', (e) => { clearTimeout(timer); reject(e); });
+    p.on('close', (code) => {
+      clearTimeout(timer);
+      if (timedOut) return reject(new Error('配音超时（微软那边没响应），再点一次重试就行'));
+      if (code === 0) return resolve();
+      reject(new Error(err.split('\n').filter(Boolean).pop() || `配音进程退出 ${code}`));
+    });
     p.stdin.end(JSON.stringify(job), 'utf8');
   });
 }

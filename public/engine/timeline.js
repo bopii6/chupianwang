@@ -70,10 +70,16 @@ export async function synthesize(script, { voice, rate }, onProgress) {
   script.sections.forEach((s, i) => (s.lines || []).forEach((text, j) => jobs.push({ i, j, text })));
   const out = script.sections.map((s) => new Array((s.lines || []).length));
   onProgress?.(0, jobs.length, 'synth');
-  const r = await fetch('/api/tts-batch', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ texts: jobs.map((j) => j.text), voice, rate }),
-  });
+  let r;
+  try {
+    r = await fetch('/api/tts-batch', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texts: jobs.map((j) => j.text), voice, rate }),
+      signal: AbortSignal.timeout(210000),
+    });
+  } catch (e) {
+    throw new Error(e?.name === 'TimeoutError' ? '配音等太久了（服务器没回话），再点一次重试' : (e?.message || '配音失败'));
+  }
   const data = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(data.error || `配音失败 ${r.status}`);
   const ctx = getAudioCtx();
