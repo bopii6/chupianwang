@@ -75,27 +75,48 @@ ver.textContent = '出片王';
 document.body.appendChild(ver);
 fetch('/api/status').then((r) => r.json()).then((s) => {
   if (s.version) ver.textContent = `出片王 v${s.version}`;
-  // 第一次用、还没填 AI 密钥：直接弹出填写框（这次打开只弹一次）
+  // 本地版第一次用、还没填 AI 密钥：直接弹出填写框（这次打开只弹一次）
+  // 公网版等登录后再判断（账号里有没有自己填的密钥）
   let shown = false;
   try { shown = sessionStorage.getItem('cpw-key-asked') === '1'; sessionStorage.setItem('cpw-key-asked', '1'); } catch { /* 隐私模式 */ }
-  if (!s.ai && !shown) openSettings(true);
+  if (!s.hosted && !s.ai && !shown) openSettings(true);
 }).catch(() => {});
 
 // ---------- 设置：AI 密钥 ----------
-function openSettings(first = false) {
+// 公网版（getcut.cn 这种）：显示当前账号、填自己的 DeepSeek 密钥、改密码
+// 本地版：还是写 .env 里那把密钥
+let hostedFlag = null;
+async function isHosted() {
+  if (hostedFlag == null) {
+    try { hostedFlag = !!(await (await fetch('/api/status')).json()).hosted; } catch { hostedFlag = false; }
+  }
+  return hostedFlag;
+}
+const KEY_HELP = '到 <b>platform.deepseek.com</b> 登录 →「API keys」→ 创建，把 <b>sk-</b> 开头的那一串复制过来。保存时会先试一下能不能用。';
+
+async function openSettings(first = false) {
+  const hosted = await isHosted();
   document.querySelector('.sup-mask[data-settings]')?.remove();
   const mask = document.createElement('div');
   mask.className = 'sup-mask';
   mask.dataset.settings = '1';
-  mask.innerHTML = `<div class="sup-card" role="dialog" aria-label="AI 密钥设置">
-    <h3>${first ? '先填一下 AI 密钥' : 'AI 密钥设置'}</h3>
-    <p>${first ? '写文案要用 DeepSeek 的 AI。' : ''}到 <b>platform.deepseek.com</b> 登录 →「API keys」→ 创建，把 <b>sk-</b> 开头的那一串复制过来。保存时会先试一下能不能用。</p>
+  mask.innerHTML = `<div class="sup-card" role="dialog" aria-label="设置">
+    <h3>${hosted ? '我的设置' : (first ? '先填一下 AI 密钥' : 'AI 密钥设置')}</h3>
+    <p class="sup-acct"></p>
+    <p>${first ? '写文案要用 DeepSeek 的 AI。' : ''}${KEY_HELP}</p>
     <p class="sup-now">正在读取…</p>
-    <input class="sup-in" type="password" placeholder="sk-…" autocomplete="off" spellcheck="false" data-ds>
+    <input class="sup-in" type="password" placeholder="sk-…（你自己的 DeepSeek 密钥）" autocomplete="off" spellcheck="false" data-ds>
     <details><summary>深度解读模板的实拍图（选填）</summary>
       <p style="margin-top:8px">到 <b>pexels.com/api</b> 免费申请，填进来后“深度解读”模板会自动配实拍图。</p>
       <input class="sup-in" type="password" placeholder="Pexels 密钥（选填）" autocomplete="off" spellcheck="false" data-px>
     </details>
+    ${hosted ? `<details><summary>改密码</summary>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+        <input class="sup-in" type="password" placeholder="现在的密码" autocomplete="current-password" data-old>
+        <input class="sup-in" type="password" placeholder="新密码（至少 6 位，别用纯数字）" autocomplete="new-password" data-new>
+        <input class="sup-in" type="password" placeholder="再输一次新密码" autocomplete="new-password" data-new2>
+      </div>
+    </details>` : ''}
     <p class="sup-msg"></p>
     <div class="sup-row"><button type="button" data-x>${first ? '先看看示例' : '关闭'}</button><button type="button" class="pri" data-save>保存</button></div>
   </div>`;
@@ -106,35 +127,56 @@ function openSettings(first = false) {
   mask.addEventListener('click', (e) => { if (e.target === mask) close(); });
   fetch('/api/settings?check=1').then((r) => r.json()).then((d) => {
     const ds = d.deepseek || {};
+    if (d.account) $('.sup-acct').innerHTML = `账号 <b>${esc(d.account.name || d.account.username)}</b>（${esc(d.account.username)}）${d.account.expiresAt ? `　有效期到 ${esc(d.account.expiresAt)}` : ''}`;
     $('.sup-now').innerHTML = ds.filled
       ? `现在用的：${esc(ds.masked)}${ds.ok ? `　余额 <b>${esc(ds.balance)}</b>${ds.available ? '' : '（<span class="bad">余额不足，写不了文案</span>）'}` : ds.error ? `　<span class="bad">${esc(ds.error)}</span>` : ''}`
-      : '<span class="bad">还没填</span>';
+      : '<span class="bad">还没填你自己的密钥，填了才能出片</span>';
     if (d.pexels?.filled) $('[data-px]').placeholder = `已填写 ${d.pexels.masked}（不改就留空）`;
   }).catch(() => { $('.sup-now').textContent = ''; });
   $('[data-save]').onclick = async () => {
-    const body = {};
+    const btn = $('[data-save]');
+    const msg = $('.sup-msg');
     const ds = $('[data-ds]').value.trim(); const px = $('[data-px]').value.trim();
+    const oldPw = $('[data-old]')?.value || ''; const newPw = $('[data-new]')?.value || ''; const newPw2 = $('[data-new2]')?.value || '';
+    const body = {};
     if (ds) body.deepseekKey = ds;
     if (px) body.pexelsKey = px;
-    if (!Object.keys(body).length) { $('.sup-msg').innerHTML = '<span class="bad">还没填内容</span>'; return; }
-    const btn = $('[data-save]');
+    if (newPw || newPw2 || oldPw) {
+      if (newPw !== newPw2) { msg.innerHTML = '<span class="bad">两次输的新密码不一样</span>'; return; }
+      if (!oldPw) { msg.innerHTML = '<span class="bad">改密码要先填现在的密码</span>'; return; }
+    }
+    if (!Object.keys(body).length && !newPw) { msg.innerHTML = '<span class="bad">还没填内容</span>'; return; }
     btn.disabled = true; btn.textContent = '正在检查…';
     try {
-      const r = await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || '保存失败');
-      $('.sup-msg').innerHTML = `✓ 已保存${d.deepseek?.balance ? `，DeepSeek 余额 ${esc(d.deepseek.balance)}` : ''}`;
+      let saved = '';
+      if (Object.keys(body).length) {
+        const r = await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || '保存失败');
+        saved = `✓ 已保存${d.deepseek?.balance ? `，DeepSeek 余额 ${esc(d.deepseek.balance)}` : ''}`;
+      }
+      if (newPw) {
+        const r = await fetch('/api/auth/password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oldPassword: oldPw, newPassword: newPw }) });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || '改密码失败');
+        saved = `${saved ? saved + '；' : ''}✓ 密码已改`;
+        if ($('[data-old]')) { $('[data-old]').value = ''; $('[data-new]').value = ''; $('[data-new2]').value = ''; }
+      }
+      msg.innerHTML = saved;
+      unrefreshed = true;
       btn.textContent = '好了';
       btn.disabled = false;
       btn.onclick = close;
     } catch (e) {
-      $('.sup-msg').innerHTML = `<span class="bad">${esc(e.message)}</span>`;
+      msg.innerHTML = `<span class="bad">${esc(e.message)}</span>`;
       btn.disabled = false; btn.textContent = '保存';
     }
   };
   setTimeout(() => $('[data-ds]').focus(), 50);
 }
+let unrefreshed = false;
 window.cpwOpenSettings = openSettings;
+document.addEventListener('click', (e) => { if (unrefreshed && e.target.closest('[data-x]')) { unrefreshed = false; window.cpwRefreshMe?.(); } });
 
 function browserName() {
   const b = navigator.userAgentData?.brands?.find((x) => !/Not.?A.?Brand|Chromium/i.test(x.brand));
@@ -145,46 +187,73 @@ function browserName() {
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
 async function openDiag() {
+  const hosted = await isHosted();
   const mask = document.createElement('div');
   mask.className = 'sup-mask';
   mask.innerHTML = '<div class="sup-card" role="dialog" aria-label="诊断信息"><h3>诊断信息</h3><p>正在检查…</p></div>';
   document.body.appendChild(mask);
   mask.addEventListener('click', (e) => { if (e.target === mask) mask.remove(); });
   let d = {};
-  try { d = await (await fetch('/api/diag')).json(); } catch (e) { d = { error: '连不上本机服务：' + e.message }; }
+  if (hosted) {
+    try { d = { ...(await (await fetch('/api/status')).json()), hosted: true }; } catch (e) { d = { error: '连不上服务：' + e.message }; }
+  } else {
+    try { d = await (await fetch('/api/diag')).json(); } catch (e) { d = { error: '连不上本机服务：' + e.message }; }
+  }
   const problems = await browserProblems;
-  const rows = [
-    ['版本', d.version ? `v${d.version}${d.commit ? `（${d.commit}）` : ''}` : '?'],
-    ['浏览器', browserName()],
-    ['能否出片', problems.length ? `<span class="bad">${esc(problems.join('、'))}</span>` : '正常'],
-    ['AI 写文案', `${d.aiKey ? '已配置' : '<span class="bad">没填密钥</span>'}　<a href="#" data-set>${d.aiKey ? '修改' : '去填'}</a>`],
-    ['配音', d.tts && !/^不可用/.test(d.tts) ? '正常' : `<span class="bad">${esc(d.tts || '?')}</span>`],
-    ['听写模型', d.asrModel === '已下载' ? '已下载' : `<span class="bad">${esc(d.asrModel || '?')}</span>`],
-    ['电脑', d.os ? `${esc(d.os)}，${d.cpus} 核，内存 ${d.memoryGB}GB（空闲 ${d.freeMemoryGB}GB）` : esc(d.error || '?')],
-    ['最近报错', d.clientErrors?.length ? `<span class="bad">${d.clientErrors.length} 条</span>` : '没有'],
-  ];
-  const text = [
-    `出片王诊断信息 ${new Date().toLocaleString('zh-CN')}`,
-    `版本：v${d.version}（${d.commit}） 启动于 ${d.started}`,
-    `浏览器：${browserName()}  ${navigator.userAgent}`,
-    `屏幕：${screen.width}x${screen.height} @${devicePixelRatio}`,
-    `能否出片：${problems.length ? problems.join('、') : '正常'}`,
-    `Node ${d.node}  ${d.os}  ${d.cpus} 核  内存 ${d.memoryGB}GB（空闲 ${d.freeMemoryGB}GB）`,
-    `AI 密钥：${d.aiKey ? '有' : '没有'}  素材库密钥：${d.stockKey ? '有' : '没有'}  配音：${d.tts}  听写模型：${d.asrModel}  作品数：${d.works}`,
-    '',
-    '—— 页面最近报错 ——',
-    ...(d.clientErrors?.length ? d.clientErrors.map((e) => `${e.at} ${e.page} ${e.message}\n${e.stack}`) : ['没有']),
-    '',
-    '—— 服务日志最后 60 行 ——',
-    d.log || '',
-  ].join('\n');
+  let acct = null;
+  if (hosted) { try { acct = (await (await fetch('/api/auth/me')).json()).user; } catch { /* 没登录 */ } }
+  const rows = hosted
+    ? [
+        ['版本', d.version ? `v${d.version}${d.commit ? `（${d.commit}）` : ''}` : '?'],
+        ['浏览器', browserName()],
+        ['能否出片', problems.length ? `<span class="bad">${esc(problems.join('、'))}</span>` : '正常'],
+        ['账号', acct ? esc(acct.name || acct.username) : '没登录'],
+        ['密钥', acct ? (acct.hasKey ? '已填（自己的）' : '<span class="bad">还没填</span>') : '—'],
+        ['提示', '服务器上的细节（配音、日志）由管理员在后台看；页面报错会自动记进去'],
+      ]
+    : [
+        ['版本', d.version ? `v${d.version}${d.commit ? `（${d.commit}）` : ''}` : '?'],
+        ['浏览器', browserName()],
+        ['能否出片', problems.length ? `<span class="bad">${esc(problems.join('、'))}</span>` : '正常'],
+        ['AI 写文案', `${d.aiKey ? '已配置' : '<span class="bad">没填密钥</span>'}　<a href="#" data-set>${d.aiKey ? '修改' : '去填'}</a>`],
+        ['配音', d.tts && !/^不可用/.test(d.tts) ? '正常' : `<span class="bad">${esc(d.tts || '?')}</span>`],
+        ['听写模型', d.asrModel === '已下载' ? '已下载' : `<span class="bad">${esc(d.asrModel || '?')}</span>`],
+        ['电脑', d.os ? `${esc(d.os)}，${d.cpus} 核，内存 ${d.memoryGB}GB（空闲 ${d.freeMemoryGB}GB）` : esc(d.error || '?')],
+        ['最近报错', d.clientErrors?.length ? `<span class="bad">${d.clientErrors.length} 条</span>` : '没有'],
+      ];
+  const text = hosted
+    ? [
+        `出片王诊断信息 ${new Date().toLocaleString('zh-CN')}`,
+        `版本：v${d.version}（${d.commit}）`,
+        `浏览器：${browserName()}  ${navigator.userAgent}`,
+        `屏幕：${screen.width}x${screen.height} @${devicePixelRatio}`,
+        `能否出片：${problems.length ? problems.join('、') : '正常'}`,
+        `账号：${acct ? `${acct.name || ''}（${acct.username}）` : '没登录'}  自己的密钥：${acct?.hasKey ? '已填' : '没有'}`,
+        `页面地址：${location.href}`,
+      ].join('\n')
+    : [
+        `出片王诊断信息 ${new Date().toLocaleString('zh-CN')}`,
+        `版本：v${d.version}（${d.commit}） 启动于 ${d.started}`,
+        `浏览器：${browserName()}  ${navigator.userAgent}`,
+        `屏幕：${screen.width}x${screen.height} @${devicePixelRatio}`,
+        `能否出片：${problems.length ? problems.join('、') : '正常'}`,
+        `Node ${d.node}  ${d.os}  ${d.cpus} 核  内存 ${d.memoryGB}GB（空闲 ${d.freeMemoryGB}GB）`,
+        `AI 密钥：${d.aiKey ? '有' : '没有'}  素材库密钥：${d.stockKey ? '有' : '没有'}  配音：${d.tts}  听写模型：${d.asrModel}  作品数：${d.works}`,
+        '',
+        '—— 页面最近报错 ——',
+        ...(d.clientErrors?.length ? d.clientErrors.map((e) => `${e.at} ${e.page} ${e.message}\n${e.stack}`) : ['没有']),
+        '',
+        '—— 服务日志最后 60 行 ——',
+        d.log || '',
+      ].join('\n');
   mask.querySelector('.sup-card').innerHTML = `
     <h3>诊断信息</h3>
     <p>用着出了问题？点「复制」，把内容发给我们，不用截图。里面不含你的文案、视频和密钥。</p>
     <dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
     <div class="sup-row"><button type="button" data-x>关闭</button><button type="button" class="pri" data-copy>复制诊断信息</button></div>`;
   mask.querySelector('[data-x]').onclick = () => mask.remove();
-  mask.querySelector('[data-set]').onclick = (e) => { e.preventDefault(); mask.remove(); openSettings(); };
+  const setBtn = mask.querySelector('[data-set]');
+  if (setBtn) setBtn.onclick = (e) => { e.preventDefault(); mask.remove(); openSettings(); };
   const btn = mask.querySelector('[data-copy]');
   btn.onclick = async () => {
     try { await navigator.clipboard.writeText(text); }

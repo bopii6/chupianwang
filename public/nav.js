@@ -30,6 +30,16 @@ if (nav) {
   }));
   fillCopy(here === 'copy');
   fillWorks();
+  // 管理员多一个「账号」入口（普通客户看不到）
+  fetch('/api/auth/me', { cache: 'no-store' }).then((r) => r.json()).then((d) => {
+    if (d.user?.role !== 'admin' || !nav) return;
+    const a = document.createElement('a');
+    a.href = '/admin/accounts.html';
+    a.title = '账号管理';
+    if (location.pathname.startsWith('/admin/accounts')) { a.className = 'on'; a.setAttribute('aria-current', 'page'); }
+    a.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0z" /></svg><span class="nav-name">账号</span>';
+    nav.append(a);
+  }).catch(() => {});
 }
 
 // 文案库：内部工具，拿不到（没口令）就什么都不显示，也不弹口令框

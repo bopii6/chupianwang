@@ -14,11 +14,12 @@ import net from 'node:net';
 import https from 'node:https';
 import { handleCopyApi, scanRisks } from './lib/copylib.js';
 import { handleRelay } from './lib/relay.js';
-import { handleAuth, currentUser, hasQuota, useQuota } from './lib/auth.js';
+import { handleAuth, currentUser, requireUser, isAdminUser, noteGeneration } from './lib/auth.js';
+import { bootstrapAdmin, readUser as readAccount, userDir as accountDir } from './lib/accounts.js';
 import { handleWorks, serveWorkFile } from './lib/works.js';
 import { handleJobs } from './lib/jobs.js';
 import { handleMcp } from './lib/mcp.js';
-import { handleSettings } from './lib/settings.js';
+import { handleSettings, deepseekKeyOf, pexelsKeyOf } from './lib/settings.js';
 import { APP_ROOT, ENV_FILE, LOG_FILE, WORKS_DIR, CACHE_DIR, MODELS_DIR } from './lib/paths.js';
 
 const ROOT = APP_ROOT; // 程序文件（只读）；客户数据的位置见 lib/paths.js
@@ -61,6 +62,14 @@ function isPublicHost(host) {
   const h = String(host || '').toLowerCase().replace(/:\d+$/, '');
   return !!PUBLIC_HOST && (h === PUBLIC_HOST || PUBLIC_EXTRA_HOSTS.includes(h));
 }
+
+// 公网版（getcut.cn 这种）：账号密码登录 + 每个客户自己的密钥 + 各自的作品/文案库
+// 本地版（装在客户自己电脑上）：完全不启用，行为跟以前一模一样
+const HOSTED = !!PUBLIC_BASE_URL || process.env.AUTH_REQUIRED === '1';
+/** 某个账号的目录（作品、文案库、上传） */
+const ownerDir = (id, sub) => (sub ? path.join(accountDir(id), sub) : accountDir(id));
+function worksDirOf(user) { return HOSTED && user ? ownerDir(user.id, 'works') : WORKS; }
+fs.mkdirSync(WORKS, { recursive: true });
 
 // ---------- 静态文件 ----------
 const MIME = {
@@ -276,11 +285,11 @@ async function handleFetchUrl(req, res) {
 // 同一个关键词的结果缓存 7 天：所有客户共用，省接口次数（免费额度 200 次/小时）。
 const STOCK_CACHE = path.join(CACHE_DIR, 'stock');
 fs.mkdirSync(STOCK_CACHE, { recursive: true });
-async function handleStock(req, res, query) {
+async function handleStock(req, res, query, keyOverride = '') {
   const q = String(query.get('q') || '').trim().slice(0, 80);
   if (!q) return sendJson(res, 400, { error: '缺少关键词' });
   if (!process.env.PEXELS_API_KEY) loadEnv(); // 填了密钥不用重启
-  const key = process.env.PEXELS_API_KEY;
+  const key = keyOverride || process.env.PEXELS_API_KEY;
   if (!key) return sendJson(res, 400, { error: '还没填实拍图素材库的密钥。点页面右下角的「出片王」版本号 →「去填」→ 展开「实拍图」那一栏', code: 'no-key' });
   const file = path.join(STOCK_CACHE, crypto.createHash('sha1').update(q.toLowerCase()).digest('hex') + '.json');
   try {
@@ -305,25 +314,27 @@ async function handleStock(req, res, query) {
 }
 
 // ---------- AI 文案（DeepSeek） ----------
-async function deepseek(messages, { temperature = 0.7, max_tokens = 8000 } = {}) {
+// key：公网版传客户自己的密钥；本地版不传，用 .env 里的
+async function deepseek(messages, { temperature = 0.7, max_tokens = 8000, key = '', who = '' } = {}) {
+  const auth = key || process.env.DEEPSEEK_API_KEY;
   const r = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}` },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth}` },
     body: JSON.stringify({ model: process.env.DEEPSEEK_MODEL || 'deepseek-chat', messages, response_format: { type: 'json_object' }, temperature, max_tokens }),
   });
   if (!r.ok) throw Object.assign(new Error(`DeepSeek 返回错误 ${r.status}: ${(await r.text()).slice(0, 300)}`), { status: 502 });
   const j = await r.json();
   const content = j.choices[0].message.content;
   // 用量记一笔：输入多少（其中多少命中缓存，缓存部分便宜约 10 倍）、输出多少
-  if (j.usage) console.log(`[AI 用量] 输入 ${j.usage.prompt_tokens}（命中缓存 ${j.usage.prompt_cache_hit_tokens ?? 0}）输出 ${j.usage.completion_tokens}`);
+  if (j.usage) console.log(`[AI 用量]${who ? ` ${who}` : ''} 输入 ${j.usage.prompt_tokens}（命中缓存 ${j.usage.prompt_cache_hit_tokens ?? 0}）输出 ${j.usage.completion_tokens}`);
   try { return { data: JSON.parse(content), content }; } catch { throw Object.assign(new Error('AI 返回的内容不是合法 JSON，请重试'), { status: 502 }); }
 }
 
 // ---------- 复刻对标视频 ----------
 // 第一步：拆出原视频为什么火、它的打法，推荐用哪个形式来做
-async function handleRemixPlan(req, res) {
+async function handleRemixPlan(req, res, key = '', who = '') {
   const { reference = '', forms = [] } = await readJson(req);
-  if (!process.env.DEEPSEEK_API_KEY) return sendJson(res, 400, { error: '还没填 AI 密钥。点页面右下角的「出片王」版本号，在「AI 写文案」那一行点「去填」', code: 'no-key' });
+  if (!key) return sendJson(res, 400, { error: '还没填 AI 密钥。点右上角账号 →「我的设置」，把 DeepSeek 的密钥填进去', code: 'no-key' });
   const ref = String(reference).trim().slice(0, 12000);
   if (ref.replace(/\s/g, '').length < 20) return sendJson(res, 400, { error: '视频里的话太少了，复刻不了' });
   const list = (Array.isArray(forms) ? forms : []).slice(0, 20)
@@ -332,7 +343,7 @@ async function handleRemixPlan(req, res) {
   if (!list.length) return sendJson(res, 400, { error: '没有可用的形式' });
   const system = (await fsp.readFile(path.join(ROOT, 'prompts', 'remix-plan.md'), 'utf8'))
     .replace('{{FORMS}}', list.map((f) => `- ${f.id}：${f.name}（${f.fit}）`).join('\n'));
-  const { data } = await deepseek([{ role: 'system', content: system }, { role: 'user', content: `原视频口播文字稿：\n${ref}` }], { temperature: 0.3, max_tokens: 1200 });
+  const { data } = await deepseek([{ role: 'system', content: system }, { role: 'user', content: `原视频口播文字稿：\n${ref}` }], { temperature: 0.3, max_tokens: 1200, key, who });
   const s = (v, n) => String(v ?? '').trim().slice(0, n);
   sendJson(res, 200, {
     topic: s(data.topic, 30), why: s(data.why, 80), hook: s(data.hook, 30), cta: s(data.cta, 40),
@@ -387,10 +398,10 @@ function fabricated(text, source) {
   return out;
 }
 
-async function handleScript(req, res, me = null) {
+async function handleScript(req, res, { key = '', acct = null } = {}) {
   const { form, input, minutes = 2, account = '', materials = [], reference = '', plan = null, industry = '' } = await readJson(req);
-  const key = process.env.DEEPSEEK_API_KEY;
-  if (!key) return sendJson(res, 400, { error: '还没填 AI 密钥。点页面右下角的「出片王」版本号，在「AI 写文案」那一行点「去填」', code: 'no-key' });
+  if (!key) return sendJson(res, 400, { error: '还没填 AI 密钥。点右上角账号 →「我的设置」，把 DeepSeek 的密钥填进去', code: 'no-key' });
+  const who = acct ? acct.username : '';
   const promptFile = path.join(ROOT, 'prompts', `${String(form).replace(/[^a-z0-9-]/g, '')}.md`);
   if (!fs.existsSync(promptFile)) return sendJson(res, 400, { error: '未知的形式' });
   const system = await fsp.readFile(promptFile, 'utf8');
@@ -477,7 +488,7 @@ ${ref}` : '';
   }
   const messages = [{ role: 'system', content: system }, { role: 'user', content: user + layoutHint }];
   try {
-    let { data, content } = await deepseek(messages, { temperature: 0.8 });
+    let { data, content } = await deepseek(messages, { temperature: 0.8, key, who });
     // 自动检查一遍：违法用语（每条都查）、照抄原文（复刻时才查），有问题就带着问题让 AI 重写一次
     // 客户自己给过的文字：这里面出现过的数字、服务，不算 AI 编的
     const source = [say, trade, account, ...(Array.isArray(materials) ? materials : []).map((m) => String(m?.text || ''))].join('\n');
@@ -496,13 +507,13 @@ ${ref}` : '';
         c.short && `篇幅不够：现在口播一共只有 ${c.chars} 字，目标约 ${targetChars} 字（约 ${sections} 段）。补到目标篇幅：多加几段新内容（换角度、举例子、讲做法），不要把每句话拉长注水。`,
         c.fab.length && `这些内容客户没提供过，是你编的：${c.fab.map((x) => `「${x.word}」（${x.why}）`).join('、')}。删掉或改成不带具体数字、不承诺具体服务的说法；占位词换成“我们”${account ? `或“${account}”` : ''}。`,
       ].filter(Boolean).join('\n');
-      const again = await deepseek([...messages, { role: 'assistant', content }, { role: 'user', content: `${fb}\n其它保持不变，重新输出完整 JSON。` }], { temperature: 0.7 });
+      const again = await deepseek([...messages, { role: 'assistant', content }, { role: 'user', content: `${fb}\n其它保持不变，重新输出完整 JSON。` }], { temperature: 0.7, key, who });
       const c2 = check(again.data);
       if (c.short) console.log(`[篇幅] ${form} 目标 ${targetChars} 字，第一版 ${c.chars} 字，补写后 ${c2.chars} 字（问题分 ${score(c)} → ${score(c2)}）`);
       if (score(c2) <= score(c)) { data = again.data; c = c2; }
     }
     // 改完还剩下的，标出来让客户发之前自己核对
-    if (me) data._trialLeft = (await useQuota(me)).trialLeft; // 写成了才扣试用条数
+    if (acct) { await noteGeneration(acct.id); data._generations = (acct.generations || 0) + 1; }
     data._flags = [...c.illegal.map((x) => ({ word: x.word, why: x.reason || '广告法风险' })), ...c.fab, ...c.copied.map((x) => ({ word: x, why: '和原视频一样' }))].slice(0, 10);
     sendJson(res, 200, data);
   } catch (e) {
@@ -570,6 +581,11 @@ async function handleDiag(req, res) {
 }
 
 // ---------- 路由 ----------
+// 公网版：按 .env 里的 ADMIN_USER / ADMIN_PASSWORD 建管理员（已经有的不重复建，也不会改密码）
+if (HOSTED) {
+  try { await bootstrapAdmin(); } catch (e) { console.error('[账号] 创建管理员失败：', e.message); }
+  if (!process.env.ADMIN_USER && !process.env.ADMIN_PASSWORD) console.warn('[账号] 没设 ADMIN_USER / ADMIN_PASSWORD：如果还没有管理员账号，请先跑 node scripts/admin.mjs create-admin 账号 密码');
+}
 http.createServer(async (req, res) => {
   const { pathname } = new URL(req.url, 'http://x');
   // 跨源隔离：浏览器里转文字要用多线程（SharedArrayBuffer）。用 credentialless，外站图片（Pexels）照常能加载
@@ -578,32 +594,76 @@ http.createServer(async (req, res) => {
   const why = rejectReason(req);
   if (why) { res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end(why); }
   try {
-    if (req.method === 'GET' && pathname === '/api/diag') return await handleDiag(req, res);
-    if (pathname === '/api/settings') return await handleSettings(req, res, { readJson, sendJson, markFromEnvFile: (k) => FROM_ENV_FILE.add(k) });
+    const params = new URL(req.url, 'http://x').searchParams;
+    // 公网版要登录的接口都从这里过一次；本地版直接放行
+    const gate = (() => {
+      let p = null;
+      return async () => {
+        if (!HOSTED) return { user: null };
+        const r = await (p ||= requireUser(req));
+        p = r;
+        return r.user ? { user: r.user } : { fail: { status: r.status, error: r.error, code: r.code } };
+      };
+    })();
+    const deny = (f) => sendJson(res, f.status || 401, { error: f.error, code: f.code });
+
+    // 登录 / 账号管理（管理员后台）
+    if (pathname.startsWith('/api/auth/') || pathname.startsWith('/api/admin/')) {
+      return await handleAuth(req, res, pathname, { readJson, sendJson, hosted: HOSTED });
+    }
+    if (req.method === 'GET' && pathname === '/api/diag') {
+      if (HOSTED) { const g = await gate(); if (g.fail || !g.user) return deny(g.fail || g); if (!isAdminUser(g.user)) return sendJson(res, 403, { error: '诊断信息只有管理员能看' }); }
+      return await handleDiag(req, res);
+    }
+    if (pathname === '/api/settings') {
+      const g = await gate(); if (g.fail) return deny(g.fail);
+      return await handleSettings(req, res, { readJson, sendJson, markFromEnvFile: (k) => FROM_ENV_FILE.add(k), hosted: HOSTED, user: g.user });
+    }
     if (req.method === 'POST' && pathname === '/api/client-error') {
       const b = await readJson(req).catch(() => ({}));
       const s = (v, n) => String(v ?? '').slice(0, n);
       pushClientError({ at: new Date().toISOString(), page: s(b.page, 200), message: s(b.message, 500), stack: s(b.stack, 1500) });
       return sendJson(res, 200, { ok: true });
     }
+    // 配音、转写文件、抓网页、手机上传：公网版要登录，别让陌生人白用服务器
+    if (HOSTED && (pathname.startsWith('/api/tts') || pathname === '/api/fetch-url' || pathname === '/api/qr' || pathname.startsWith('/api/relay'))) {
+      const g = await gate(); if (g.fail) return deny(g.fail);
+    }
     if (req.method === 'POST' && pathname === '/api/tts') return await handleTts(req, res);
     if (req.method === 'POST' && pathname === '/api/tts-batch') return await handleTtsBatch(req, res);
     const tf = pathname.match(/^\/api\/tts-file\/([0-9a-f]{40})\.mp3$/);
     if (req.method === 'GET' && tf) return await handleTtsFile(res, tf[1]);
-    if (pathname.startsWith('/api/auth/')) return await handleAuth(req, res, pathname, { readJson, sendJson }); // 邮箱验证码登录
-    // 写文案要登录（用到 AI 额度）
-    let user = null;
-    if (req.method === 'POST' && (pathname === '/api/script' || pathname === '/api/remix-plan') && process.env.AUTH_REQUIRED === '1') {
-      user = await currentUser(req);
-      if (!user) return sendJson(res, 401, { error: '先登录一下，新用户免费试做 3 条', code: 'login' });
-      if (pathname === '/api/script' && !hasQuota(user)) return sendJson(res, 402, { error: '3 条免费试做已经用完了。开通后不限条数，联系我们开通。', code: 'quota' });
+    // 写文案：公网版用客户自己的密钥
+    if (req.method === 'POST' && pathname === '/api/script') {
+      let user = null; let key = process.env.DEEPSEEK_API_KEY;
+      if (HOSTED) {
+        const g = await gate(); if (g.fail) return deny(g.fail);
+        user = g.user; key = deepseekKeyOf(user);
+        if (!key) return sendJson(res, 400, { error: '还没填你自己的 DeepSeek 密钥。点右上角账号 →「我的设置」，填进去就能出片了。', code: 'no-key' });
+      }
+      return await handleScript(req, res, { key, acct: user });
     }
-    if (req.method === 'POST' && pathname === '/api/script') return await handleScript(req, res, user);
-    if (req.method === 'POST' && pathname === '/api/remix-plan') return await handleRemixPlan(req, res);
-    if (pathname === '/api/qr' || pathname.startsWith('/api/relay')) return await handleRelay(req, res, pathname, new URL(req.url, 'http://x').searchParams, { readJson, sendJson }); // 手机扫码上传
+    if (req.method === 'POST' && pathname === '/api/remix-plan') {
+      let key = process.env.DEEPSEEK_API_KEY; let who = '';
+      if (HOSTED) {
+        const g = await gate(); if (g.fail) return deny(g.fail);
+        key = deepseekKeyOf(g.user); who = g.user.username;
+        if (!key) return sendJson(res, 400, { error: '还没填你自己的 DeepSeek 密钥。点右上角账号 →「我的设置」，填进去就能用了。', code: 'no-key' });
+      }
+      return await handleRemixPlan(req, res, key, who);
+    }
+    if (pathname === '/api/qr' || pathname.startsWith('/api/relay')) return await handleRelay(req, res, pathname, params, { readJson, sendJson }); // 手机扫码上传
     if (req.method === 'POST' && pathname === '/api/fetch-url') return await handleFetchUrl(req, res);
-    if (pathname.startsWith('/api/copy/')) return await handleCopyApi(req, res, pathname, { readJson, sendJson, user: await currentUser(req) }); // 文案库：每个客户自己的；没登录的管理员用公共库
-    if (req.method === 'GET' && pathname === '/api/stock') return await handleStock(req, res, new URL(req.url, 'http://x').searchParams);
+    if (pathname.startsWith('/api/copy/')) {
+      let user = null;
+      if (HOSTED) { const g = await gate(); if (g.fail) return deny(g.fail); user = g.user; } else user = await currentUser(req);
+      return await handleCopyApi(req, res, pathname, { readJson, sendJson, user }); // 文案库：每个客户自己的
+    }
+    if (req.method === 'GET' && pathname === '/api/stock') {
+      let key = '';
+      if (HOSTED) { const g = await gate(); if (g.fail) return deny(g.fail); key = pexelsKeyOf(g.user); }
+      return await handleStock(req, res, params, key);
+    }
     if (req.method === 'POST' && pathname === '/api/debug-frame' && process.env.NODE_ENV !== 'production') {
       // 开发调试：把浏览器里渲染的某一帧存成图片
       const { name, data } = await readJson(req);
@@ -615,20 +675,36 @@ http.createServer(async (req, res) => {
     if (req.method === 'POST' && pathname === '/api/debug-file' && process.env.NODE_ENV !== 'production') {
       const dir = path.join(CACHE_DIR, 'frames');
       await fsp.mkdir(dir, { recursive: true });
-      const fname = (new URL(req.url, 'http://x').searchParams.get('name') || 'export').replace(/[^\w.-]/g, '');
+      const fname = (params.get('name') || 'export').replace(/[^\w.-]/g, '');
       const out = fs.createWriteStream(path.join(dir, fname + '.mp4'));
       req.pipe(out);
       return out.on('finish', () => sendJson(res, 200, { ok: true }));
     }
     if (pathname === '/mcp') return await handleMcp(req, res, { readJson });
-    if (pathname.startsWith('/api/jobs')) return await handleJobs(req, res, pathname, new URL(req.url, 'http://x').searchParams);
-    if (pathname.startsWith('/api/works')) return await handleWorks(req, res, pathname, WORKS, new URL(req.url, 'http://x').searchParams); // 作品墙
-    if (pathname.startsWith('/works/')) return await serveWorkFile(req, res, pathname, WORKS); // 作品墙视频（支持 Range）
-    if (req.method === 'GET' && pathname === '/api/status') { if (!process.env.PEXELS_API_KEY) loadEnv(); return sendJson(res, 200, { ai: !!process.env.DEEPSEEK_API_KEY, stock: !!process.env.PEXELS_API_KEY, asrBase: process.env.ASR_MODEL_BASE || '/models/asr/', asrModel: process.env.ASR_MODEL || 'whisper-base', authRequired: process.env.AUTH_REQUIRED === '1', jobWorker: process.env.JOB_WORKER === '1', version: PKG.version, commit: COMMIT }); }
+    if (pathname.startsWith('/api/jobs')) return await handleJobs(req, res, pathname, params);
+    // 作品墙：公网版每人一个目录，管理员可以带 ?owner=<账号id> 看别人的
+    if (pathname.startsWith('/api/works') || pathname.startsWith('/works/')) {
+      if (HOSTED) {
+        const g = await gate(); if (g.fail) return deny(g.fail);
+        const me = g.user;
+        let owner = me;
+        const oid = params.get('owner');
+        if (oid && isAdminUser(me) && /^[0-9a-f]{24}$/.test(oid)) { const ou = await readAccount(oid); if (ou) owner = ou; }
+        if (pathname.startsWith('/api/works')) return await handleWorks(req, res, pathname, worksDirOf(owner), params, `/works/${owner.id}/`);
+        const m = pathname.match(/^\/works\/([0-9a-f]{24})\/(.+)$/);
+        if (!m) { res.writeHead(404); return res.end('not found'); }
+        let target = m[1] === me.id ? me : (isAdminUser(me) ? await readAccount(m[1]) : null);
+        if (!target) { res.writeHead(403); return res.end('forbidden'); }
+        return await serveWorkFile(req, res, '/works/' + m[2], worksDirOf(target)); // 作品墙视频（支持 Range）
+      }
+      if (pathname.startsWith('/api/works')) return await handleWorks(req, res, pathname, WORKS, params); // 本地版：还是全局 works/
+      if (pathname.startsWith('/works/')) return await serveWorkFile(req, res, pathname, WORKS);
+    }
+    if (req.method === 'GET' && pathname === '/api/status') { if (!process.env.PEXELS_API_KEY) loadEnv(); return sendJson(res, 200, { ai: !!process.env.DEEPSEEK_API_KEY, stock: !!process.env.PEXELS_API_KEY, hosted: HOSTED, asrBase: process.env.ASR_MODEL_BASE || '/models/asr/', asrModel: process.env.ASR_MODEL || 'whisper-base', authRequired: HOSTED, jobWorker: process.env.JOB_WORKER === '1', version: PKG.version, commit: COMMIT }); }
     if (req.method === 'GET' && (await serveStatic(req, res, pathname))) return;
     res.writeHead(404); res.end('not found');
   } catch (e) {
     console.error(e);
     if (!res.headersSent) sendJson(res, 500, { error: String(e.message || e) });
   }
-}).listen(PORT, HOST, () => console.log(`出片王 v${PKG.version}${COMMIT ? ` (${COMMIT})` : ''} 已启动: http://localhost:${PORT}${LOCAL_ONLY ? '（只允许本机访问）' : `（局域网可访问，HOST=${HOST}）`}`));
+}).listen(PORT, HOST, () => console.log(`出片王 v${PKG.version}${COMMIT ? ` (${COMMIT})` : ''} 已启动: http://localhost:${PORT}${LOCAL_ONLY ? '（只允许本机访问）' : `（局域网可访问，HOST=${HOST}）`}${HOSTED ? '（公网版：账号密码登录）' : ''}`));

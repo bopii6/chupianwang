@@ -602,7 +602,12 @@ async function generate(input = $('#input').value.trim()) {
   if (state.attachments.some((a) => a.loading)) { $('#createErr').textContent = '资料还在读取，稍等一下'; return; }
   const materials = state.attachments.map((a) => ({ name: a.name, text: a.text }));
   if (!input && !materials.length) { $('#createErr').textContent = '先写一句你想讲什么，或者添加一份资料'; $('#input').focus(); return; }
-  if (!aiReady) { $('#createErr').textContent = '服务端还没配置 AI 密钥，可以先看示例。'; return; }
+  if (hosted && (!me || !me.hasKey)) {
+    $('#createErr').textContent = me ? '先填你自己的 DeepSeek 密钥才能出片' : '先登录才能出片';
+    if (!me) openLogin('登录后就能生成视频'); else setTimeout(() => window.cpwOpenSettings?.(true), 150);
+    return;
+  }
+  if (!aiReady && !hosted) { $('#createErr').textContent = '服务端还没配置 AI 密钥，可以先看示例。'; return; }
   state.input = input;
   primeAudio();
   enterStudio();
@@ -613,13 +618,12 @@ async function generate(input = $('#input').value.trim()) {
       body: JSON.stringify({ form: state.form.id, input, materials, minutes: prefs.minutes, account: prefs.account }),
     });
     const data = await r.json();
-    onAuthFail(r);
+    onAuthFail(r, data);
     if (!r.ok) throw new Error(data.error || '生成失败');
     data.account = prefs.account || data.account || '';
     // 客户自己选了品类：画面配色、行业徽章都按这一行来，不让 AI 再猜
     if (pickedCat()) data.theme = { key: pickedCat(), emoji: [] };
     state.flags = Array.isArray(data._flags) ? data._flags : [];
-    onQuota(data);
     await startWithScript(state.form.module.normalize ? state.form.module.normalize(data, splitLongLine) : normalize(data));
     await afterJobExport();
   } catch (err) {
@@ -704,7 +708,7 @@ async function runRemix(name, listen) {
       body: JSON.stringify({ reference: text, forms: forms.map((f) => ({ id: f.id, name: f.name, fit: f.fits || f.outcome || f.tagline })) }),
     });
     const data = await r.json();
-    onAuthFail(r);
+    onAuthFail(r, data);
     if (!r.ok) throw new Error(data.error || '拆解失败');
     if (job !== rm.job) return;
     rm.plan = data;
@@ -723,7 +727,7 @@ async function runRemix(name, listen) {
 // 文案库里存的已经是文字，跳过上传和听写，直接拆解
 /** 先登录再做：没登录就弹登录框，登录完接着做 */
 function loginThen(reason, fn) {
-  return new Promise((resolve, reject) => { loginWaiters.push({ resolve, reject }); openLogin(reason); }).then(fn).catch(() => {});
+  return ensureLogin(reason).then(fn).catch(() => {});
 }
 const lib = { items: null, loading: null, picked: '' };
 const fmtLikes = (n) => (n >= 10000 ? (n / 10000).toFixed(n >= 100000 ? 0 : 1).replace(/\.0$/, '') + '万' : String(n));
@@ -778,7 +782,12 @@ $('#rmIndustry').addEventListener('input', (e) => { prefs.industry = e.target.va
 $('#rmIndustry').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#btnGo').click(); });
 function goRemix() {
   if (!$('#rmIndustry').value.trim()) { $('#createErr').textContent = '先写一下你是做什么培训的，AI 才知道换成什么内容'; $('#rmIndustry').focus(); return; }
-  if (!aiReady) { $('#createErr').textContent = '服务端还没配置 AI 密钥'; return; }
+  if (hosted && (!me || !me.hasKey)) {
+    $('#createErr').textContent = me ? '先填你自己的 DeepSeek 密钥才能出片' : '先登录才能出片';
+    if (!me) openLogin('登录后才能用别人的爆款做视频'); else setTimeout(() => window.cpwOpenSettings?.(true), 150);
+    return;
+  }
+  if (!aiReady && !hosted) { $('#createErr').textContent = '服务端还没配置 AI 密钥'; return; }
   if (rm.busy) { rm.wantGo = true; updateGo(); return; } // 还在听，听完自动开始
   replicate();
 }
@@ -797,11 +806,10 @@ async function replicate() {
       body: JSON.stringify({ form: state.form.id, reference: rm.text, plan: rm.plan, industry, minutes: prefs.minutes, account: prefs.account }),
     });
     const data = await r.json();
-    onAuthFail(r);
+    onAuthFail(r, data);
     if (!r.ok) throw new Error(data.error || '生成失败');
     data.account = prefs.account || data.account || '';
     state.flags = Array.isArray(data._flags) ? data._flags : [];
-    onQuota(data);
     await startWithScript(prepScript(state.form, data));
     await afterJobExport();
   } catch (err) {
@@ -820,113 +828,99 @@ function renderRemixNote() {
 }
 
 
-// ================= 登录（邮箱验证码） =================
+// ================= 登录（账号密码，账号由管理员开通） =================
 // 随便看、随便点不用登录；点“生成”或上传别人的爆款视频时才要求登录，登录完自动接着做
 let me = null;
-let authRequired = false; // 登录开关：服务端 .env 里 AUTH_REQUIRED=1 才要求登录（测试阶段先关着）
+let hosted = false; // 公网版才要登录（服务器上设了 PUBLIC_BASE_URL）；本地版不显示登录
 let loginWaiters = [];
+const acctName = () => (me ? (me.name || me.username || '') : '');
 async function loadMe() {
-  try { const d = await (await fetch('/api/auth/me')).json(); me = d.user; } catch { me = null; }
+  try { const d = await (await fetch('/api/auth/me', { cache: 'no-store' })).json(); me = d.user; hosted = !!d.hosted; } catch { me = null; }
   renderAcct();
 }
+window.cpwRefreshMe = loadMe;
 function renderAcct() {
-  if (!me && !authRequired) { $('#acctArea').innerHTML = '<span class="trial">新用户免费试做 3 条</span>'; return; } // 登录没开：不显示登录按钮
-  $('#acctArea').innerHTML = me
-    ? `<button class="me" id="btnMe" type="button"><i>${esc(me.email[0].toUpperCase())}</i><span>${esc(me.email)}</span><svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-       <div class="me-menu" id="meMenu"><div class="me-head">${esc(me.email)}<small>${me.plan === 'trial' ? `免费试用 · 还剩 ${me.trialLeft ?? 0} 条` : '已开通 · 不限条数'}</small></div><button type="button" id="btnLogout">退出登录</button></div>`
-    : '<span class="trial">新用户免费试做 3 条</span><button class="btn-login" id="btnLogin" type="button">登录</button>';
+  const area = $('#acctArea');
+  if (!hosted) { area.innerHTML = ''; return; } // 本地版：不用登录
+  if (!me) { area.innerHTML = '<button class="btn-login" id="btnLogin" type="button">登录</button>'; return; }
+  const nm = acctName();
+  const sub = me.expiresAt ? `有效期到 ${me.expiresAt}` : '已开通';
+  area.innerHTML = `<button class="me" id="btnMe" type="button"><i>${esc(nm[0] ? nm[0].toUpperCase() : '?')}</i><span>${esc(nm)}</span><svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+       <div class="me-menu" id="meMenu"><div class="me-head">${esc(nm)}<small>${esc(me.username)}${me.role === 'admin' ? ' · 管理员' : ''} · ${sub}</small></div>
+       <button type="button" id="btnMySettings">我的设置（DeepSeek 密钥）</button>
+       ${me.role === 'admin' ? '<button type="button" id="btnAdmin">账号管理</button>' : ''}
+       <button type="button" id="btnLogout">退出登录</button></div>`;
 }
 $('#acctArea').addEventListener('click', async (e) => {
   if (e.target.closest('#btnLogin')) return void ensureLogin().catch(() => {});
   if (e.target.closest('#btnMe')) return void $('#acctArea').classList.toggle('open');
+  if (e.target.closest('#btnMySettings')) { $('#acctArea').classList.remove('open'); return void (window.cpwOpenSettings ? window.cpwOpenSettings() : toast('设置打不开，刷新一下页面')); }
+  if (e.target.closest('#btnAdmin')) return void (location.href = '/admin/accounts.html');
   if (e.target.closest('#btnLogout')) {
     await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
-    me = null; $('#acctArea').classList.remove('open'); renderAcct(); toast('已退出登录');
+    me = null; $('#acctArea').classList.remove('open'); renderAcct(); toast('已退出登录'); loadMe();
   }
 });
 document.addEventListener('click', (e) => { if (!e.target.closest('#acctArea')) $('#acctArea').classList.remove('open'); });
 
 /** 已登录直接继续；没登录弹出登录框，登录成功后继续（关掉框就算了） */
 function ensureLogin(reason) {
-  if (me || !authRequired) return Promise.resolve(me);
+  if (!hosted) return Promise.resolve(me);
+  if (me) return Promise.resolve(me);
   return new Promise((resolve, reject) => { loginWaiters.push({ resolve, reject }); openLogin(reason); });
 }
 const dlg = $('#loginDlg');
-let resendTimer = 0;
-function lgStep(n) {
-  $('#lgStep1').classList.toggle('hidden', n !== 1);
-  $('#lgStep2').classList.toggle('hidden', n !== 2);
-  $('#lgErr').textContent = '';
-  setTimeout(() => (n === 1 ? $('#lgEmail') : $('#lgCode')).focus(), 60);
-}
 function openLogin(reason) {
   if (dlg.open) return;
-  $('#lgSub').textContent = reason || '新用户免费试做 3 条';
-  $('#lgEmail').value = prefs.email || '';
-  $('#lgCode').value = ''; $('#lgDev').classList.add('hidden');
-  lgStep(1);
+  $('#lgSub').textContent = reason || '账号由管理员开通';
+  $('#lgUser').value = prefs.username || '';
+  $('#lgPass').value = '';
+  $('#lgErr').textContent = '';
   dlg.showModal();
+  setTimeout(() => ($('#lgUser').value ? $('#lgPass') : $('#lgUser')).focus(), 60);
 }
 dlg.addEventListener('close', () => {
-  clearInterval(resendTimer);
   const ws = loginWaiters; loginWaiters = [];
   for (const w of ws) (me ? w.resolve(me) : w.reject(new Error('cancel')));
 });
 $('#lgClose').addEventListener('click', () => dlg.close());
 dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); }); // 点框外关闭
-function countdown(sec) {
-  clearInterval(resendTimer);
-  const b = $('#lgResend'); let left = sec;
-  const tick = () => { b.disabled = left > 0; b.textContent = left > 0 ? `${left} 秒后可以重新发送` : '没收到？重新发送'; left--; if (left < -1) clearInterval(resendTimer); };
-  tick(); resendTimer = setInterval(tick, 1000);
-}
-async function sendCode() {
-  const email = $('#lgEmail').value.trim();
-  if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(email)) { $('#lgErr').textContent = '邮箱格式不对，检查一下'; $('#lgEmail').focus(); return; }
-  const b = $('#lgSend'); b.disabled = true; b.firstChild.textContent = '正在发送…';
+let loggingIn = false;
+async function doLogin() {
+  const username = $('#lgUser').value.trim();
+  const password = $('#lgPass').value;
+  if (!username) { $('#lgErr').textContent = '先填账号'; $('#lgUser').focus(); return; }
+  if (!password) { $('#lgErr').textContent = '先填密码'; $('#lgPass').focus(); return; }
+  if (loggingIn) return;
+  loggingIn = true;
+  const b = $('#lgLogin'); b.disabled = true; b.firstChild.textContent = '正在登录…'; $('#lgErr').textContent = '';
   try {
-    const r = await fetch('/api/auth/send-code', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
-    const d = await r.json();
-    if (!r.ok && r.status !== 429) throw new Error(d.error || '发送失败');
-    prefs.email = email; savePrefs();
-    $('#lgTo').textContent = email;
-    lgStep(2); countdown(d.wait || 60);
-    if (r.status === 429) $('#lgErr').textContent = '刚才已经发过了，用邮件里那个验证码就行';
-    if (d.devCode) { // 开发模式：没配发信邮箱，本机直接显示验证码
-      $('#lgDev').textContent = `开发模式（还没配置发信邮箱）：验证码 ${d.devCode}，已自动填好`;
-      $('#lgDev').classList.remove('hidden');
-      $('#lgCode').value = d.devCode; setTimeout(verifyCode, 700);
-    }
-  } catch (err) { $('#lgErr').textContent = err.message; }
-  b.disabled = false; b.firstChild.textContent = '获取验证码';
-}
-let verifying = false;
-async function verifyCode() {
-  const code = $('#lgCode').value.replace(/\D/g, '');
-  if (code.length !== 6 || verifying) return;
-  verifying = true; $('#lgErr').textContent = ''; $('#lgCode').classList.add('busy');
-  try {
-    const r = await fetch('/api/auth/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: $('#lgEmail').value.trim(), code }) });
+    const r = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || '登录失败');
-    me = d.user; renderAcct();
+    me = d.user; prefs.username = username; savePrefs();
+    renderAcct();
     dlg.close();
-    toast(d.isNew ? '欢迎！你有 3 条免费试做' : '登录成功');
+    toast(`登录成功，${acctName()}`);
+    // 还没填自己的 DeepSeek 密钥：直接弹设置，不然点生成会报错
+    if (!me.hasKey) setTimeout(() => window.cpwOpenSettings?.(true), 350);
   } catch (err) {
-    $('#lgErr').textContent = err.message; $('#lgCode').select();
-    $('#lgCode').classList.add('shake'); setTimeout(() => $('#lgCode').classList.remove('shake'), 500);
+    $('#lgErr').textContent = err.message;
+    $('#lgPass').select();
+    $('#lgPass').classList.add('shake'); setTimeout(() => $('#lgPass').classList.remove('shake'), 500);
   }
-  $('#lgCode').classList.remove('busy'); verifying = false;
+  b.disabled = false; b.firstChild.textContent = '登录';
+  loggingIn = false;
 }
-$('#lgSend').addEventListener('click', sendCode);
-$('#lgEmail').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendCode(); } });
-$('#lgCode').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6); $('#lgErr').textContent = ''; if (e.target.value.length === 6) verifyCode(); });
-$('#lgBack').addEventListener('click', () => lgStep(1));
-$('#lgResend').addEventListener('click', () => { $('#lgCode').value = ''; sendCode(); });
-/** 接口说没登录（比如登录过期）：清掉登录状态 */
-function onAuthFail(r) { if (r.status === 401) { me = null; renderAcct(); } }
-/** 生成成功：更新剩余试用条数 */
-function onQuota(data) { if (me && typeof data._trialLeft === 'number') { me.trialLeft = data._trialLeft; renderAcct(); if (me.plan === 'trial') toast(data._trialLeft ? `免费试做还剩 ${data._trialLeft} 条` : '免费试做已用完'); } }
+$('#lgLogin').addEventListener('click', doLogin);
+$('#lgPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); doLogin(); } });
+$('#lgUser').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('#lgPass').focus(); } });
+/** 接口说没登录 / 没密钥 / 账号停用：清理状态，该弹登录弹登录，该弹设置弹设置 */
+function onAuthFail(r, data) {
+  if (r.status === 401) { me = null; renderAcct(); return; }
+  if (data?.code === 'no-key') setTimeout(() => window.cpwOpenSettings?.(true), 250);
+  if (data?.code === 'disabled' || data?.code === 'expired') { me = null; renderAcct(); toast(data.error || '账号不能用了，联系管理员'); }
+}
 
 // ================= ③ 看成片 =================
 function enterStudio() {
@@ -1681,7 +1675,7 @@ document.fonts.ready.then(() => { moveTabInd(); moveSegThumb($('#minutes')); upd
 loadPhotos('photos').catch(() => {});
 loadPhotos('scenes').catch(() => {});
 loadPhotos('footage').catch(() => {});
-fetch('/api/status').then((r) => r.json()).then((d) => { aiReady = !!d.ai; if (!aiReady) $('#createErr').textContent = '服务端还没配置 AI 密钥，可以先看示例。'; if (d.asrBase) asrBase = d.asrBase; if (d.asrModel) asrModel = d.asrModel; authRequired = !!d.authRequired; renderAcct(); }).catch(() => { aiReady = false; });
+fetch('/api/status').then((r) => r.json()).then((d) => { aiReady = !!d.ai || !!d.hosted; if (!aiReady) $('#createErr').textContent = '服务端还没配置 AI 密钥，可以先看示例。'; if (d.asrBase) asrBase = d.asrBase; if (d.asrModel) asrModel = d.asrModel; if (typeof d.hosted === 'boolean') hosted = d.hosted; renderAcct(); }).catch(() => { aiReady = false; });
 
 function applyQueryForm(formName) {
   if (formName && typeof forms !== 'undefined') {

@@ -1,6 +1,9 @@
-﻿// 作品墙前端：读 /api/works，支持导入、播放、直播模式轮播、删除
+// 作品墙前端：读 /api/works，支持导入、播放、直播模式轮播、删除
 (() => {
   const $ = (s) => document.querySelector(s);
+  // 管理员从后台点「看作品」会带 ?owner=<账号id>；服务端会校验权限
+  const owner = new URLSearchParams(location.search).get('owner') || '';
+  const withOwner = (u) => (owner ? `${u}${u.includes('?') ? '&' : '?'}owner=${encodeURIComponent(owner)}` : u);
   const state = { items: [], order: [], q: '', sort: 'new', idx: -1, industry: 'all' };
   const industryOf = (it) => {
     const t = String(it.title || '');
@@ -47,7 +50,7 @@
     if (!total) {
       grid.innerHTML = '';
       empty.classList.remove('hidden');
-      $('#wkSub').textContent = '共 0 条 · 视频都保存在本机 works/ 目录';
+      $('#wkSub').textContent = '共 0 条 · 导出的成片会自动存到这里';
       return;
     }
     empty.classList.add('hidden');
@@ -87,7 +90,7 @@
 
   async function load() {
     try {
-      const r = await fetch('/api/works', { cache: 'no-store' });
+      const r = await fetch(withOwner('/api/works'), { cache: 'no-store' });
       const data = await r.json();
       state.items = data.items || [];
       render();
@@ -99,7 +102,7 @@
   // ---------- 导入 ----------
   async function uploadOne(file) {
     const title = file.name.replace(/\.mp4$/i, '');
-    const r = await fetch('/api/works?title=' + encodeURIComponent(title), {
+    const r = await fetch(withOwner('/api/works?title=' + encodeURIComponent(title)), {
       method: 'POST',
       headers: { 'content-type': 'video/mp4' },
       body: file,
@@ -199,7 +202,7 @@
     const it = state.items.find((x) => x.id === id);
     if (!it) return;
     if (!confirm(`删除「${it.title}」？\n文件会从 works/ 目录直接删掉，不能恢复。`)) return;
-    const r = await fetch('/api/works/' + encodeURIComponent(id), { method: 'DELETE' });
+    const r = await fetch(withOwner('/api/works/' + encodeURIComponent(id)), { method: 'DELETE' });
     if (!r.ok) {
       let msg = `HTTP ${r.status}`;
       try { msg = (await r.json()).error || msg; } catch {}
