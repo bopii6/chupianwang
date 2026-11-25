@@ -109,9 +109,18 @@ test('客户的原话只有管理员能看：没登录 401、普通客户 403、
   assert.equal((await req('GET', '/api/support/topics')).status, 401);
   const user = cookieOf(await req('POST', '/api/auth/login', { body: { username: 'asker', password: 'ask123456' } }));
   assert.equal((await req('GET', '/api/support/topics', { cookie: user })).status, 403);
-  assert.equal((await req('GET', '/admin/topics.html', { cookie: user })).status, 302);
+  assert.equal((await req('GET', '/admin/accounts.html', { cookie: user })).status, 302);
   const admin = cookieOf(await req('POST', '/api/auth/login', { body: { username: 'admin', password: 'Admin12345' } }));
-  assert.equal((await req('GET', '/admin/topics.html', { cookie: admin })).status, 200);
+  const page = await req('GET', '/admin/accounts.html', { cookie: admin });
+  assert.equal(page.status, 200);
+  // 三个标签都在同一个页面里，不再单开页面
+  assert.match(page.text, /客户在问什么/);
+  assert.match(page.text, /出错记录/);
+  assert.match(page.text, /data-tab="topics"/);
+  assert.match(page.text, /data-tab="errors"/);
+  // 老地址变成跳转，不会 404
+  assert.match((await req('GET', '/admin/topics.html', { cookie: admin })).text, /accounts\.html#topics/);
+  assert.match((await req('GET', '/admin/errors.html', { cookie: admin })).text, /accounts\.html#errors/);
 });
 
 test('生成失败也记下来：能看出卡在什么问题上的提问', async () => {

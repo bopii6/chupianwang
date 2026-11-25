@@ -115,7 +115,7 @@ DeepSeek 要求按 JSON 交稿（`response_format: json_object`），但实测�
 
 我们的服务器收到后，按天存成数据目录下的 `support/2026-11-25.jsonl`（开发时就是项目根目录的 `support/`，装成软件后是 `%APPDATA%\出片王\support\`），只留 90 天，一天最多 5000 条，每个 IP 每分钟最多 60 次。
 
-后台看：**`/admin/errors.html`**（管理员才能进，接口是 `GET /api/support/errors?day=YYYY-MM-DD`），显示今天/某天的记录：时间、机器编号、版本、哪一步、状态、原因，还统计了“主要出在哪个环节”。
+后台看：**`/admin/accounts.html`** 的第三个标签「出错记录」（管理员才能进，接口是 `GET /api/support/errors?day=YYYY-MM-DD`），显示今天/某天的记录：时间、机器编号、版本、哪一步、状态、原因，还统计了“主要出在哪个环节”。`/admin/errors.html` 是老的单独页面，现在只做跳转。
 
 开关（`.env`）：
 
@@ -130,7 +130,7 @@ DeepSeek 要求按 JSON 交稿（`response_format: json_object`），但实测�
 
 ## 客户在问什么（`lib/topics.js`）
 
-后台 `/admin/topics.html`（只有管理员能看）能看到每个客户在首页输入框里写的那句话，用来判断他们真正想做什么内容、常问哪些题。
+在**账号管理页的第二个标签「客户在问什么」**里看（`/admin/accounts.html#topics`，只有管理员能看），能看到每个客户在首页输入框里写的那句话，用来判断他们真正想做什么内容、常问哪些题。
 
 - 记什么：客户自己写的那句话（截前 300 字）、用的模板、时长、资料份数、行业、出没出来、出来的标题、字数
 - **不记** AI 写出来的稿子全文，也不记上传的资料正文

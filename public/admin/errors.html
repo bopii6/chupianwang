@@ -4,66 +4,11 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex" />
+  <meta http-equiv="refresh" content="0; url=/admin/accounts.html#errors" />
   <title>出错记录 · 出片王</title>
-  <link rel="icon" href="/favicon.svg" />
-  <link rel="stylesheet" href="/admin/accounts.css" />
-  <style>
-    .toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 14px; }
-    .toolbar select { height: 36px; border-radius: 9px; border: 1px solid #d8d4cc; background: #fff; padding: 0 10px; font: inherit; }
-    .toolbar .spacer { flex: 1; }
-    .stat { color: #6b6560; font-size: 13px; }
-    .stat b { color: #1d1a17; font-weight: 600; }
-    .tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
-    .tbl th { text-align: left; font-weight: 500; color: #8a837b; font-size: 12px; padding: 8px 10px; border-bottom: 1px solid #e6e1d8; white-space: nowrap; }
-    .tbl td { padding: 10px; border-bottom: 1px solid #f1ede5; vertical-align: top; }
-    .tbl tr:hover td { background: #fbf9f5; }
-    .tbl .t { white-space: nowrap; color: #4a443e; font-variant-numeric: tabular-nums; }
-    .tbl .ins { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: #7a736b; white-space: nowrap; }
-    .tbl .where { font-family: ui-monospace, Consolas, monospace; font-size: 12px; white-space: nowrap; }
-    .tbl .msg { color: #2b2723; line-height: 1.55; word-break: break-word; }
-    .tbl .msg small { display: block; color: #8a837b; font-size: 12px; margin-top: 3px; }
-    .badge { display: inline-block; min-width: 34px; text-align: center; padding: 1px 7px; border-radius: 999px; font-size: 11px; background: #f1ede5; color: #6b6560; }
-    .badge.b5 { background: #fde8e2; color: #c0392b; }
-    .empty { padding: 40px 0; text-align: center; color: #8a837b; }
-  </style>
+  <script>location.replace('/admin/accounts.html#errors');</script>
 </head>
 <body>
-  <header class="bar">
-    <a class="brand" href="/"><span class="mark">▶</span>出片王</a>
-    <span class="crumb">出错记录</span>
-    <span class="grow"></span>
-    <span class="admin" id="who"></span>
-    <button class="quiet" id="btnLogout" type="button">退出</button>
-  </header>
-
-  <main>
-    <section class="deny hidden" id="deny">
-      <h1>先登录管理员账号</h1>
-      <p>客户的出错记录只有管理员能看。</p>
-      <a class="primary" href="/?admin=1">去登录</a>
-    </section>
-
-    <div id="app" class="hidden">
-      <section class="lede">
-        <div>
-          <h1>出错记录</h1>
-          <p>客户电脑上出的错会自动发到这里：几点几分、哪台机器、在哪一步、什么原因。</p>
-        </div>
-      </section>
-
-      <section class="sheet">
-        <div class="toolbar">
-          <select id="day"></select>
-          <button class="quiet" id="btnReload" type="button">刷新</button>
-          <span class="spacer"></span>
-          <span class="stat" id="stat"></span>
-        </div>
-        <div id="list"><div class="empty">正在读取…</div></div>
-      </section>
-    </div>
-  </main>
-
-  <div class="toast" id="toast"></div>
-  <script type="module" src="/admin/errors.js"></script>
+  <p>这个页面已经合并到「账号管理」里了，正在跳转…<a href="/admin/accounts.html#errors">点这里</a></p>
 </body>
 </html>

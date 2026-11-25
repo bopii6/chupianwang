@@ -362,6 +362,7 @@ test('客户电脑的出错上报：谁都能发，但只有管理员能看', as
   const q = await req('GET', '/api/support/errors', { cookie: admin });
   assert.equal(q.status, 200, q.text);
   assert.ok(q.json.events.some((e) => e.install === 'feedbeef1234'), '管理员要能看到刚收的报错');
-  assert.equal((await req('GET', '/admin/errors.html', { cookie: admin })).status, 200);
+  assert.equal((await req('GET', '/admin/accounts.html', { cookie: admin })).status, 200, '出错记录在账号管理页里，管理员能开');
+  assert.equal((await req('GET', '/admin/errors.html', { cookie: user })).status, 302, '普通客户开不了');
 });
 

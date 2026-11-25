@@ -1,22 +1,14 @@
-// 出错记录后台：客户电脑上自动报上来的错都在这里（只有管理员能看）
-const $ = (s) => document.querySelector(s);
+// 「出错记录」面板：挂到账号管理页里（/admin/accounts.html 的第三个标签）
+// 数据来自 GET /api/support/errors（只有管理员能读）
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-let me = null;
 let day = '';
-let timer = 0;
+let root = null;
 
 async function api(path) {
   const r = await fetch(path, { cache: 'no-store' });
   const d = await r.json().catch(() => ({}));
-  if (r.status === 401 || r.status === 403) { showDeny(); throw new Error(d.error || '没有权限'); }
   if (!r.ok) throw new Error(d.error || `读取失败（${r.status}）`);
   return d;
-}
-
-function showDeny() {
-  $('#app').classList.add('hidden');
-  $('#deny').classList.remove('hidden');
-  $('#who').textContent = '';
 }
 
 /** 2026-11-25 16:14:22 (UTC+08:00) → 16:14:22 */
@@ -26,26 +18,29 @@ function clock(local) {
 }
 
 function renderDays(days, cur) {
-  const sel = $('#day');
   const list = days?.length ? days : [cur];
-  sel.innerHTML = list.map((d) => `<option value="${esc(d)}"${d === cur ? ' selected' : ''}>${esc(d)}${d === new Date().toISOString().slice(0, 10) ? '（今天）' : ''}</option>`).join('');
+  const today = new Date().toISOString().slice(0, 10);
+  root.querySelector('[data-day]').innerHTML = list
+    .map((d) => `<option value="${esc(d)}"${d === cur ? ' selected' : ''}>${esc(d)}${d === today ? '（今天）' : ''}</option>`)
+    .join('');
   day = cur;
 }
 
 function renderStat(d) {
   const top = Object.entries(d.byWhere || {}).sort((a, b) => b[1] - a[1]).slice(0, 3);
-  $('#stat').innerHTML = d.total
+  root.querySelector('[data-stat]').innerHTML = d.total
     ? `这一天 <b>${d.total}</b> 条，涉及 <b>${d.installs}</b> 台机器${top.length ? '　主要出在：' + top.map(([k, n]) => `${esc(k)}（${n}）`).join('、') : ''}`
     : '这一天没有出错记录';
 }
 
 function renderList(events) {
+  const list = root.querySelector('[data-list]');
   if (!events?.length) {
-    $('#list').innerHTML = '<div class="empty">这一天没有出错记录 🎉</div>';
+    list.innerHTML = '<div class="pane-empty">这一天没有出错记录 🎉</div>';
     return;
   }
-  $('#list').innerHTML = `
-    <table class="tbl">
+  list.innerHTML = `
+    <table class="err-tbl">
       <thead><tr><th>时间</th><th>机器</th><th>版本</th><th>哪一步</th><th>状态</th><th>原因</th></tr></thead>
       <tbody>${events.map((e) => `
         <tr>
@@ -53,7 +48,7 @@ function renderList(events) {
           <td class="ins" title="${esc(e.install)}">${esc(e.install)}${e.user ? `<br><small>${esc(e.user)}</small>` : ''}</td>
           <td class="t">${esc(e.version || '?')}</td>
           <td class="where">${esc(e.where || e.kind)}</td>
-          <td><span class="badge${e.status >= 500 ? ' b5' : ''}">${esc(e.status || '—')}</span></td>
+          <td><span class="st${e.status >= 500 ? ' b5' : ''}">${esc(e.status || '—')}</span></td>
           <td class="msg">${esc(e.message)}${e.detail ? `<small>${esc(e.detail)}</small>` : ''}</td>
         </tr>`).join('')}
       </tbody>
@@ -67,37 +62,27 @@ async function load() {
     renderStat(d);
     renderList(d.events);
   } catch (e) {
-    $('#list').innerHTML = `<div class="empty">${esc(e.message)}</div>`;
+    root.querySelector('[data-list]').innerHTML = `<div class="pane-empty">${esc(e.message)}</div>`;
   }
 }
 
-$('#day').addEventListener('change', (e) => { day = e.target.value; load(); });
-$('#btnReload').addEventListener('click', () => load());
-$('#btnLogout').addEventListener('click', async () => {
-  await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
-  location.href = '/';
-});
-
-async function boot() {
-  // 本地版（装在自己电脑上）没有登录这一套，直接就能看
-  let hosted = true;
-  try { hosted = !!(await (await fetch('/api/status', { cache: 'no-store' })).json()).hosted; } catch { /* 按公网版处理，下面会提示登录 */ }
-  if (hosted) {
-    try { me = (await (await fetch('/api/auth/me', { cache: 'no-store' })).json()).user; } catch { me = null; }
-    if (!me || me.role !== 'admin') return showDeny();
-    $('#who').innerHTML = `管理员 <b>${esc(me.username)}</b>`;
-  } else {
-    $('#who').textContent = '本机';
-    $('#btnLogout').classList.add('hidden');
-  }
-  $('#deny').classList.add('hidden');
-  $('#app').classList.remove('hidden');
-  await load();
-  // 开着的时候每分钟自己刷新，不用手点
-  timer = setInterval(load, 60000);
+/**
+ * 挂到某个容器里。
+ * @param {HTMLElement} el 容器
+ */
+export function mountErrors(el) {
+  root = el;
+  root.innerHTML = `
+    <p class="pane-lead">客户电脑上出的错会自动发到这里：几点几分、哪台机器、在哪一步、什么原因。</p>
+    <div class="pane-toolbar">
+      <select data-day></select>
+      <button class="quiet" data-reload type="button">刷新</button>
+      <span class="spacer"></span>
+      <span class="pane-stat" data-stat></span>
+    </div>
+    <div data-list><div class="pane-empty">正在读取…</div></div>`;
+  root.querySelector('[data-day]').addEventListener('change', (e) => { day = e.target.value; load(); });
+  root.querySelector('[data-reload]').addEventListener('click', () => load());
+  load();
+  return { refresh: () => load() };
 }
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) { clearInterval(timer); timer = 0; }
-  else if (!timer) { load(); timer = setInterval(load, 60000); }
-});
-boot();

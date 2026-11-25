@@ -47,17 +47,66 @@ $('#btnLogout').addEventListener('click', async () => {
 });
 
 async function boot() {
-  try {
-    const d = await (await fetch('/api/auth/me', { cache: 'no-store' })).json();
-    me = d.user;
-  } catch { me = null; }
-  if (!me) return showDeny('先登录管理员账号', '用管理员账号登录后就能管理账号了。');
-  if (me.role !== 'admin') return showDeny('这个账号不是管理员', `你现在登录的是「${me.name || me.username}」，没有管理账号的权限。`);
-  $('#who').innerHTML = `管理员 <b>${esc(me.username)}</b>`;
+  let hosted = true;
+  try { hosted = !!(await (await fetch('/api/status', { cache: 'no-store' })).json()).hosted; } catch { /* 按公网版处理 */ }
+
+  if (hosted) {
+    try {
+      const d = await (await fetch('/api/auth/me', { cache: 'no-store' })).json();
+      me = d.user;
+    } catch { me = null; }
+    if (!me) return showDeny('先登录管理员账号', '用管理员账号登录后就能管理账号了。');
+    if (me.role !== 'admin') return showDeny('这个账号不是管理员', `你现在登录的是「${me.name || me.username}」，没有管理账号的权限。`);
+    $('#who').innerHTML = `管理员 <b>${esc(me.username)}</b>`;
+  } else {
+    // 本地版没有账号体系：账号那一页用不上，但「客户在问什么」「出错记录」是本机的，能看
+    $('#who').textContent = '本机';
+    $('#btnLogout').classList.add('hidden');
+  }
   $('#deny').classList.add('hidden');
+  $('#tabs').classList.remove('hidden');
   $('#app').classList.remove('hidden');
-  await load();
+  if (hosted) await load();
+  else $('[data-pane="accounts"]').innerHTML = '<section class="sheet"><div class="empty"><b>本地版没有账号</b>账号管理只在公网版（getcut.cn）用得上。</div></section>';
+  await showTab(tabFromUrl(), false);
 }
+
+// ---------- 三个标签页：账号 / 客户在问什么 / 出错记录 ----------
+const mounted = {}; // tab -> 已挂载的模块
+const tabFromUrl = () => {
+  const t = (location.hash || '').replace('#', '');
+  return ['accounts', 'topics', 'errors'].includes(t) ? t : 'accounts';
+};
+
+async function showTab(name, updateUrl = true) {
+  const tab = ['accounts', 'topics', 'errors'].includes(name) ? name : 'accounts';
+  document.querySelectorAll('.admin-tabs button').forEach((b) => {
+    const on = b.dataset.tab === tab;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  document.querySelectorAll('.pane').forEach((p) => p.classList.toggle('on', p.dataset.pane === tab));
+  if (updateUrl) history.replaceState(null, '', '#' + tab);
+  if (tab === 'accounts') return;
+  if (!mounted[tab]) {
+    // 第一次切过去才加载，不拖慢账号页
+    const el = document.querySelector(`.pane[data-pane="${tab}"]`);
+    el.innerHTML = '<div class="pane-empty">正在读取…</div>';
+    try {
+      const mod = tab === 'topics' ? await import('./topics.js') : await import('./errors.js');
+      mounted[tab] = tab === 'topics' ? mod.mountTopics(el) : mod.mountErrors(el);
+    } catch (e) {
+      el.innerHTML = `<div class="pane-empty">加载失败：${esc(e.message)}</div>`;
+    }
+  } else if (mounted[tab]?.refresh) {
+    mounted[tab].refresh(); // 切回来刷新一下，看到最新的
+  }
+}
+$('#tabs')?.addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-tab]');
+  if (b) showTab(b.dataset.tab);
+});
+window.addEventListener('hashchange', () => showTab(tabFromUrl(), false));
 
 // ---------- 状态 ----------
 function stateOf(u) {

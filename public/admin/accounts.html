@@ -7,6 +7,58 @@
   <title>账号管理 · 出片王</title>
   <link rel="icon" href="/favicon.svg" />
   <link rel="stylesheet" href="/admin/accounts.css" />
+  <style>
+    /* 三个标签页：账号 / 客户在问什么 / 出错记录 */
+    .admin-tabs { display: flex; gap: 6px; margin: 0 0 18px; border-bottom: 1px solid #e6e1d8; flex-wrap: wrap; }
+    .admin-tabs button {
+      appearance: none; border: 0; background: none; cursor: pointer;
+      font: inherit; font-size: 15px; color: #6b6560; padding: 10px 14px 12px;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+    }
+    .admin-tabs button:hover { color: #1d1a17; }
+    .admin-tabs button.on { color: #1d1a17; font-weight: 600; border-bottom-color: #ff4d1c; }
+    .pane { display: none; }
+    .pane.on { display: block; }
+    .pane-lead { color: #6b6560; font-size: 14px; line-height: 1.7; margin: 0 0 16px; }
+    .pane-lead b { color: #1d1a17; }
+    .pane-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; }
+    .pane-toolbar select, .pane-toolbar input {
+      height: 36px; border-radius: 9px; border: 1px solid #d8d4cc; background: #fff; padding: 0 10px; font: inherit;
+    }
+    .pane-toolbar input { min-width: 210px; }
+    .pane-toolbar .spacer { flex: 1; }
+    .pane-stat { color: #6b6560; font-size: 13px; }
+    .pane-stat b { color: #1d1a17; font-weight: 600; }
+    .pane-bars { display: flex; gap: 16px; flex-wrap: wrap; margin: 0 0 8px; font-size: 13px; color: #6b6560; }
+    .pane-bars b { color: #1d1a17; }
+    .pane-empty { padding: 44px 0; text-align: center; color: #8a837b; }
+    .muted { color: #8a837b; }
+    .bad { color: #b23b2e; }
+
+    /* 客户在问什么 */
+    .ask { display: grid; grid-template-columns: 72px 118px 1fr; gap: 14px; padding: 14px 4px; border-bottom: 1px solid #f1ede5; }
+    .ask:hover { background: #fbf9f5; }
+    .ask .t { color: #4a443e; font-variant-numeric: tabular-nums; font-size: 13px; }
+    .ask .who { font-size: 13px; color: #6b6560; word-break: break-all; }
+    .ask .who b { display: block; color: #1d1a17; font-weight: 600; }
+    .ask .q { font-size: 15px; line-height: 1.6; color: #1d1a17; word-break: break-word; }
+    .ask .meta { margin-top: 5px; font-size: 12px; color: #8a837b; }
+    .ask .meta span { margin-right: 12px; }
+    .ask.fail .q { color: #b23b2e; }
+    .tagf { display: inline-block; padding: 0 7px; border-radius: 999px; background: #f1ede5; color: #6b6560; font-size: 11px; }
+
+    /* 出错记录 */
+    .err-tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .err-tbl th { text-align: left; font-weight: 500; color: #8a837b; font-size: 12px; padding: 8px 10px; border-bottom: 1px solid #e6e1d8; white-space: nowrap; }
+    .err-tbl td { padding: 10px; border-bottom: 1px solid #f1ede5; vertical-align: top; }
+    .err-tbl tr:hover td { background: #fbf9f5; }
+    .err-tbl .t { white-space: nowrap; color: #4a443e; font-variant-numeric: tabular-nums; }
+    .err-tbl .ins, .err-tbl .where { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: #7a736b; white-space: nowrap; }
+    .err-tbl .msg { color: #2b2723; line-height: 1.55; word-break: break-word; }
+    .err-tbl .msg small { display: block; color: #8a837b; font-size: 12px; margin-top: 3px; }
+    .err-tbl .st { display: inline-block; min-width: 34px; text-align: center; padding: 1px 7px; border-radius: 999px; font-size: 11px; background: #f1ede5; color: #6b6560; }
+    .err-tbl .st.b5 { background: #fde8e2; color: #c0392b; }
+  </style>
 </head>
 <body>
   <header class="bar">
@@ -24,8 +76,17 @@
       <button class="primary" id="denyBtn" type="button">去登录</button>
     </section>
 
+    <nav class="admin-tabs hidden" id="tabs" role="tablist">
+      <button type="button" role="tab" data-tab="accounts" class="on" aria-selected="true">账号</button>
+      <button type="button" role="tab" data-tab="topics" aria-selected="false">客户在问什么</button>
+      <button type="button" role="tab" data-tab="errors" aria-selected="false">出错记录</button>
+    </nav>
+
     <div id="app" class="hidden">
-      <section class="lede">
+      <div class="pane" data-pane="topics"></div>
+      <div class="pane" data-pane="errors"></div>
+      <section class="pane on" data-pane="accounts">
+        <section class="lede">
         <div>
           <h1>账号</h1>
           <p>谁在用、还剩多久、填没填自己的密钥，一眼看完。</p>
@@ -87,6 +148,7 @@
           <span class="count" id="stat"></span>
         </div>
         <div class="roster" id="list"><div class="empty">正在读取…</div></div>
+      </section>
       </section>
     </div>
   </main>
