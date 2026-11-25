@@ -279,3 +279,26 @@ test('试用号成功生成一次会扣 1 次（平台密钥正常时）', async
   assert.equal((await req('DELETE', '/api/admin/users/' + u.id, { cookie: admin })).status, 200);
 });
 
+test('管理员不用填密钥：默认走平台 AI，也不占试用次数', async () => {
+  const admin = await adminCookie();
+  const me = await req('GET', '/api/auth/me', { cookie: admin });
+  assert.equal(me.status, 200);
+  assert.equal(me.json.user.role, 'admin');
+  assert.equal(me.json.user.plan, 'selfkey');
+  assert.equal(me.json.user.platformAi, true);
+
+  const s = await req('GET', '/api/settings?check=1', { cookie: admin });
+  assert.equal(s.status, 200);
+  assert.equal(s.json.platformAi, true);
+  assert.equal(s.json.deepseek.filled, false);
+
+  // 测试环境故意没配平台密钥：管理员应该走“平台密钥”分支（503 platform-key），
+  // 而不是像普通账号那样报“没填你自己的密钥”（400 no-key）
+  const script = await req('POST', '/api/script', { cookie: admin, body: { form: 'sketch-talk', input: '测试' } });
+  assert.equal(script.status, 503);
+  assert.equal(script.json.code, 'platform-key');
+  const remix = await req('POST', '/api/remix-plan', { cookie: admin, body: { reference: '测试' } });
+  assert.equal(remix.status, 503);
+  assert.equal(remix.json.code, 'platform-key');
+});
+

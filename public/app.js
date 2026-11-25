@@ -956,10 +956,11 @@ let me = null;
 let hosted = false; // 公网版才要登录（服务器上设了 PUBLIC_BASE_URL）；本地版不显示登录
 let loginWaiters = [];
 const acctName = () => (me ? (me.name || me.username || '') : '');
-// 试用账号：平台提供 AI，按次数限；普通账号用客户自己填的密钥、不限次数
+// 试用账号：平台提供 AI，按次数限；管理员：平台提供 AI、不限次数；普通账号用客户自己填的密钥
 const isTrial = () => !!(me && me.plan === 'trial');
+const platformAi = () => !!(me && (me.platformAi || me.plan === 'trial')); // 平台出 AI，不用填密钥
 const trialLeft = () => (me ? Math.max(0, Number(me.quotaLeft) || 0) : 0);
-const acctSub = () => (isTrial() ? `试用账号 · 还剩 ${trialLeft()} 次` : (me.expiresAt ? `有效期到 ${me.expiresAt}` : '已开通'));
+const acctSub = () => (isTrial() ? `试用账号 · 还剩 ${trialLeft()} 次` : (me.role === 'admin' ? '平台 AI' : (me.expiresAt ? `有效期到 ${me.expiresAt}` : '已开通')));
 function quotaOutTip() {
   toast(`试用次数用完了（共 ${me?.quota || 0} 次）。加微信 bopii666 开通更多次数`);
   setTimeout(() => window.cpwOpenSettings?.(true), 250);
@@ -984,14 +985,15 @@ function redirectToAdminIfNeeded() {
   return true;
 }
 window.cpwRefreshMe = loadMe;
-// 出片前确认“能不能用 AI”：试用账号看还剩几次；普通账号看有没有自己的密钥
+// 出片前确认“能不能用 AI”：平台出 AI 的账号（试用/管理员）看次数；普通账号看有没有自己的密钥
 async function hasMyKey() {
   if (!hosted) return true;
   if (!me) return false;
   if (isTrial()) return trialLeft() > 0;
+  if (platformAi()) return true; // 管理员：平台出 AI，不用填密钥
   if (me.hasKey) return true;
   await loadMe();
-  return !!(me && (isTrial() ? trialLeft() > 0 : me.hasKey));
+  return !!(me && (isTrial() ? trialLeft() > 0 : (platformAi() || me.hasKey)));
 }
 function renderAcct() {
   const area = $('#acctArea');
@@ -1003,7 +1005,7 @@ function renderAcct() {
   const chip = left == null ? '' : `<em class="quota-chip${left <= 0 ? ' out' : ''}">${left > 0 ? `剩 ${left} 次` : '试用已用完'}</em>`;
   area.innerHTML = `<button class="me" id="btnMe" type="button"><i>${esc(nm[0] ? nm[0].toUpperCase() : '?')}</i><span>${esc(nm)}</span>${chip}<svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
        <div class="me-menu" id="meMenu"><div class="me-head">${esc(nm)}<small>${esc(me.username)}${me.role === 'admin' ? ' · 管理员' : ''} · ${sub}</small></div>
-       <button type="button" id="btnMySettings">${isTrial() ? '我的设置（试用 / 素材库）' : '我的设置（DeepSeek 密钥）'}</button>
+       <button type="button" id="btnMySettings">${isTrial() ? '我的设置（试用 / 素材库）' : (platformAi() ? '我的设置（素材库）' : '我的设置（DeepSeek 密钥）')}</button>
        ${me.role === 'admin' ? '<button type="button" id="btnAdmin">账号管理</button>' : ''}
        <button type="button" id="btnLogout">退出登录</button></div>`;
 }
@@ -1061,9 +1063,9 @@ async function doLogin() {
     toast(isTrial() ? `登录成功，试用还剩 ${trialLeft()} 次` : `登录成功，${acctName()}`);
     // 是从账号管理页被踢回来登录的：管理员登录完直接进后台
     if (redirectToAdminIfNeeded()) return;
-    // 试用账号登录就能用（平台出 AI）；普通账号还没填自己的密钥：直接弹设置，不然点生成会报错
+    // 试用/管理员登录就能用（平台出 AI）；普通账号还没填自己的密钥：直接弹设置，不然点生成会报错
     if (isTrial()) { if (trialLeft() <= 0) quotaOutTip(); }
-    else if (!me.hasKey) setTimeout(() => window.cpwOpenSettings?.(true), 350);
+    else if (!platformAi() && !me.hasKey) setTimeout(() => window.cpwOpenSettings?.(true), 350);
   } catch (err) {
     $('#lgErr').textContent = err.message;
     $('#lgPass').select();

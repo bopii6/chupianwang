@@ -740,17 +740,18 @@ process.on('unhandledRejection', (e) => console.error('[未处理的异步错误
 
 // ---------- 公网版：这次请求该用谁的 AI 密钥 ----------
 // 试用账号（后台开号时选 6/12/24 次）：用平台自己的密钥，登录就能用，次数用完就停
+// 管理员：也用平台的密钥（管理员自己不用填密钥），不限次数
 // 普通账号：用客户自己填的密钥，不限次数（老账号默认这种）
+function isPlatformAi(user) { return !!user && (user.role === 'admin' || quotaState(user).trial); }
 function aiKeyOf(user) {
   if (!user) return process.env.DEEPSEEK_API_KEY || '';
-  return quotaState(user).trial ? (process.env.DEEPSEEK_API_KEY || '') : deepseekKeyOf(user);
+  return isPlatformAi(user) ? (process.env.DEEPSEEK_API_KEY || '') : deepseekKeyOf(user);
 }
-/** 试用账号能不能动手：不能就返回要回的响应；能就返回 null */
-function trialStop(user) {
+/** 平台出 AI 的账号能不能动手：不能就返回要回的响应；能就返回 null */
+function platformAiStop(user) {
   const q = quotaState(user);
-  if (!q.trial) return null;
-  if (q.left <= 0) return { status: 403, error: `试用次数用完了（共 ${q.limit} 次）。想继续用，加微信 bopii666 开通更多次数。`, code: 'quota' };
-  if (!process.env.DEEPSEEK_API_KEY) return { status: 503, error: '平台还没配置 AI 密钥，请联系管理员（微信 bopii666）', code: 'platform-key' };
+  if (q.trial && q.left <= 0) return { status: 403, error: `试用次数用完了（共 ${q.limit} 次）。想继续用，加微信 bopii666 开通更多次数。`, code: 'quota' };
+  if (isPlatformAi(user) && !process.env.DEEPSEEK_API_KEY) return { status: 503, error: '平台还没配置 AI 密钥，请联系管理员（微信 bopii666）', code: 'platform-key' };
   return null;
 }
 
@@ -821,7 +822,7 @@ http.createServer(async (req, res) => {
       if (HOSTED) {
         const g = await gate(); if (g.fail) return deny(g.fail);
         user = g.user;
-        const stop = trialStop(user); if (stop) return sendJson(res, stop.status, stop);
+        const stop = platformAiStop(user); if (stop) return sendJson(res, stop.status, stop);
         key = aiKeyOf(user);
         if (!key) return sendJson(res, 400, { error: '还没填你自己的 DeepSeek 密钥。点右上角账号 →「我的设置」，填进去就能出片了。', code: 'no-key' });
         const limited = overRate('script', user.id);
@@ -833,7 +834,7 @@ http.createServer(async (req, res) => {
       let key = process.env.DEEPSEEK_API_KEY; let who = '';
       if (HOSTED) {
         const g = await gate(); if (g.fail) return deny(g.fail);
-        const stop = trialStop(g.user); if (stop) return sendJson(res, stop.status, stop);
+        const stop = platformAiStop(g.user); if (stop) return sendJson(res, stop.status, stop);
         key = aiKeyOf(g.user); who = g.user.username;
         if (!key) return sendJson(res, 400, { error: '还没填你自己的 DeepSeek 密钥。点右上角账号 →「我的设置」，填进去就能用了。', code: 'no-key' });
         const limited = overRate('script', g.user.id);

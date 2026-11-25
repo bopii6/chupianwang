@@ -126,6 +126,7 @@ async function openSettings(first = false) {
   const $ = (s) => mask.querySelector(s);
   let hadKey = false; // 打开时账号里已经有密钥了
   let trialAccount = false; // 这是试用账号（平台出 AI，不用填密钥）
+  let platformAccount = false; // 管理员：也是平台出 AI，不用填密钥
   // 关框（不管点“关闭”、点“保存”、点框外）时，保存过就把账号状态重新拉一遍
   const close = () => { mask.remove(); refreshMeIfChanged(); };
   $('[data-x]').onclick = close;
@@ -142,6 +143,21 @@ async function openSettings(first = false) {
       $('[data-ds]').classList.add('hidden');
       $('[data-save]').textContent = '保存';
       $('.sup-now').innerHTML = `平台提供 AI，<b>不用填密钥</b>，登录就能用。<br>这次开通 <b>${Number(d.quota) || 0}</b> 次，还剩 <b>${left}</b> 次；每生成一条视频算 1 次。${left <= 0 ? '<br><span class="bad">已经用完了，加微信 bopii666 可以再开次数。</span>' : ''}`;
+      if (d.pexels?.filled) {
+        $('[data-px]').placeholder = `已填写 ${d.pexels.masked}（不改就留空）`;
+        $('[data-px-hint]').innerHTML = '现在用的是你自己申请的 Pexels 密钥，只走你自己的额度。';
+      } else {
+        $('[data-px-hint]').innerHTML = '不填也能用：出片时走平台内置的那把 Pexels 密钥（免费额度大家共用，用多了会提示“素材库这会儿太忙”）。填了自己申请的，就只走你自己的额度，不受别人影响。';
+      }
+      return;
+    }
+    // 管理员：平台提供 AI，也不用填密钥
+    if (d.platformAi) {
+      platformAccount = true;
+      mask.querySelector('h3').textContent = '我的设置';
+      mask.querySelector('[data-aihelp]')?.classList.add('hidden');
+      $('[data-ds]').classList.add('hidden');
+      $('.sup-now').innerHTML = '平台提供 AI，<b>不用填密钥</b>，直接用就行。';
       if (d.pexels?.filled) {
         $('[data-px]').placeholder = `已填写 ${d.pexels.masked}（不改就留空）`;
         $('[data-px-hint]').innerHTML = '现在用的是你自己申请的 Pexels 密钥，只走你自己的额度。';
@@ -173,7 +189,7 @@ async function openSettings(first = false) {
     if (ds) body.deepseekKey = ds;
     if (px) body.pexelsKey = px;
     if (!Object.keys(body).length) {
-      msg.innerHTML = trialAccount ? '不用填密钥，直接用就行。要换实拍图密钥才在这儿贴。' : (hadKey ? '没改动。要换密钥就把新的贴进来，不换直接点「关闭」。' : '<span class="bad">还没填内容</span>');
+      msg.innerHTML = (trialAccount || platformAccount) ? '不用填密钥，直接用就行。要换实拍图密钥才在这儿贴。' : (hadKey ? '没改动。要换密钥就把新的贴进来，不换直接点「关闭」。' : '<span class="bad">还没填内容</span>');
       return;
     }
     btn.disabled = true; btn.textContent = '正在检查…';
@@ -233,7 +249,7 @@ async function openDiag() {
         ['浏览器', browserName()],
         ['能否出片', problems.length ? `<span class="bad">${esc(problems.join('、'))}</span>` : '正常'],
         ['账号', acct ? esc(acct.name || acct.username) : '没登录'],
-        ['密钥', !acct ? '—' : acct.plan === 'trial' ? `平台提供（试用还剩 ${acct.quotaLeft} 次）` : (acct.hasKey ? '已填（自己的）' : '<span class="bad">还没填</span>')],
+        ['密钥', !acct ? '—' : acct.plan === 'trial' ? `平台提供（试用还剩 ${acct.quotaLeft} 次）` : acct.platformAi ? '平台提供（管理员）' : (acct.hasKey ? '已填（自己的）' : '<span class="bad">还没填</span>')],
         ['提示', '服务器上的细节（配音、日志）由管理员在后台看；页面报错会自动记进去'],
       ]
     : [
@@ -253,7 +269,7 @@ async function openDiag() {
         `浏览器：${browserName()}  ${navigator.userAgent}`,
         `屏幕：${screen.width}x${screen.height} @${devicePixelRatio}`,
         `能否出片：${problems.length ? problems.join('、') : '正常'}`,
-        `账号：${acct ? `${acct.name || ''}（${acct.username}）` : '没登录'}  自己的密钥：${acct?.hasKey ? '已填' : '没有'}${acct?.plan === 'trial' ? `  试用：剩 ${acct.quotaLeft}/${acct.quota} 次` : ''}`,
+        `账号：${acct ? `${acct.name || ''}（${acct.username}）` : '没登录'}  自己的密钥：${acct?.hasKey ? '已填' : '没有'}${acct?.plan === 'trial' ? `  试用：剩 ${acct.quotaLeft}/${acct.quota} 次` : acct?.platformAi ? '  AI：平台提供' : ''}`,
         `页面地址：${location.href}`,
       ].join('\n')
     : [
