@@ -79,7 +79,7 @@ browserProblems.then((list) => {
 const ver = document.createElement('button');
 ver.className = 'sup-ver';
 ver.type = 'button';
-ver.title = '版本信息 / 出问题点这里复制诊断信息发给我们（微信 bopii666）';
+ver.title = '版本信息 / 出问题点这里复制诊断信息发给我们（微信 bopii2024）';
 ver.textContent = '出片王';
 document.body.appendChild(ver);
 fetch('/api/status').then((r) => r.json()).then((s) => {
@@ -142,7 +142,7 @@ async function openSettings(first = false) {
       mask.querySelector('[data-aihelp]')?.classList.add('hidden');
       $('[data-ds]').classList.add('hidden');
       $('[data-save]').textContent = '保存';
-      $('.sup-now').innerHTML = `平台提供 AI，<b>不用填密钥</b>，登录就能用。<br>这次开通 <b>${Number(d.quota) || 0}</b> 次，还剩 <b>${left}</b> 次；每生成一条视频算 1 次。${left <= 0 ? '<br><span class="bad">已经用完了，加微信 bopii666 可以再开次数。</span>' : ''}`;
+      $('.sup-now').innerHTML = `平台提供 AI，<b>不用填密钥</b>，登录就能用。<br>这次开通 <b>${Number(d.quota) || 0}</b> 次，还剩 <b>${left}</b> 次；每生成一条视频算 1 次。${left <= 0 ? '<br><span class="bad">已经用完了，加微信 bopii2024 可以再开次数。</span>' : ''}`;
       if (d.pexels?.filled) {
         $('[data-px]').placeholder = `已填写 ${d.pexels.masked}（不改就留空）`;
         $('[data-px-hint]').innerHTML = '现在用的是你自己申请的 Pexels 密钥，只走你自己的额度。';
@@ -289,19 +289,19 @@ async function openDiag() {
       ].join('\n');
   mask.querySelector('.sup-card').innerHTML = `
     <h3>诊断信息</h3>
-    <p>用着出了问题？点「复制诊断信息」，把内容发到微信 <b>bopii666</b>，不用截图。里面不含你的文案、视频和密钥。</p>
-    <p class="sup-contact">加我微信：<b data-wx title="点一下复制微信号">bopii666</b><span>　（点号码可复制；加的时候备注“出片王”）</span></p>
+    <p>用着出了问题？点「复制诊断信息」，把内容发到微信 <b>bopii2024</b>，不用截图。里面不含你的文案、视频和密钥。</p>
+    <p class="sup-contact">加我微信：<b data-wx title="点一下复制微信号">bopii2024</b><span>　（点号码可复制；加的时候备注“出片王”）</span></p>
     <dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
     <div class="sup-row"><button type="button" data-x>关闭</button><button type="button" class="pri" data-copy>复制诊断信息</button></div>`;
   mask.querySelector('[data-x]').onclick = () => mask.remove();
   const setBtn = mask.querySelector('[data-set]');
   if (setBtn) setBtn.onclick = (e) => { e.preventDefault(); mask.remove(); openSettings(); };
   const wx = mask.querySelector('[data-wx]');
-  if (wx) wx.onclick = async () => { await copyText('bopii666'); wx.textContent = '已复制 bopii666 ✓'; };
+  if (wx) wx.onclick = async () => { await copyText('bopii2024'); wx.textContent = '已复制 bopii2024 ✓'; };
   const btn = mask.querySelector('[data-copy]');
   btn.onclick = async () => {
     await copyText(text);
-    btn.textContent = '已复制，去微信搜 bopii666 发给我们';
+    btn.textContent = '已复制，去微信搜 bopii2024 发给我们';
   };
 }
 async function copyText(text) {

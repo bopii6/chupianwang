@@ -750,8 +750,8 @@ function aiKeyOf(user) {
 /** 平台出 AI 的账号能不能动手：不能就返回要回的响应；能就返回 null */
 function platformAiStop(user) {
   const q = quotaState(user);
-  if (q.trial && q.left <= 0) return { status: 403, error: `试用次数用完了（共 ${q.limit} 次）。想继续用，加微信 bopii666 开通更多次数。`, code: 'quota' };
-  if (isPlatformAi(user) && !process.env.DEEPSEEK_API_KEY) return { status: 503, error: '平台还没配置 AI 密钥，请联系管理员（微信 bopii666）', code: 'platform-key' };
+  if (q.trial && q.left <= 0) return { status: 403, error: `试用次数用完了（共 ${q.limit} 次）。想继续用，加微信 bopii2024 开通更多次数。`, code: 'quota' };
+  if (isPlatformAi(user) && !process.env.DEEPSEEK_API_KEY) return { status: 503, error: '平台还没配置 AI 密钥，请联系管理员（微信 bopii2024）', code: 'platform-key' };
   return null;
 }
 

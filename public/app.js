@@ -709,7 +709,7 @@ async function generate(input = $('#input').value.trim()) {
   if (hosted) {
     if (isTrial() && trialLeft() <= 0) { quotaOutTip(); return; }
     if (!(await hasMyKey())) {
-      $('#createErr').textContent = me ? (isTrial() ? '试用次数用完了，加微信 bopii666 开通更多次数' : '先填你自己的 DeepSeek 密钥才能出片') : '先登录才能出片';
+      $('#createErr').textContent = me ? (isTrial() ? '试用次数用完了，加微信 bopii2024 开通更多次数' : '先填你自己的 DeepSeek 密钥才能出片') : '先登录才能出片';
       if (!me) openLogin('登录后就能生成视频');
       else if (!isTrial()) setTimeout(() => window.cpwOpenSettings?.(true), 150);
       return;
@@ -898,7 +898,7 @@ async function goRemix() {
   if (hosted) {
     if (isTrial() && trialLeft() <= 0) { quotaOutTip(); return; }
     if (!(await hasMyKey())) {
-      $('#createErr').textContent = me ? (isTrial() ? '试用次数用完了，加微信 bopii666 开通更多次数' : '先填你自己的 DeepSeek 密钥才能出片') : '先登录才能出片';
+      $('#createErr').textContent = me ? (isTrial() ? '试用次数用完了，加微信 bopii2024 开通更多次数' : '先填你自己的 DeepSeek 密钥才能出片') : '先登录才能出片';
       if (!me) openLogin('登录后才能用别人的爆款做视频');
       else if (!isTrial()) setTimeout(() => window.cpwOpenSettings?.(true), 150);
       return;
@@ -962,7 +962,7 @@ const platformAi = () => !!(me && (me.platformAi || me.plan === 'trial')); // �
 const trialLeft = () => (me ? Math.max(0, Number(me.quotaLeft) || 0) : 0);
 const acctSub = () => (isTrial() ? `试用账号 · 还剩 ${trialLeft()} 次` : (me.role === 'admin' ? '平台 AI' : (me.expiresAt ? `有效期到 ${me.expiresAt}` : '已开通')));
 function quotaOutTip() {
-  toast(`试用次数用完了（共 ${me?.quota || 0} 次）。加微信 bopii666 开通更多次数`);
+  toast(`试用次数用完了（共 ${me?.quota || 0} 次）。加微信 bopii2024 开通更多次数`);
   setTimeout(() => window.cpwOpenSettings?.(true), 250);
 }
 /** 生成接口带回来的最新试用次数：记下来，右上角立刻更新 */
@@ -1091,7 +1091,7 @@ function onAuthFail(r, data) {
   if (r.status === 401) { me = null; renderAcct(); return; }
   if (data?.code === 'no-key') setTimeout(() => window.cpwOpenSettings?.(true), 250);
   if (data?.code === 'quota') { quotaOutTip(); loadMe(); }
-  if (data?.code === 'platform-key') { toast(data.error || '平台 AI 密钥没配置，请联系管理员（微信 bopii666）'); }
+  if (data?.code === 'platform-key') { toast(data.error || '平台 AI 密钥没配置，请联系管理员（微信 bopii2024）'); }
   if (data?.code === 'disabled' || data?.code === 'expired') { me = null; renderAcct(); toast(data.error || '账号不能用了，联系管理员'); }
 }
 

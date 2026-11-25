@@ -106,7 +106,7 @@ const block = `${BEGIN}
 - 用户说“更新出片王”：运行 \`"${bat('更新出片王.bat')}"\`。
 - 用户说“出片王退回上一版”（更新后不好用）：运行 \`node "${path.join(ROOT, 'scripts', 'update.mjs')}" --rollback\`。
 - 用户说“关掉出片王”：运行 \`node "${path.join(ROOT, 'scripts', 'open.mjs')}" --stop\`。
-- 客户要联系我们 / 问联系方式：微信 bopii666（页面上、诊断信息里都写着）。
+- 客户要联系我们 / 问联系方式：微信 bopii2024（页面上、诊断信息里都写着）。
 - 打不开时：看 \`${path.join(ROOT, 'server.log')}\` 的最后几十行找原因；缺东西就运行 \`node "${path.join(ROOT, 'scripts', 'setup.mjs')}"\`。
 ${END}`;
 if (process.argv.includes('--no-claude')) ok('跳过 Claude 口令（--no-claude）');
