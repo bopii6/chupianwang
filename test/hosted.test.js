@@ -15,10 +15,10 @@ const DATA = fs.mkdtempSync(path.join(os.tmpdir(), 'cpw-hosted-'));
 const HOSTH = 'getcut.cn';
 let server;
 
-function req(method, pathname, { cookie = '', body, origin = 'https://getcut.cn' } = {}) {
+function req(method, pathname, { cookie = '', body, origin = 'https://getcut.cn', raw, contentType } = {}) {
   return new Promise((resolve, reject) => {
-    const data = body === undefined ? null : Buffer.from(JSON.stringify(body));
-    const headers = { Host: HOSTH, ...(data ? { 'Content-Type': 'application/json', 'Content-Length': data.length } : {}), ...(cookie ? { Cookie: cookie } : {}) };
+    const data = raw || (body === undefined ? null : Buffer.from(JSON.stringify(body)));
+    const headers = { Host: HOSTH, ...(data ? { 'Content-Type': contentType || 'application/json', 'Content-Length': data.length } : {}), ...(cookie ? { Cookie: cookie } : {}) };
     if (data) headers.Origin = origin;
     const r = http.request({ host: '127.0.0.1', port: PORT, method, path: pathname, headers }, (res) => {
       const chunks = [];
@@ -110,8 +110,44 @@ test('没填自己的密钥就写不了文案；作品墙按账号隔离', async
   assert.equal(badKey.status, 400);
 });
 
-test('账号管理页面本身也不给陌生人看', async () => {
-  const anon = await req('GET', '/admin/accounts.html');
+test('管理员能看客户的作品，普通客户看不了别人的', async () => {
+  const admin = await adminCookie();
+  const created = await req('POST', '/api/admin/users', { cookie: admin, body: { username: 'workuser', password: 'work123456', name: '作品客户' } });
+  assert.equal(created.status, 200, created.text);
+  const id = created.json.user.id;
+  const user = cookieOf(await req('POST', '/api/auth/login', { body: { username: 'workuser', password: 'work123456' } }));
+
+  // 客户自己上传一条成片（浏览器导出后会自动走这一步）
+  const up = await req('POST', '/api/works?title=' + encodeURIComponent('测试成片'), {
+    cookie: user,
+    raw: Buffer.from('fake-mp4-bytes'),
+    contentType: 'video/mp4',
+  });
+  assert.equal(up.status, 200, up.text);
+
+  // 客户自己看得到
+  const mine = await req('GET', '/api/works', { cookie: user });
+  assert.equal(mine.json.items.length, 1);
+  assert.equal(mine.json.items[0].title, '测试成片');
+
+  // 管理员带 owner 能看到这个客户的（后台点他头像就是走这条路）
+  const asAdmin = await req('GET', `/api/works?owner=${id}`, { cookie: admin });
+  assert.equal(asAdmin.status, 200, asAdmin.text);
+  assert.equal(asAdmin.json.items.length, 1, '管理员要能看到客户的成片');
+  const url = asAdmin.json.items[0].url;
+  assert.match(url, new RegExp(`^/works/${id}/`), '要指向这个客户自己的目录');
+  assert.equal((await req('GET', url, { cookie: admin })).status, 200, '管理员要能播这个文件');
+
+  // 普通客户带上别人的 owner 也没用：看到的还是自己的
+  const zhang = cookieOf(await req('POST', '/api/auth/login', { body: { username: 'zhang', password: 'zhang123456' } }));
+  const sneaky = await req('GET', `/api/works?owner=${id}`, { cookie: zhang });
+  assert.equal(sneaky.status, 200);
+  assert.equal(sneaky.json.items.length, 0, '别人不能借 owner 看客户的成片');
+
+  assert.equal((await req('DELETE', '/api/admin/users/' + id, { cookie: admin })).status, 200);
+});
+
+test('账号管理页面本身也不给陌生人看', async () => {  const anon = await req('GET', '/admin/accounts.html');
   assert.equal(anon.status, 302);
   assert.match(anon.headers.location || '', /admin=1/);
   const adminLogin = await req('POST', '/api/auth/login', { body: { username: 'admin', password: 'Admin12345' } });
