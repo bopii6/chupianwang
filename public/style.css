@@ -459,6 +459,9 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { width: 0 !important; height: 
 .box-bar .go { height: 50px; padding: 0 22px 0 28px; font-size: 16px; }
 
 .home .err { text-align: center; }
+.contact-line { text-align: center; margin: 18px 0 0; color: var(--text-3); font-size: 12.5px; line-height: 1.7; }
+.contact-line b { color: var(--text-2); font-weight: 600; }
+.lg-note b { color: var(--text-2); font-weight: 600; }
 .home .ideas { justify-content: center; margin-top: 6px; }
 .home-note { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px 26px; margin-top: 42px; color: var(--text-3); font-size: 13px; }
 .home-note b { color: var(--text-2); font-weight: 500; }

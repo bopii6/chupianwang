@@ -15,7 +15,7 @@ const head = () => git('rev-parse', 'HEAD').stdout.trim();
 const version = () => { try { return JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version; } catch { return '?'; } };
 const fail = (msg) => { console.log('\n× ' + msg); process.exit(1); };
 
-if (git('--version').status !== 0) fail('这台电脑没装 Git，没法自动更新。请联系我们。');
+if (git('--version').status !== 0) fail('这台电脑没装 Git，没法自动更新。请联系我们（微信 bopii666）。');
 
 // 重启服务；返回是否启动成功
 function restart(openBrowser) {
@@ -29,9 +29,9 @@ if (process.argv.includes('--rollback')) {
   if (prev === head()) fail('现在就是上一个版本，不用退回。');
   console.log('正在退回上一个版本…');
   const r = git('reset', '--keep', prev);
-  if (r.status !== 0) fail('退回失败：' + (r.stderr || r.stdout).trim() + '\n请联系我们。');
+  if (r.status !== 0) fail('退回失败：' + (r.stderr || r.stdout).trim() + '\n请联系我们（微信 bopii666）。');
   node('setup.mjs');
-  console.log(restart(true) ? `\n✓ 已退回到 v${version()}` : '\n× 退回后还是没启动起来，请把 server.log 发给我们。');
+  console.log(restart(true) ? `\n✓ 已退回到 v${version()}` : '\n× 退回后还是没启动起来，请把 server.log 发到微信 bopii666。');
   process.exit(0);
 }
 
@@ -43,9 +43,9 @@ const pull = git('pull', '--ff-only');
 if (pull.status !== 0) {
   const text = (pull.stderr + pull.stdout).trim();
   const changed = git('status', '--porcelain', '--untracked-files=no').stdout.trim();
-  if (changed) fail(`项目里有文件被改过，自动更新会把它们覆盖掉，所以先停下了。被改过的文件：\n${changed}\n请联系我们处理。`);
+  if (changed) fail(`项目里有文件被改过，自动更新会把它们覆盖掉，所以先停下了。被改过的文件：\n${changed}\n请联系我们处理（微信 bopii666）。`);
   if (/Could not resolve host|unable to access|timed out|Connection/i.test(text)) fail('连不上更新服务器，检查一下网络后再试。');
-  fail('更新失败：\n' + text + '\n请把这段文字发给我们。');
+  fail('更新失败：\n' + text + '\n请把这段文字发到微信 bopii666。');
 }
 
 const after = head();
@@ -67,8 +67,8 @@ if (restart(true)) {
 } else {
   console.log('\n新版本没启动起来，正在自动退回上一版…');
   const r = git('reset', '--keep', before);
-  if (r.status !== 0) fail('自动退回也失败了：' + (r.stderr || r.stdout).trim() + '\n请联系我们。');
+  if (r.status !== 0) fail('自动退回也失败了：' + (r.stderr || r.stdout).trim() + '\n请联系我们（微信 bopii666）。');
   node('setup.mjs');
-  console.log(restart(true) ? `\n已退回到 v${vBefore}，可以照常使用。请把 server.log 发给我们看看新版哪里有问题。` : '\n× 退回后还是没启动起来，请把 server.log 发给我们。');
+  console.log(restart(true) ? `\n已退回到 v${vBefore}，可以照常使用。请把 server.log 发到微信 bopii666 看看新版哪里有问题。` : '\n× 退回后还是没启动起来，请把 server.log 发到微信 bopii666。');
   process.exit(1);
 }

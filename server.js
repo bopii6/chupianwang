@@ -226,7 +226,12 @@ function readJson(req) {
     });
     req.on('end', () => {
       if (failed) return;
-      try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')); } catch { reject(Object.assign(new Error('提交的内容格式不对'), { status: 400 })); }
+      try {
+        const body = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
+        // 合法 JSON 但不是一个对象（null / 数字 / 字符串）也算格式不对，回 400，别让后面读属性时炸成 500
+        if (!body || typeof body !== 'object') throw new Error('不是对象');
+        resolve(body);
+      } catch { reject(Object.assign(new Error('提交的内容格式不对'), { status: 400 })); }
     });
     req.on('error', (e) => { if (!failed) { failed = true; reject(e); } });
   });

@@ -7,7 +7,7 @@
 - “关掉出片王”：`node scripts/open.mjs --stop`
 - “更新出片王”：运行 `更新出片王.bat`（拉新版 + 补装依赖 + 重启；新版启动失败会自动退回上一版）
 - “退回上一版”：`node scripts/update.mjs --rollback`
-- 客户说出了问题：让他点页面右下角的版本号 →「复制诊断信息」，发给我们
+- 客户说出了问题：让他点页面右下角的版本号 →「复制诊断信息」，发到微信 bopii666（页面上也写着）
 - 第一次装 / 缺东西：`node scripts/setup.mjs`（npm 依赖、Python 的 edge-tts、听写模型、.env，可反复运行）
 
 ## 出问题先看

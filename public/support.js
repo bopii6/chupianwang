@@ -26,6 +26,10 @@ const css = `
 .sup-in:focus{outline:2px solid var(--accent,#ff5a1f);outline-offset:-1px}
 .sup-card details summary{cursor:pointer;color:var(--text-2,#57544e);font-size:13px}
 .sup-card a{color:var(--accent,#ff5a1f)}
+.sup-contact{font-size:13px;color:var(--text-2,#57544e);background:var(--surface-2,#f3f2ee);border-radius:var(--r-sm,10px);padding:9px 12px}
+.sup-contact b{font-weight:600;color:#fff;background:var(--accent,#ff5a1f);padding:1px 8px;border-radius:999px;cursor:pointer;user-select:all}
+.sup-contact b:hover{filter:brightness(.94)}
+.sup-contact span{color:var(--text-3,#908c84)}
 .sup-msg:empty,.sup-now:empty{display:none}
 .sup-row button:disabled{opacity:.6;cursor:default}
 .sup-row button.pri{background:var(--accent,#ff5a1f);color:#fff;font-weight:600}
@@ -75,7 +79,7 @@ browserProblems.then((list) => {
 const ver = document.createElement('button');
 ver.className = 'sup-ver';
 ver.type = 'button';
-ver.title = '版本信息 / 出问题时复制诊断信息';
+ver.title = '版本信息 / 出问题点这里复制诊断信息发给我们（微信 bopii666）';
 ver.textContent = '出片王';
 document.body.appendChild(ver);
 fetch('/api/status').then((r) => r.json()).then((s) => {
@@ -251,21 +255,27 @@ async function openDiag() {
       ].join('\n');
   mask.querySelector('.sup-card').innerHTML = `
     <h3>诊断信息</h3>
-    <p>用着出了问题？点「复制」，把内容发给我们，不用截图。里面不含你的文案、视频和密钥。</p>
+    <p>用着出了问题？点「复制诊断信息」，把内容发到微信 <b>bopii666</b>，不用截图。里面不含你的文案、视频和密钥。</p>
+    <p class="sup-contact">加我微信：<b data-wx title="点一下复制微信号">bopii666</b><span>　（点号码可复制；加的时候备注“出片王”）</span></p>
     <dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
     <div class="sup-row"><button type="button" data-x>关闭</button><button type="button" class="pri" data-copy>复制诊断信息</button></div>`;
   mask.querySelector('[data-x]').onclick = () => mask.remove();
   const setBtn = mask.querySelector('[data-set]');
   if (setBtn) setBtn.onclick = (e) => { e.preventDefault(); mask.remove(); openSettings(); };
+  const wx = mask.querySelector('[data-wx]');
+  if (wx) wx.onclick = async () => { await copyText('bopii666'); wx.textContent = '已复制 bopii666 ✓'; };
   const btn = mask.querySelector('[data-copy]');
   btn.onclick = async () => {
-    try { await navigator.clipboard.writeText(text); }
-    catch {
-      const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select();
-      document.execCommand('copy'); ta.remove();
-    }
-    btn.textContent = '已复制，去微信粘贴发给我们';
+    await copyText(text);
+    btn.textContent = '已复制，去微信搜 bopii666 发给我们';
   };
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return; } catch { /* 不是 https 或没权限，退回老办法 */ }
+  try {
+    const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+  } catch { /* 复制不了也不影响看 */ }
 }
 ver.addEventListener('click', openDiag);
 // Esc 关掉最上面那个弹窗（设置框走它自己的「关闭」，好顺便刷新账号状态）

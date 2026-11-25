@@ -64,7 +64,7 @@ async function migrate() {
     console.log(`[搬数据] 从 ${from} 复制了 ${n} 个文件到 ${DATA_DIR}`);
   } catch (e) {
     console.error('[搬数据] 失败', e);
-    dialog.showMessageBoxSync({ type: 'warning', title: '出片王', message: '以前的作品没能全部搬过来', detail: `老文件都还在原来的位置：\n${from}\n\n可以先照常使用，再联系我们处理。` });
+    dialog.showMessageBoxSync({ type: 'warning', title: '出片王', message: '以前的作品没能全部搬过来', detail: `老文件都还在原来的位置：\n${from}\n\n可以先照常使用，再联系我们处理（微信：bopii666）。` });
   } finally { splash.destroy(); }
 }
 
