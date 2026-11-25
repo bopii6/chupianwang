@@ -722,9 +722,11 @@ async function generate(input = $('#input').value.trim()) {
   const materials = state.attachments.map((a) => ({ name: a.name, text: a.text }));
   if (!input && !materials.length) { $('#createErr').textContent = '先写一句你想讲什么，或者添加一份资料'; $('#input').focus(); return; }
   if (hosted) {
+    if (isTrial() && trialLeft() <= 0) { quotaOutTip(); return; }
     if (!(await hasMyKey())) {
-      $('#createErr').textContent = me ? '先填你自己的 DeepSeek 密钥才能出片' : '先登录才能出片';
-      if (!me) openLogin('登录后就能生成视频'); else setTimeout(() => window.cpwOpenSettings?.(true), 150);
+      $('#createErr').textContent = me ? (isTrial() ? '试用次数用完了，加微信 bopii666 开通更多次数' : '先填你自己的 DeepSeek 密钥才能出片') : '先登录才能出片';
+      if (!me) openLogin('登录后就能生成视频');
+      else if (!isTrial()) setTimeout(() => window.cpwOpenSettings?.(true), 150);
       return;
     }
     $('#createErr').textContent = ''; // 密钥刚填好，把“先填密钥”那句提示清掉
@@ -746,6 +748,7 @@ async function generate(input = $('#input').value.trim()) {
     data.account = prefs.account || data.account || '';
     // 客户自己选了品类：画面配色、行业徽章都按这一行来，不让 AI 再猜
     if (pickedCat()) data.theme = { key: pickedCat(), emoji: [] };
+    takeQuota(data);
     state.flags = Array.isArray(data._flags) ? data._flags : [];
     busy.writing = false;
     await startWithScript(state.form.module.normalize ? state.form.module.normalize(data, splitLongLine) : normalize(data));
@@ -908,9 +911,11 @@ $('#rmIndustry').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('
 async function goRemix() {
   if (!$('#rmIndustry').value.trim()) { $('#createErr').textContent = '先写一下你是做什么培训的，AI 才知道换成什么内容'; $('#rmIndustry').focus(); return; }
   if (hosted) {
+    if (isTrial() && trialLeft() <= 0) { quotaOutTip(); return; }
     if (!(await hasMyKey())) {
-      $('#createErr').textContent = me ? '先填你自己的 DeepSeek 密钥才能出片' : '先登录才能出片';
-      if (!me) openLogin('登录后才能用别人的爆款做视频'); else setTimeout(() => window.cpwOpenSettings?.(true), 150);
+      $('#createErr').textContent = me ? (isTrial() ? '试用次数用完了，加微信 bopii666 开通更多次数' : '先填你自己的 DeepSeek 密钥才能出片') : '先登录才能出片';
+      if (!me) openLogin('登录后才能用别人的爆款做视频');
+      else if (!isTrial()) setTimeout(() => window.cpwOpenSettings?.(true), 150);
       return;
     }
     $('#createErr').textContent = '';
@@ -938,6 +943,7 @@ async function replicate() {
     onAuthFail(r, data);
     if (!r.ok) throw new Error(data.error || '生成失败');
     data.account = prefs.account || data.account || '';
+    takeQuota(data);
     state.flags = Array.isArray(data._flags) ? data._flags : [];
     busy.writing = false;
     await startWithScript(prepScript(state.form, data));
@@ -965,6 +971,20 @@ let me = null;
 let hosted = false; // 公网版才要登录（服务器上设了 PUBLIC_BASE_URL）；本地版不显示登录
 let loginWaiters = [];
 const acctName = () => (me ? (me.name || me.username || '') : '');
+// 试用账号：平台提供 AI，按次数限；普通账号用客户自己填的密钥、不限次数
+const isTrial = () => !!(me && me.plan === 'trial');
+const trialLeft = () => (me ? Math.max(0, Number(me.quotaLeft) || 0) : 0);
+const acctSub = () => (isTrial() ? `试用账号 · 还剩 ${trialLeft()} 次` : (me.expiresAt ? `有效期到 ${me.expiresAt}` : '已开通'));
+function quotaOutTip() {
+  toast(`试用次数用完了（共 ${me?.quota || 0} 次）。加微信 bopii666 开通更多次数`);
+  setTimeout(() => window.cpwOpenSettings?.(true), 250);
+}
+/** 生成接口带回来的最新试用次数：记下来，右上角立刻更新 */
+function takeQuota(data) {
+  if (!data?._quota || !me) return;
+  me.plan = data._quota.plan; me.quota = data._quota.limit; me.quotaUsed = data._quota.used; me.quotaLeft = data._quota.left;
+  renderAcct();
+}
 async function loadMe() {
   try { const d = await (await fetch('/api/auth/me', { cache: 'no-store' })).json(); me = d.user; hosted = !!d.hosted; } catch { me = null; }
   renderAcct();
@@ -979,23 +999,26 @@ function redirectToAdminIfNeeded() {
   return true;
 }
 window.cpwRefreshMe = loadMe;
-// 出片前确认“自己的密钥”：页面里记的可能是旧的（刚在设置里填过、另开了标签页），先问一次服务器再决定弹不弹设置
+// 出片前确认“能不能用 AI”：试用账号看还剩几次；普通账号看有没有自己的密钥
 async function hasMyKey() {
   if (!hosted) return true;
   if (!me) return false;
+  if (isTrial()) return trialLeft() > 0;
   if (me.hasKey) return true;
   await loadMe();
-  return !!(me && me.hasKey);
+  return !!(me && (isTrial() ? trialLeft() > 0 : me.hasKey));
 }
 function renderAcct() {
   const area = $('#acctArea');
   if (!hosted) { area.innerHTML = ''; return; } // 本地版：不用登录
   if (!me) { area.innerHTML = '<button class="btn-login" id="btnLogin" type="button">登录</button>'; return; }
   const nm = acctName();
-  const sub = me.expiresAt ? `有效期到 ${me.expiresAt}` : '已开通';
-  area.innerHTML = `<button class="me" id="btnMe" type="button"><i>${esc(nm[0] ? nm[0].toUpperCase() : '?')}</i><span>${esc(nm)}</span><svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  const sub = acctSub();
+  const left = isTrial() ? trialLeft() : null;
+  const chip = left == null ? '' : `<em class="quota-chip${left <= 0 ? ' out' : ''}">${left > 0 ? `剩 ${left} 次` : '试用已用完'}</em>`;
+  area.innerHTML = `<button class="me" id="btnMe" type="button"><i>${esc(nm[0] ? nm[0].toUpperCase() : '?')}</i><span>${esc(nm)}</span>${chip}<svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
        <div class="me-menu" id="meMenu"><div class="me-head">${esc(nm)}<small>${esc(me.username)}${me.role === 'admin' ? ' · 管理员' : ''} · ${sub}</small></div>
-       <button type="button" id="btnMySettings">我的设置（DeepSeek 密钥）</button>
+       <button type="button" id="btnMySettings">${isTrial() ? '我的设置（试用 / 素材库）' : '我的设置（DeepSeek 密钥）'}</button>
        ${me.role === 'admin' ? '<button type="button" id="btnAdmin">账号管理</button>' : ''}
        <button type="button" id="btnLogout">退出登录</button></div>`;
 }
@@ -1050,11 +1073,12 @@ async function doLogin() {
     me = d.user; prefs.username = username; savePrefs();
     renderAcct();
     dlg.close();
-    toast(`登录成功，${acctName()}`);
+    toast(isTrial() ? `登录成功，试用还剩 ${trialLeft()} 次` : `登录成功，${acctName()}`);
     // 是从账号管理页被踢回来登录的：管理员登录完直接进后台
     if (redirectToAdminIfNeeded()) return;
-    // 还没填自己的 DeepSeek 密钥：直接弹设置，不然点生成会报错
-    if (!me.hasKey) setTimeout(() => window.cpwOpenSettings?.(true), 350);
+    // 试用账号登录就能用（平台出 AI）；普通账号还没填自己的密钥：直接弹设置，不然点生成会报错
+    if (isTrial()) { if (trialLeft() <= 0) quotaOutTip(); }
+    else if (!me.hasKey) setTimeout(() => window.cpwOpenSettings?.(true), 350);
   } catch (err) {
     $('#lgErr').textContent = err.message;
     $('#lgPass').select();
@@ -1075,10 +1099,12 @@ $('#lgEye').addEventListener('click', () => {
 for (const ev of ['keydown', 'keyup']) $('#lgPass').addEventListener(ev, (e) => { if (e.getModifierState) $('#lgCaps').classList.toggle('hidden', !e.getModifierState('CapsLock')); });
 $('#lgPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); doLogin(); } });
 $('#lgUser').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('#lgPass').focus(); } });
-/** 接口说没登录 / 没密钥 / 账号停用：清理状态，该弹登录弹登录，该弹设置弹设置 */
+/** 接口说没登录 / 没密钥 / 试用次数用完 / 账号停用：清理状态，该弹登录弹登录，该弹设置弹设置 */
 function onAuthFail(r, data) {
   if (r.status === 401) { me = null; renderAcct(); return; }
   if (data?.code === 'no-key') setTimeout(() => window.cpwOpenSettings?.(true), 250);
+  if (data?.code === 'quota') { quotaOutTip(); loadMe(); }
+  if (data?.code === 'platform-key') { toast(data.error || '平台 AI 密钥没配置，请联系管理员（微信 bopii666）'); }
   if (data?.code === 'disabled' || data?.code === 'expired') { me = null; renderAcct(); toast(data.error || '账号不能用了，联系管理员'); }
 }
 

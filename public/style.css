@@ -704,6 +704,8 @@ body.ready .seg-thumb { transition: transform .4s var(--ease), width .4s var(--e
 .me i { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--text); color: #fff; font-style: normal; font-weight: 700; font-size: 13px; }
 .me span { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .me svg { width: 15px; height: 15px; color: var(--text-3); transition: transform .25s var(--ease); }
+.me .quota-chip { font-style: normal; font-size: 11px; font-weight: 600; color: var(--accent); background: rgba(255,90,31,.1); border-radius: 999px; padding: 2px 7px; white-space: nowrap; }
+.me .quota-chip.out { color: var(--danger); background: rgba(229,72,77,.12); }
 .acct-area.open .me svg { transform: rotate(180deg); }
 .me-menu { position: absolute; right: 0; top: calc(100% + 8px); min-width: 220px; padding: 6px; border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-lg), 0 0 0 1px var(--hair-2);
   opacity: 0; transform: translateY(-6px) scale(.98); transform-origin: top right; pointer-events: none; transition: opacity .2s, transform .25s var(--ease); z-index: 40; }

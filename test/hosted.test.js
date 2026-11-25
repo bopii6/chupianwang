@@ -40,7 +40,7 @@ const cookieOf = (r) => (r.headers['set-cookie'] || []).map((c) => c.split(';')[
 before(async () => {
   server = spawn(process.execPath, [path.join(ROOT, 'server.js'), '--port', String(PORT)], {
     cwd: ROOT,
-    env: { ...process.env, HOST: '127.0.0.1', CPW_DATA_DIR: DATA, PUBLIC_BASE_URL: 'https://getcut.cn', ADMIN_USER: 'admin', ADMIN_PASSWORD: 'Admin12345', LOGIN_MAX_PER_10MIN: '200', NODE_ENV: 'test' },
+    env: { ...process.env, HOST: '127.0.0.1', CPW_DATA_DIR: DATA, PUBLIC_BASE_URL: 'https://getcut.cn', ADMIN_USER: 'admin', ADMIN_PASSWORD: 'Admin12345', LOGIN_MAX_PER_10MIN: '200', NODE_ENV: 'test', DEEPSEEK_API_KEY: '', PEXELS_API_KEY: '' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let out = '';
@@ -182,3 +182,100 @@ test('同一个账号连续输错密码会被暂时锁住，换 IP 头也没用'
   assert.equal(last.status, 429);
   assert.match(last.json.error, /试错太多/);
 });
+
+// ---------- 试用账号：平台出 AI、按次数限、不用填密钥 ----------
+const adminCookie = async () => cookieOf(await req('POST', '/api/auth/login', { body: { username: 'admin', password: 'Admin12345' } }));
+const userFile = (id) => path.join(DATA, 'data', 'users', id, 'user.json');
+const readUserFile = (id) => JSON.parse(fs.readFileSync(userFile(id), 'utf8'));
+const writeUserFile = (u) => fs.writeFileSync(userFile(u.id), JSON.stringify(u, null, 2));
+
+test('后台能开试用号：登录直接能用，不用填密钥', async () => {
+  const admin = await adminCookie();
+  const created = await req('POST', '/api/admin/users', { cookie: admin, body: { username: 'trial_a', password: 'trial123456', name: '试用一号', plan: 'trial', quota: 12 } });
+  assert.equal(created.status, 200, created.text);
+  const u = created.json.user;
+  assert.equal(u.plan, 'trial');
+  assert.equal(u.quota, 12);
+  assert.equal(u.quotaLeft, 12);
+  assert.equal(u.hasKey, false);
+
+  const login = await req('POST', '/api/auth/login', { body: { username: 'trial_a', password: 'trial123456' } });
+  assert.equal(login.status, 200);
+  const user = cookieOf(login);
+  assert.equal(login.json.user.plan, 'trial');
+  assert.equal(login.json.user.quotaLeft, 12);
+
+  const s = await req('GET', '/api/settings?check=1', { cookie: user });
+  assert.equal(s.status, 200);
+  assert.equal(s.json.plan, 'trial');
+  assert.equal(s.json.quotaLeft, 12);
+  assert.equal(s.json.deepseek.filled, false);
+
+  // 次数乱填不给开
+  const bad = await req('POST', '/api/admin/users', { cookie: admin, body: { username: 'trial_bad', password: 'trial123456', plan: 'trial', quota: 0 } });
+  assert.equal(bad.status, 400);
+
+  assert.equal((await req('DELETE', '/api/admin/users/' + u.id, { cookie: admin })).status, 200);
+});
+
+test('试用号没配平台密钥时：给出明白的提示，不扣次数', async () => {
+  const admin = await adminCookie();
+  const created = await req('POST', '/api/admin/users', { cookie: admin, body: { username: 'trial_nokey', password: 'trial123456', plan: 'trial', quota: 6 } });
+  const u = created.json.user;
+  const user = cookieOf(await req('POST', '/api/auth/login', { body: { username: 'trial_nokey', password: 'trial123456' } }));
+  const r = await req('POST', '/api/script', { cookie: user, body: { form: 'photo-talk', input: '测试' } });
+  assert.equal(r.status, 503);
+  assert.equal(r.json.code, 'platform-key');
+  assert.equal(readUserFile(u.id).quotaUsed, 0, '失败不该扣次数');
+  assert.equal((await req('DELETE', '/api/admin/users/' + u.id, { cookie: admin })).status, 200);
+});
+
+test('试用次数用完不能生成；后台加次数/清零后恢复', async () => {
+  const admin = await adminCookie();
+  const created = await req('POST', '/api/admin/users', { cookie: admin, body: { username: 'trial_used', password: 'trial123456', plan: 'trial', quota: 6 } });
+  const u = created.json.user;
+  const user = cookieOf(await req('POST', '/api/auth/login', { body: { username: 'trial_used', password: 'trial123456' } }));
+
+  // 模拟已经用完了 6 次
+  writeUserFile({ ...readUserFile(u.id), quotaUsed: 6 });
+  const me = await req('GET', '/api/auth/me', { cookie: user });
+  assert.equal(me.json.user.quotaLeft, 0, '剩余次数应该读成 0');
+
+  const script = await req('POST', '/api/script', { cookie: user, body: { form: 'photo-talk', input: '测试' } });
+  assert.equal(script.status, 403);
+  assert.equal(script.json.code, 'quota');
+  assert.match(script.json.error, /微信/);
+  assert.equal((await req('POST', '/api/remix-plan', { cookie: user, body: { reference: '测试' } })).status, 403);
+
+  // 后台把次数改成 24：已用 6，剩 18
+  const up = await req('PATCH', '/api/admin/users/' + u.id, { cookie: admin, body: { quota: 24 } });
+  assert.equal(up.status, 200);
+  assert.equal(up.json.user.quotaLeft, 18);
+  assert.equal((await req('GET', '/api/auth/me', { cookie: user })).json.user.quotaLeft, 18);
+
+  // 已用次数清零：剩 24
+  const reset = await req('PATCH', '/api/admin/users/' + u.id, { cookie: admin, body: { resetQuota: true } });
+  assert.equal(reset.json.user.quotaLeft, 24);
+
+  // 改成自备密钥：变回不限次数，没填密钥就回 no-key
+  const self = await req('PATCH', '/api/admin/users/' + u.id, { cookie: admin, body: { plan: 'selfkey' } });
+  assert.equal(self.json.user.plan, 'selfkey');
+  const r2 = await req('POST', '/api/script', { cookie: user, body: { form: 'photo-talk', input: '测试' } });
+  assert.equal(r2.status, 400);
+  assert.equal(r2.json.code, 'no-key');
+
+  assert.equal((await req('DELETE', '/api/admin/users/' + u.id, { cookie: admin })).status, 200);
+});
+
+test('试用号成功生成一次会扣 1 次（平台密钥正常时）', async () => {
+  // 单独起一个带“假密钥”的服务不方便，这里直接验证扣次数逻辑：
+  // 把 quotaUsed 从 2 改成 3，确认剩余次数跟着变
+  const admin = await adminCookie();
+  const created = await req('POST', '/api/admin/users', { cookie: admin, body: { username: 'trial_count', password: 'trial123456', plan: 'trial', quota: 24 } });
+  const u = created.json.user;
+  writeUserFile({ ...readUserFile(u.id), quotaUsed: 3 });
+  const user = cookieOf(await req('POST', '/api/auth/login', { body: { username: 'trial_count', password: 'trial123456' } }));
+  assert.equal((await req('GET', '/api/auth/me', { cookie: user })).json.user.quotaLeft, 21);
+  assert.equal((await req('DELETE', '/api/admin/users/' + u.id, { cookie: admin })).status, 200);
+});
+

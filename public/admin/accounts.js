@@ -73,21 +73,27 @@ function rowOf(u) {
   const self = me && u.id === me.id;
   const size = fmtSize(u.worksBytes);
   const last = fmtTime(u.lastLogin);
+  const trial = u.plan === 'trial';
+  const left = Math.max(0, Number(u.quotaLeft) || 0);
+  const keyText = trial ? '平台提供' : (u.hasKey ? '已填' : '没填');
+  const quotaText = trial ? (left > 0 ? `剩 ${left}/${u.quota || 0}` : '<span class="miss">用完了</span>') : '不限';
   return `<article class="acct ${u.active ? '' : 'is-off'} ${u.role === 'admin' ? 'is-admin' : ''}" data-id="${u.id}">
     <button class="frame" type="button" data-act="works" title="看他/她的作品">${esc((u.name || u.username || '?').slice(0, 1))}</button>
     <div class="who">
-      <b>${esc(u.name || u.username)}${u.role === 'admin' ? '<span class="tag">管理员</span>' : ''}${self ? '<span class="tag you">你自己</span>' : ''}</b>
+      <b>${esc(u.name || u.username)}${u.role === 'admin' ? '<span class="tag">管理员</span>' : ''}${self ? '<span class="tag you">你自己</span>' : ''}${trial ? `<span class="tag">试用 ${u.quota || 0} 次</span>` : ''}</b>
       <span class="uname">${esc(u.username)}</span>
       <span class="last">${last ? `最近登录 ${last}` : '从没登录'}</span>
     </div>
     <div class="facts">
-      <div class="fact"><i>密钥</i><span class="${u.hasKey ? '' : 'miss'}">${u.hasKey ? '已填' : '没填'}</span></div>
+      <div class="fact"><i>密钥</i><span class="${trial || u.hasKey ? '' : 'miss'}">${keyText}</span></div>
+      <div class="fact"><i>次数</i><span class="${trial && left <= 0 ? 'miss' : ''}">${quotaText}</span></div>
       <div class="fact"><i>作品</i><span class="${u.works ? '' : 'none'}">${u.works} 条${size ? `（${size}）` : ''}</span></div>
       <div class="fact"><i>文案库</i><span class="${u.copies ? '' : 'none'}">${u.copies} 条</span></div>
       <div class="fact"><i>出片</i><span class="${u.generations ? '' : 'none'}">${u.generations} 次</span></div>
     </div>
     <div class="state"><span class="seal ${st.cls}">${esc(st.text)}</span></div>
     <div class="ops">
+      ${u.role === 'admin' ? '' : `<button class="op" type="button" data-act="quota">次数</button>`}
       ${u.role === 'admin' ? '' : `<button class="op" type="button" data-act="toggle">${u.active ? '停用' : '启用'}</button>`}
       <button class="op" type="button" data-act="expiry">有效期</button>
       <button class="op" type="button" data-act="password">改密码</button>
@@ -164,6 +170,9 @@ $('#createForm').addEventListener('submit', async (e) => {
   else if (preset === '1y') expiresAt = addMonths(12);
   else if (preset === 'custom') expiresAt = f.expiresAt.value || '';
   const body = { username: f.username.value.trim(), name: f.name.value.trim(), password: f.password.value, expiresAt };
+  const [planMode, tier] = String(f.plan.value || 'trial:6').split(':');
+  body.plan = planMode === 'selfkey' ? 'selfkey' : 'trial';
+  body.quota = body.plan === 'trial' ? (Number(tier) || 6) : 0;
   if (!body.username) return toast('先填账号');
   if (!body.password) return toast('先填初始密码');
   const btn = f.querySelector('button[type=submit]');
@@ -173,7 +182,7 @@ $('#createForm').addEventListener('submit', async (e) => {
     f.reset();
     showCustomDate(false);
     await load();
-    openCreated(d.user.username, body.password);
+    openCreated(d.user.username, body.password, { plan: d.user.plan, quota: d.user.quota });
   } catch (err) {
     toast(err.message);
   }
@@ -197,6 +206,7 @@ $('#list').addEventListener('click', async (e) => {
     } catch (err) { toast(err.message); }
     return;
   }
+  if (act === 'quota') return openQuota(u);
   if (act === 'password') return openPassword(u);
   if (act === 'expiry') return openExpiry(u);
   if (act === 'delete') {
@@ -229,20 +239,23 @@ async function copyText(text) {
     return true;
   } catch { return false; }
 }
-const credentialsText = (username, password) => `出片王账号\n网址：https://getcut.cn\n账号：${username}\n密码：${password}\n\n登录后点右上角头像 →「我的设置」，填上你自己的 DeepSeek 密钥（sk- 开头）就能出片了。`;
+const credentialsText = (username, password, plan = null) => plan?.plan === 'trial'
+  ? `出片王账号\n网址：https://getcut.cn\n账号：${username}\n密码：${password}\n\n登录后直接能用，AI 由我们提供，这次一共 ${plan.quota} 次（不用填密钥）。用完了找我加次数就行。`
+  : `出片王账号\n网址：https://getcut.cn\n账号：${username}\n密码：${password}\n\n登录后点右上角头像 →「我的设置」，填上你自己的 DeepSeek 密钥（sk- 开头）就能出片了。`;
 
-function openCreated(username, password) {
+function openCreated(username, password, plan = null) {
+  const trial = plan?.plan === 'trial';
   const card = openModal(`
     <h3>账号开好了</h3>
     <p>把下面这段发给客户就行。</p>
     <dl class="creds"><dt>账号</dt><dd>${esc(username)}</dd><dt>密码</dt><dd>${esc(password)}</dd></dl>
-    <p style="font-size:12px">他第一次登录会被要求填自己的 DeepSeek 密钥；也能在「我的设置」里改密码。</p>
+    <p style="font-size:12px">${trial ? `这是试用号（${plan.quota} 次）：登录后直接能用，AI 由我们提供，不用填密钥；次数用完可以找你加。` : '他第一次登录会被要求填自己的 DeepSeek 密钥；也能在「我的设置」里看自己的账号。'}</p>
     <div class="modal-actions">
       <button class="quiet" type="button" data-close>关掉</button>
       <button class="primary" type="button" data-copy>复制账号密码</button>
     </div>`);
   card.querySelector('[data-copy]').onclick = async (e) => {
-    const ok = await copyText(credentialsText(username, password));
+    const ok = await copyText(credentialsText(username, password, plan));
     e.target.textContent = ok ? '已复制' : '复制失败，手动抄一下';
   };
 }
@@ -266,7 +279,7 @@ function openPassword(u) {
     if (!v) { card.querySelector('.msg').textContent = '先填新密码'; return; }
     try {
       await api('/api/admin/users/' + u.id, { method: 'PATCH', body: JSON.stringify({ password: v }) });
-      const ok = await copyText(credentialsText(u.username, v));
+      const ok = await copyText(credentialsText(u.username, v, u));
       closeModal();
       toast(ok ? '密码已改，账号密码已复制' : '密码已改');
       await load();
@@ -300,6 +313,51 @@ function openExpiry(u) {
       await api('/api/admin/users/' + u.id, { method: 'PATCH', body: JSON.stringify({ expiresAt: date.value || '' }) });
       closeModal();
       toast(date.value ? `有效期改成 ${date.value}` : '已改成永久有效');
+      await load();
+    } catch (err) { card.querySelector('.msg').textContent = err.message; }
+  };
+}
+
+function openQuota(u) {
+  const trial = u.plan === 'trial';
+  const left = Math.max(0, Number(u.quotaLeft) || 0);
+  const card = openModal(`
+    <h3>「${esc(u.name || u.username)}」的使用方式</h3>
+    <p>试用号：AI 由平台出，按次数限，客户不用填密钥。自备密钥：不限次数，客户自己填自己的密钥。</p>
+    <div class="presets">
+      <button type="button" data-plan="trial:6">试用 6 次</button>
+      <button type="button" data-plan="trial:12">试用 12 次</button>
+      <button type="button" data-plan="trial:24">试用 24 次</button>
+      <button type="button" data-plan="selfkey">自备密钥 · 不限</button>
+    </div>
+    <p style="font-size:12px">现在：${trial ? `试用 ${u.quota || 0} 次，已用 ${u.quotaUsed || 0} 次，还剩 ${left} 次` : '自备密钥 · 不限次数'}${trial ? '　·　改成更大的次数就相当于加次数' : ''}</p>
+    <p class="msg"></p>
+    <div class="modal-actions">
+      <button class="quiet" type="button" data-close>取消</button>
+      ${trial && u.quotaUsed ? '<button class="quiet" type="button" data-reset>已用次数清零</button>' : ''}
+      <button class="primary" type="button" data-save>保存</button>
+    </div>`);
+  let picked = trial ? `trial:${u.quota || 6}` : 'selfkey';
+  const mark = () => card.querySelectorAll('[data-plan]').forEach((b) => b.classList.toggle('on', b.dataset.plan === picked));
+  card.querySelectorAll('[data-plan]').forEach((b) => { b.onclick = () => { picked = b.dataset.plan; mark(); }; });
+  mark();
+  card.querySelector('[data-reset]')?.addEventListener('click', async () => {
+    if (!confirm('把这个账号已用的次数清零？清零后次数从 0 重新算。')) return;
+    try {
+      await api('/api/admin/users/' + u.id, { method: 'PATCH', body: JSON.stringify({ resetQuota: true }) });
+      closeModal();
+      toast('已用次数已清零');
+      await load();
+    } catch (err) { card.querySelector('.msg').textContent = err.message; }
+  });
+  card.querySelector('[data-save]').onclick = async () => {
+    const [plan, tier] = picked.split(':');
+    const body = { plan };
+    if (plan === 'trial') body.quota = Number(tier) || 6;
+    try {
+      await api('/api/admin/users/' + u.id, { method: 'PATCH', body: JSON.stringify(body) });
+      closeModal();
+      toast(plan === 'trial' ? `已改成试用 ${body.quota} 次` : '已改成自备密钥、不限次数');
       await load();
     } catch (err) { card.querySelector('.msg').textContent = err.message; }
   };

@@ -112,7 +112,7 @@ async function openSettings(first = false) {
   mask.innerHTML = `<div class="sup-card" role="dialog" aria-label="设置">
     <h3>${hosted ? '我的设置' : (first ? '先填一下 AI 密钥' : 'AI 密钥设置')}</h3>
     <p class="sup-acct"></p>
-    <p>${first ? '写文案要用 DeepSeek 的 AI。' : ''}${KEY_HELP}</p>
+    <p data-aihelp>${first ? '写文案要用 DeepSeek 的 AI。' : ''}${KEY_HELP}</p>
     <p class="sup-now">正在读取…</p>
     <input class="sup-in" type="password" placeholder="sk-…（你自己的 DeepSeek 密钥）" autocomplete="off" spellcheck="false" data-ds>
     <details><summary>深度解读模板的实拍图（选填）</summary>
@@ -125,6 +125,7 @@ async function openSettings(first = false) {
   document.body.appendChild(mask);
   const $ = (s) => mask.querySelector(s);
   let hadKey = false; // 打开时账号里已经有密钥了
+  let trialAccount = false; // 这是试用账号（平台出 AI，不用填密钥）
   // 关框（不管点“关闭”、点“保存”、点框外）时，保存过就把账号状态重新拉一遍
   const close = () => { mask.remove(); refreshMeIfChanged(); };
   $('[data-x]').onclick = close;
@@ -132,6 +133,23 @@ async function openSettings(first = false) {
   fetch('/api/settings?check=1').then((r) => r.json()).then((d) => {
     const ds = d.deepseek || {};
     if (d.account) $('.sup-acct').innerHTML = `账号 <b>${esc(d.account.name || d.account.username)}</b>（${esc(d.account.username)}）${d.account.expiresAt ? `　有效期到 ${esc(d.account.expiresAt)}` : ''}`;
+    // 试用账号：平台提供 AI，客户不用填密钥 —— 只显示这次开通了几次、还剩几次
+    if (d.plan === 'trial') {
+      trialAccount = true;
+      const left = Math.max(0, Number(d.quotaLeft) || 0);
+      mask.querySelector('h3').textContent = '我的试用次数';
+      mask.querySelector('[data-aihelp]')?.classList.add('hidden');
+      $('[data-ds]').classList.add('hidden');
+      $('[data-save]').textContent = '保存';
+      $('.sup-now').innerHTML = `平台提供 AI，<b>不用填密钥</b>，登录就能用。<br>这次开通 <b>${Number(d.quota) || 0}</b> 次，还剩 <b>${left}</b> 次；每生成一条视频算 1 次。${left <= 0 ? '<br><span class="bad">已经用完了，加微信 bopii666 可以再开次数。</span>' : ''}`;
+      if (d.pexels?.filled) {
+        $('[data-px]').placeholder = `已填写 ${d.pexels.masked}（不改就留空）`;
+        $('[data-px-hint]').innerHTML = '现在用的是你自己申请的 Pexels 密钥，只走你自己的额度。';
+      } else {
+        $('[data-px-hint]').innerHTML = '不填也能用：出片时走平台内置的那把 Pexels 密钥（免费额度大家共用，用多了会提示“素材库这会儿太忙”）。填了自己申请的，就只走你自己的额度，不受别人影响。';
+      }
+      return;
+    }
     $('.sup-now').innerHTML = ds.filled
       ? `现在用的：${esc(ds.masked)}${ds.ok ? `　余额 <b>${esc(ds.balance)}</b>${ds.available ? '' : '（<span class="bad">余额不足，写不了文案</span>）'}` : ds.error ? `　<span class="bad">${esc(ds.error)}</span>` : ''}`
       : '<span class="bad">还没填你自己的密钥，填了才能出片</span>';
@@ -155,7 +173,7 @@ async function openSettings(first = false) {
     if (ds) body.deepseekKey = ds;
     if (px) body.pexelsKey = px;
     if (!Object.keys(body).length) {
-      msg.innerHTML = hadKey ? '没改动。要换密钥就把新的贴进来，不换直接点「关闭」。' : '<span class="bad">还没填内容</span>';
+      msg.innerHTML = trialAccount ? '不用填密钥，直接用就行。要换实拍图密钥才在这儿贴。' : (hadKey ? '没改动。要换密钥就把新的贴进来，不换直接点「关闭」。' : '<span class="bad">还没填内容</span>');
       return;
     }
     btn.disabled = true; btn.textContent = '正在检查…';
@@ -215,7 +233,7 @@ async function openDiag() {
         ['浏览器', browserName()],
         ['能否出片', problems.length ? `<span class="bad">${esc(problems.join('、'))}</span>` : '正常'],
         ['账号', acct ? esc(acct.name || acct.username) : '没登录'],
-        ['密钥', acct ? (acct.hasKey ? '已填（自己的）' : '<span class="bad">还没填</span>') : '—'],
+        ['密钥', !acct ? '—' : acct.plan === 'trial' ? `平台提供（试用还剩 ${acct.quotaLeft} 次）` : (acct.hasKey ? '已填（自己的）' : '<span class="bad">还没填</span>')],
         ['提示', '服务器上的细节（配音、日志）由管理员在后台看；页面报错会自动记进去'],
       ]
     : [
@@ -235,7 +253,7 @@ async function openDiag() {
         `浏览器：${browserName()}  ${navigator.userAgent}`,
         `屏幕：${screen.width}x${screen.height} @${devicePixelRatio}`,
         `能否出片：${problems.length ? problems.join('、') : '正常'}`,
-        `账号：${acct ? `${acct.name || ''}（${acct.username}）` : '没登录'}  自己的密钥：${acct?.hasKey ? '已填' : '没有'}`,
+        `账号：${acct ? `${acct.name || ''}（${acct.username}）` : '没登录'}  自己的密钥：${acct?.hasKey ? '已填' : '没有'}${acct?.plan === 'trial' ? `  试用：剩 ${acct.quotaLeft}/${acct.quota} 次` : ''}`,
         `页面地址：${location.href}`,
       ].join('\n')
     : [

@@ -14,7 +14,7 @@ import net from 'node:net';
 import https from 'node:https';
 import { handleCopyApi, scanRisks } from './lib/copylib.js';
 import { handleRelay } from './lib/relay.js';
-import { handleAuth, currentUser, requireUser, isAdminUser, noteGeneration } from './lib/auth.js';
+import { handleAuth, currentUser, requireUser, isAdminUser, noteGeneration, quotaState } from './lib/auth.js';
 import { bootstrapAdmin, readUser as readAccount, userDir as accountDir, listUsers } from './lib/accounts.js';
 import { handleWorks, serveWorkFile } from './lib/works.js';
 import { handleJobs } from './lib/jobs.js';
@@ -663,7 +663,10 @@ ${ref}` : '';
       if (score(c2) <= score(c)) { data = again.data; c = c2; }
     }
     // 改完还剩下的，标出来让客户发之前自己核对
-    if (acct) { await noteGeneration(acct.id); data._generations = (acct.generations || 0) + 1; }
+    if (acct) {
+      const fresh = await noteGeneration(acct.id);
+      if (fresh) { data._generations = fresh.generations || 0; data._quota = quotaState(fresh); }
+    }
     data._flags = [...c.illegal.map((x) => ({ word: x.word, why: x.reason || '广告法风险' })), ...c.fab, ...c.copied.map((x) => ({ word: x, why: '和原视频一样' }))].slice(0, 10);
     sendJson(res, 200, data);
   } catch (e) {
@@ -737,6 +740,22 @@ async function handleDiag(req, res) {
 // 漏掉没接住的异步错误：记日志，不让整个服务退出（公网版一崩所有人都用不了）
 process.on('unhandledRejection', (e) => console.error('[未处理的异步错误]', e));
 
+// ---------- 公网版：这次请求该用谁的 AI 密钥 ----------
+// 试用账号（后台开号时选 6/12/24 次）：用平台自己的密钥，登录就能用，次数用完就停
+// 普通账号：用客户自己填的密钥，不限次数（老账号默认这种）
+function aiKeyOf(user) {
+  if (!user) return process.env.DEEPSEEK_API_KEY || '';
+  return quotaState(user).trial ? (process.env.DEEPSEEK_API_KEY || '') : deepseekKeyOf(user);
+}
+/** 试用账号能不能动手：不能就返回要回的响应；能就返回 null */
+function trialStop(user) {
+  const q = quotaState(user);
+  if (!q.trial) return null;
+  if (q.left <= 0) return { status: 403, error: `试用次数用完了（共 ${q.limit} 次）。想继续用，加微信 bopii666 开通更多次数。`, code: 'quota' };
+  if (!process.env.DEEPSEEK_API_KEY) return { status: 503, error: '平台还没配置 AI 密钥，请联系管理员（微信 bopii666）', code: 'platform-key' };
+  return null;
+}
+
 // ---------- 路由 ----------
 // 公网版：按 .env 里的 ADMIN_USER / ADMIN_PASSWORD 建管理员（已经有的不重复建，也不会改密码）
 if (HOSTED) {
@@ -798,12 +817,14 @@ http.createServer(async (req, res) => {
     if (req.method === 'POST' && pathname === '/api/tts-batch') return await handleTtsBatch(req, res);
     const tf = pathname.match(/^\/api\/tts-file\/([0-9a-f]{40})\.mp3$/);
     if (req.method === 'GET' && tf) return await handleTtsFile(res, tf[1]);
-    // 写文案：公网版用客户自己的密钥
+    // 写文案：公网版 —— 试用账号用平台密钥（按次数），普通账号用客户自己的密钥
     if (req.method === 'POST' && pathname === '/api/script') {
       let user = null; let key = process.env.DEEPSEEK_API_KEY;
       if (HOSTED) {
         const g = await gate(); if (g.fail) return deny(g.fail);
-        user = g.user; key = deepseekKeyOf(user);
+        user = g.user;
+        const stop = trialStop(user); if (stop) return sendJson(res, stop.status, stop);
+        key = aiKeyOf(user);
         if (!key) return sendJson(res, 400, { error: '还没填你自己的 DeepSeek 密钥。点右上角账号 →「我的设置」，填进去就能出片了。', code: 'no-key' });
         const limited = overRate('script', user.id);
         if (limited) return sendJson(res, 429, { error: limited, code: 'rate' });
@@ -814,7 +835,8 @@ http.createServer(async (req, res) => {
       let key = process.env.DEEPSEEK_API_KEY; let who = '';
       if (HOSTED) {
         const g = await gate(); if (g.fail) return deny(g.fail);
-        key = deepseekKeyOf(g.user); who = g.user.username;
+        const stop = trialStop(g.user); if (stop) return sendJson(res, stop.status, stop);
+        key = aiKeyOf(g.user); who = g.user.username;
         if (!key) return sendJson(res, 400, { error: '还没填你自己的 DeepSeek 密钥。点右上角账号 →「我的设置」，填进去就能用了。', code: 'no-key' });
         const limited = overRate('script', g.user.id);
         if (limited) return sendJson(res, 429, { error: limited, code: 'rate' });
@@ -826,8 +848,8 @@ http.createServer(async (req, res) => {
     if (pathname.startsWith('/api/copy/')) {
       let user = null;
       if (HOSTED) { const g = await gate(); if (g.fail) return deny(g.fail); user = g.user; } else user = await currentUser(req);
-      // 拆解文案要调 AI：公网版用客户自己的密钥，不花平台的钱
-      const aiKey = HOSTED && user ? deepseekKeyOf(user) : process.env.DEEPSEEK_API_KEY;
+      // 拆解文案要调 AI：公网版——试用账号走平台密钥，普通账号用客户自己的
+      const aiKey = HOSTED && user ? aiKeyOf(user) : process.env.DEEPSEEK_API_KEY;
       return await handleCopyApi(req, res, pathname, { readJson, sendJson, user, aiKey, hosted: HOSTED }); // 文案库：每个客户自己的
     }
     if (req.method === 'GET' && pathname === '/api/stock') {

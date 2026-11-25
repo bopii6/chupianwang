@@ -66,9 +66,17 @@
               <button class="field-action back hidden" type="button" id="backPreset" title="改回快捷选项">快捷</button>
             </span>
           </label>
+          <label class="field"><span>使用方式</span>
+            <select name="plan">
+              <option value="trial:6">试用 6 次（平台出 AI，客户不用填密钥）</option>
+              <option value="trial:12">试用 12 次</option>
+              <option value="trial:24">试用 24 次</option>
+              <option value="selfkey">自备密钥 · 不限次数</option>
+            </select>
+          </label>
           <button class="primary" type="submit">开号</button>
         </form>
-        <p class="note">开完把账号密码发给客户。他第一次登录要填自己的 DeepSeek 密钥，写文案只花他自己的额度。</p>
+        <p class="note">开完把账号密码发给客户。试用号登录后直接能用，AI 走平台密钥、按次数限；自备密钥的号由客户自己填 DeepSeek 密钥，不限次数。</p>
       </section>
 
       <section class="sheet">
