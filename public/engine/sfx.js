@@ -132,6 +132,72 @@ const RECIPES = {
     const g = c.createGain(); env(g, 0, 0.001, 0.8, 0.035);
     n.connect(f).connect(g).connect(c.destination); n.start();
   }],
+  // ---- 新版式用的 ----
+  // 消息提示：两声短促的“嘟嘟”（聊天、动态）
+  msg: [0.32, (c) => {
+    [[1046, 0], [1568, 0.09]].forEach(([fq, t0]) => { const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = fq; const g = c.createGain(); env(g, t0, 0.004, 0.45, 0.16); o.connect(g).connect(c.destination); o.start(t0); o.stop(t0 + 0.22); });
+  }],
+  // 风铃：几个高音随机错开（国风、美术馆）
+  chime: [1.8, (c) => {
+    [[2349, 0], [3136, 0.07], [2637, 0.15], [3520, 0.24]].forEach(([fq, t0]) => {
+      [[1, 0.3], [2.4, 0.06]].forEach(([k, a]) => { const o = c.createOscillator(); o.frequency.value = fq * k; const g = c.createGain(); env(g, t0, 0.003, a, 1.4); o.connect(g).connect(c.destination); o.start(t0); o.stop(1.8); });
+    });
+  }],
+  // 撕胶带
+  tape: [0.4, (c) => {
+    const n = c.createBufferSource(); n.buffer = noiseBuffer(c, 0.4);
+    const f = c.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 2; f.frequency.setValueAtTime(1500, 0); f.frequency.linearRampToValueAtTime(3800, 0.3);
+    const g = c.createGain(); g.gain.setValueAtTime(0.0001, 0);
+    for (let k = 0; k < 14; k++) g.gain.setValueAtTime(k % 2 ? 0.15 : 0.55, k * 0.022);
+    g.gain.exponentialRampToValueAtTime(0.0001, 0.38);
+    n.connect(f).connect(g).connect(c.destination); n.start();
+  }],
+  // 划走卡片：短“唰” + 轻轻一下
+  swipe: [0.3, (c) => {
+    const n = c.createBufferSource(); n.buffer = noiseBuffer(c, 0.3);
+    const f = c.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.5; f.frequency.setValueAtTime(5000, 0); f.frequency.exponentialRampToValueAtTime(1200, 0.18);
+    const g = c.createGain(); env(g, 0, 0.01, 0.6, 0.18);
+    n.connect(f).connect(g).connect(c.destination); n.start();
+  }],
+  // 点赞爱心：往上滑的“啵”
+  heart: [0.3, (c) => {
+    const o = c.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(500, 0); o.frequency.exponentialRampToValueAtTime(1400, 0.12);
+    const g = c.createGain(); env(g, 0, 0.004, 0.6, 0.22);
+    o.connect(g).connect(c.destination); o.start(); o.stop(0.3);
+  }],
+  // 老电视换台：咔哒 + 一小段雪花
+  channel: [0.35, (c) => {
+    const n = c.createBufferSource(); n.buffer = noiseBuffer(c, 0.35);
+    const f = c.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 1200;
+    const g = c.createGain(); g.gain.setValueAtTime(1, 0); g.gain.exponentialRampToValueAtTime(0.05, 0.012); g.gain.setValueAtTime(0.35, 0.04); g.gain.exponentialRampToValueAtTime(0.0001, 0.33);
+    n.connect(f).connect(g).connect(c.destination); n.start();
+  }],
+  // 响指
+  snap: [0.12, (c) => {
+    const n = c.createBufferSource(); n.buffer = noiseBuffer(c, 0.12);
+    const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 2600; f.Q.value = 1.4;
+    const g = c.createGain(); env(g, 0, 0.001, 1, 0.08);
+    n.connect(f).connect(g).connect(c.destination); n.start();
+  }],
+  // 闷响：盖章、落地
+  thud: [0.4, (c) => {
+    const o = c.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(110, 0); o.frequency.exponentialRampToValueAtTime(50, 0.2);
+    const g = c.createGain(); env(g, 0, 0.003, 0.9, 0.3);
+    o.connect(g).connect(c.destination); o.start(); o.stop(0.4);
+  }],
+  // 电流“滋”：故障风
+  zap: [0.25, (c) => {
+    const o = c.createOscillator(); o.type = 'square'; o.frequency.setValueAtTime(1800, 0); o.frequency.exponentialRampToValueAtTime(120, 0.2);
+    const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 3000;
+    const g = c.createGain(); env(g, 0, 0.002, 0.25, 0.2);
+    o.connect(f).connect(g).connect(c.destination); o.start(); o.stop(0.25);
+  }],
+  // 鼓点：重低音“咚”，卡点切换用
+  kick: [0.35, (c) => {
+    const o = c.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(160, 0); o.frequency.exponentialRampToValueAtTime(45, 0.12);
+    const g = c.createGain(); env(g, 0, 0.002, 1, 0.3);
+    o.connect(g).connect(c.destination); o.start(); o.stop(0.35);
+  }],
 };
 export const SFX_KINDS = Object.keys(RECIPES);
 

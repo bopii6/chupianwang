@@ -75,7 +75,7 @@ export function chipBox(ctx, skin, x, y, w, h, r = 14) {
 export function drawOverlay(ctx, v, p, t, skin, R, idx, drawInner) {
   const st = p.steps; const cx = W / 2;
   const s0 = st[0] ?? p.start + 0.3;
-  const dim = (a) => { if (a > 0) { ctx.fillStyle = `rgba(0,0,0,${a})`; ctx.fillRect(R.x, R.y, R.w, R.h); } };
+  const dim = (a) => { if (a > 0 && !R.noDim) { ctx.fillStyle = `rgba(0,0,0,${a})`; ctx.fillRect(R.x, R.y, R.w, R.h); } };
   switch (v.type) {
     case 'hook': { // 开场：小标题 + 大字砸下来
       dim(0.35 * clamp((t - p.start) / 0.3));

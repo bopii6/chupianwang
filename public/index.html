@@ -27,12 +27,15 @@
   <main id="gallery" class="view">
     <!-- 左边：放映区，一直放着选中套路做出来的样子 -->
     <section class="show" id="show">
+      <!-- 实拍混剪：手机上方挂一个“版式 7/33”的牌子，手机里每几秒换一种版式放 -->
+      <div class="look-chip hidden" id="lookChip"></div>
       <button class="show-phone" id="heroPhone" type="button" title="点一下，看带声音的完整示例">
         <canvas id="heroCanvas" width="540" height="960"></canvas>
         <span class="show-prog"><i id="heroProg"></i></span>
         <span class="show-play"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg></span>
       </button>
       <div class="show-cap"><b id="heroName"></b><span id="heroUse"></span></div>
+      <div class="look-ticks hidden" id="lookTicks"></div>
       <button class="show-sample" id="btnSample" type="button"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg>看完整示例</button>
     </section>
     <!-- 右边：工作台 -->
@@ -100,6 +103,8 @@
             <div class="photos-head"><b>我的形象照</b><span></span><em class="ph-count" id="phCount"></em></div>
             <div class="photo-row" data-photo-row></div>
           </div>
+          <!-- 实拍混剪下面的“版式”：33 种排版，挑几种、一次出几条 -->
+          <div class="looks hidden" id="looksPanel"></div>
         </div>
         <div class="box-bar">
           <div class="bar-group" id="sayTools">
@@ -152,6 +157,8 @@
         <input id="title" class="title-input" maxlength="16" spellcheck="false" />
         <button class="link" id="btnRedo" title="用同样的话再写一版">换一版</button>
       </div>
+      <!-- 实拍混剪：同一份文案的几条不同版式，点一下就换 -->
+      <div class="ver-bar hidden" id="verBar"></div>
       <nav class="seg tabs" id="sideTabs">
         <button data-tab="script" class="on">文案</button><button data-tab="style">风格</button><button data-tab="voice">声音</button>
       </nav>

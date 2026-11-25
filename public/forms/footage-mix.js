@@ -1,14 +1,18 @@
 ﻿// 形式 07：实拍混剪
 // 灵魂：客户自己拍的照片和视频是素材，但不是一直垫在底下的背景——
-// 每个镜头先决定“怎么摆”：整屏、卡片、上下分屏、左右分屏、一大两小、四宫格、拍立得叠放、画中画、圆形画框，
-// 讲观点的镜头直接变成大字排版画面；节奏快的版式一句话换一个画面。
-// 防审美疲劳：6 套版式（skins）彼此差别很大：调色、背景、画面摆法、标题、字幕、转场、音效、背景音乐全都不同；
-// 每次生成自动换一套（最近用过的不重复），同一套里构图和转场也按随机种子变化。
+// 每套“版式”先决定画面怎么摆：整屏、三屏、斜切、漫画分格、种草笔记、手帐拼贴、朋友圈动态、美术馆画框、报纸、
+// 胶片条、黑白留白、文字镂空、老电视、泡泡、撞色、直播间、聊天记录、极简、科技窗口、时间轴、上字下图、左右对开、九宫格、卡片滑动、月洞窗……
+// 防审美疲劳：33 套版式彼此差别很大：构图、标题、字幕、转场、剪辑节奏（按句切 / 卡点切 / 一段一个镜头）、
+// 音效、背景音乐（14 种曲风 × 多个变奏）全都不同；每次生成自动换一套（最近用过的不重复）。
 import { W, H, clamp, easeOut, font, fitFont, hash } from '../engine/draw.js';
 import { loadFontFaces } from '../engine/font-preload.js';
+import { bgmTempo } from '../engine/music.js';
 import { THEMES, themeEmoji, normalizeTheme, EMOJI_FONT, drawWallpaper } from './themes.js';
-import { isClip, clipFrame, prepareClip } from '../engine/footage.js';
+import { isClip, prepareClip } from '../engine/footage.js';
 import { SKEW, PIXEL_FAMILY, pop, withPop, rr, slantText, fitSlant, grad, pixelFont, fitPixel, flowerText, drawOverlay } from './footage-mix-parts.js';
+import { dims, clipT, imageOf, coverIn, blurFill, motion, drawPlaceholder, grain, gradeIt, scanlines, darker } from './footage-mix-media.js';
+import { cleanSub, markKeys, subRows, chunk, typeParts, TITLES, SUBS, TYPES } from './footage-mix-text.js';
+import { BGS, FRAMES, DECOS } from './footage-mix-frames.js';
 
 export const meta = {
   id: 'footage-mix',
@@ -16,7 +20,7 @@ export const meta = {
   category: '获客引流',
   outcome: '用你自己拍的课堂、校区、学员视频和照片出片，真实画面最让人信任',
   ideas: ['带大家看看我们的上课现场', '学员从零基础到能接单', '暑假班开课第一天', '我们和别的机构有什么不一样'],
-  tagline: '你自己的照片和视频做主角，6 套版式每次自动换着用',
+  tagline: '你自己的照片和视频做主角，33 套版式每次自动换着用',
   fits: '课堂实拍 · 校区展示 · 学员成果 · 招生宣传',
   durations: [1, 2, 3],
   bgm: 'pop',
@@ -24,59 +28,261 @@ export const meta = {
   coverIdx: 2,
   photoKind: 'footage',
   autoSkin: true, // 每条视频自己带版式（script.look），不沿用上一条
+  multiLook: true, // 首页可以挑版式、一次出几条不同版式的
   photoHint: '上传你自己拍的课堂、校区、学员、作品的照片和视频（照片最多 30 张、视频最多 10 条；视频每条只取前 30 秒，原声会去掉，换成配音和音乐）。不够的镜头自动用素材库补。只存在你自己的电脑里。',
 };
 
-// ---------- 6 套版式 ----------
-// bleed：画面贴边铺满；layouts.single：有贴片的镜头怎么摆；layouts.montage：纯画面镜头怎么拼
-// typeRate：讲观点的镜头变成大字画面的概率；subcut：一句话换一个画面
-// grade：调色；bg：背景；title / sub / deco：标题、字幕、装饰；trans：转场；sfx：音效；bgm：背景音乐
+// =====================================================================
+// 33 套版式
+// =====================================================================
+// 老的 6 套（bold/mag/cinema/news/dv/pop）：bleed 贴边；layouts.single / montage 是格子拼法；subcut 一句一换
+// 新的 27 套：frame 画面怎么摆；cut 剪辑节奏（line 一句一换 / beat 跟着音乐卡点换 / section 一段一个镜头）
+//   beats 卡点隔几拍换；bump 每拍画面轻轻一跳；cutFx 切换时的小效果；typeRate 讲观点的镜头变成大字画面的概率
+//   title / sub / type / deco / bg：标题、字幕、大字画面、界面装饰、背景；trans 段与段之间的转场；sfx 音效；bgm 背景音乐（曲风@变奏）
 export const skins = {
+  // ---------------- 卡点快剪 ----------------
   bold: {
-    name: '爆款快剪', bgm: 'phonk', bleed: true, layouts: { single: ['full'], montage: ['full', 'split2', 'trio'] }, typeRate: 0.8, subcut: true,
+    name: '爆款快剪', group: '卡点快剪', desc: '整屏铺满 · 一句一换 · 字一个个砸下来', bgm: 'phonk', bleed: true, layouts: { single: ['full'], montage: ['full', 'split2', 'trio'] }, typeRate: 0.8, subcut: true,
     grade: 'punch', bg: 'stripes', title: 'band', sub: 'slam', subY: 1440, trans: ['whip', 'zoom', 'flash', 'shake'], deco: 'bar', chip: 'grad', themed: true,
     sfx: { intro: 'impact', cut: 'whoosh', sub: 'swish', pop: 'pop', type: 'impact', cell: 'swish', end: 'ding' },
     ink: '#ffffff', hl: '#ffe12e', chip1: '#ff3b2f', chip2: '#c41d12', card: '#ffffff', cardInk: '#c41d12', dark: 'rgba(10,12,18,0.86)', bg1: '#111111', bg2: '#000000',
   },
-  mag: {
-    name: '杂志画报', bgm: 'warm', bleed: false, layouts: { single: ['card'], montage: ['grid4', 'stack', 'trio', 'split2'] }, typeRate: 0.55, subcut: false,
-    grade: 'warm', bg: 'paper', title: 'mag', sub: 'ink', subY: 1530, trans: ['page', 'drop'], deco: 'mag', chip: 'flat', themed: true,
-    sfx: { intro: 'shutter', cut: 'paper', pop: 'click', type: 'paper', cell: 'shutter', end: 'ding' },
-    ink: '#ffffff', hl: '#ff6f3c', chip1: '#ff6f3c', chip2: '#e04e1c', card: '#ffffff', cardInk: '#e04e1c', dark: 'rgba(29,26,22,0.88)', paper: '#f4eee4', paperInk: '#1f1b16', bg1: '#e9e1d3', bg2: '#d9cfbe',
+  flash: {
+    name: '卡点闪切', group: '卡点快剪', desc: '跟着鼓点两拍一切 · 正中大字一截截跳', bgm: 'edm@1', frame: 'full', cut: 'beat', beats: 2, bump: 0.035, cutFx: 'flash',
+    typeRate: 0.55, hookType: true, type: 'flash', grade: 'pop', bg: 'black', title: 'tagTL', sub: 'giant', subY: 1470, subOnType: false, deco: 'stories', trans: ['flash', 'zoom', 'shake'], chip: 'grad',
+    ov: { s: 0.86, cy: 960, dy: -150 },
+    sfx: { intro: 'impact', cut: 'impact', cutGain: 0.5, beat: 'kick', beatGain: 0.35, pop: 'snap', type: 'impact', cell: 'swish', end: 'ding' },
+    ink: '#ffffff', hl: '#d4ff1e', chip1: '#ff2d6f', chip2: '#b3134a', card: '#ffffff', cardInk: '#b3134a', dark: 'rgba(8,8,10,0.88)',
   },
-  cinema: {
-    name: '电影叙事', bgm: 'story', bleed: false, layouts: { single: ['letter'], montage: ['letter', 'letter2'] }, typeRate: 0.7, subcut: false,
-    grade: 'film', bg: 'black', title: 'cine', sub: 'cine', subY: 1560, trans: ['fade', 'iris', 'blinds'], deco: 'cine', chip: 'outline',
-    sfx: { intro: 'boom', cut: 'whoosh', cutGain: 0.35, pop: 'click', type: 'boom', cell: 'click', end: 'boom' },
-    ink: '#ffffff', hl: '#f1d39a', chip1: '#3a3328', chip2: '#1e1a14', card: '#f6efe2', cardInk: '#7a5a2a', dark: 'rgba(0,0,0,0.78)', bg1: '#141414', bg2: '#050505',
+  tri: {
+    name: '三屏律动', group: '卡点快剪', desc: '三条横屏轮流换 · 黑框字幕 · 摇滚', bgm: 'rock@2', frame: 'tri', cut: 'beat', beats: 2, rotate: true,
+    typeRate: 0.3, type: 'band', grade: 'teal', bg: 'black', title: 'block', sub: 'boxed', subY: 1650, deco: 'tri', trans: ['shake', 'whip'], chip: 'flat',
+    sfx: { intro: 'impact', cut: 'whoosh', beat: 'swish', beatGain: 0.3, pop: 'pop', type: 'impact', cell: 'swish', end: 'ding' },
+    ink: '#ffffff', hl: '#ffcc00', chip1: '#ff4a1c', chip2: '#b02a06', card: '#ffffff', cardInk: '#b02a06', dark: 'rgba(0,0,0,0.85)',
   },
-  news: {
-    name: '新闻现场', bgm: 'tech', bleed: true, layouts: { single: ['full', 'pip'], montage: ['side', 'pip', 'split2'] }, typeRate: 0.5, subcut: false,
-    grade: 'cool', bg: 'studio', title: 'news', sub: 'bar', subY: 1400, trans: ['sting', 'wipe'], deco: 'news', chip: 'flat',
-    sfx: { intro: 'sting', cut: 'swish', pop: 'click', type: 'sting', cell: 'swish', end: 'sting' },
-    ink: '#ffffff', hl: '#ffd400', chip1: '#e8202a', chip2: '#a8121a', card: '#ffffff', cardInk: '#c8161f', dark: 'rgba(10,22,48,0.9)', bar: '#0f2a5c', bg1: '#13233f', bg2: '#060c18',
+  slash: {
+    name: '斜切对撞', group: '卡点快剪', desc: '两个画面斜着对撞 · 斜体错位字 · 飙车风', bgm: 'phonk@3', frame: 'slash', cut: 'line', rotate: true,
+    typeRate: 0.4, type: 'slash', grade: 'neon', bg: 'black', title: 'italic', sub: 'shadowItalic', subY: 1560, deco: 'slash', trans: ['whip', 'flash'], chip: 'grad',
+    sfx: { intro: 'zap', cut: 'whoosh', sub: 'zap', subGain: 0.3, pop: 'snap', type: 'impact', cell: 'swish', end: 'ding' },
+    ink: '#ffffff', hl: '#00f0ff', chip1: '#ff2e88', chip2: '#a8125a', card: '#ffffff', cardInk: '#a8125a', dark: 'rgba(10,6,20,0.88)',
   },
-  dv: {
-    name: 'DV 日记', bgm: 'chip', bleed: true, layouts: { single: ['full'], montage: ['full', 'stack', 'grid4'] }, typeRate: 0.55, subcut: true,
-    grade: 'vhs', bg: 'noise', title: 'dv', sub: 'type', subY: 1450, trans: ['static', 'glitch', 'shake'], deco: 'dv', chip: 'pixel',
-    sfx: { intro: 'beep', cut: 'static', sub: 'click', pop: 'click', type: 'key', cell: 'shutter', end: 'beep' },
-    ink: '#ffffff', hl: '#7dff9a', chip1: '#161616', chip2: '#000000', card: '#111111', cardInk: '#7dff9a', dark: 'rgba(0,0,0,0.8)', bg1: '#161616', bg2: '#000000',
+  grid9: {
+    name: '九宫格', group: '卡点快剪', desc: '九块画面一拍翻一块 · 中间那格最亮', bgm: 'edm@5', frame: 'grid9', cut: 'beat', beats: 2, rotate: true,
+    typeRate: 0.3, type: 'band', grade: 'punch', bg: 'black', title: 'grid', sub: 'boxed', subY: 1560, deco: 'grid', trans: ['zoom', 'flash'], chip: 'grad',
+    sfx: { intro: 'impact', cut: 'whoosh', beat: 'snap', beatGain: 0.4, pop: 'pop', type: 'impact', cell: 'snap', end: 'ding' },
+    ink: '#ffffff', hl: '#ffe12e', chip1: '#ff6a00', chip2: '#c24a00', card: '#ffffff', cardInk: '#c24a00', dark: 'rgba(0,0,0,0.85)',
   },
+  topbig: {
+    name: '上字下图', group: '卡点快剪', desc: '上面一大块写小标题 · 下面是画面', bgm: 'pop@6', frame: 'topbig', cut: 'line',
+    typeRate: 0, grade: 'punch', bg: 'black', title: 'none', sub: 'stroke', subY: 1720, deco: 'topbig', trans: ['whip', 'wipe'], chip: 'flat', themed: true,
+    ov: { s: 0.85, cy: 960, dy: 240 },
+    sfx: { intro: 'impact', cut: 'whoosh', sub: 'swish', subGain: 0.3, pop: 'pop', type: 'impact', cell: 'swish', end: 'ding' },
+    ink: '#ffffff', hl: '#ffd400', chip1: '#ff3b5c', chip2: '#c41d3a', card: '#ffffff', cardInk: '#c41d3a', dark: 'rgba(0,0,0,0.85)',
+  },
+  // ---------------- 综艺活泼 ----------------
   pop: {
-    name: '综艺花字', bgm: 'pop', bleed: true, layouts: { single: ['full', 'circle'], montage: ['grid4', 'circle', 'trio'] }, typeRate: 0.65, subcut: true,
+    name: '综艺花字', group: '综艺活泼', desc: '圆框拼图 · 花字一跳一跳 · 撒星星', bgm: 'pop', bleed: true, layouts: { single: ['full', 'circle'], montage: ['grid4', 'circle', 'trio'] }, typeRate: 0.65, subcut: true,
     grade: 'vivid', bg: 'dots', title: 'pop', sub: 'flower', subY: 1440, trans: ['burst', 'zoom', 'shake'], deco: 'pop', chip: 'sticker', themed: true,
     sfx: { intro: 'sparkle', cut: 'boing', sub: 'pop', pop: 'pop', type: 'sparkle', cell: 'pop', end: 'sparkle' },
     ink: '#ffffff', hl: '#ffe14d', chip1: '#ff5fa2', chip2: '#d12f7a', card: '#ffffff', cardInk: '#d12f7a', dark: 'rgba(40,10,40,0.82)', bg1: '#ff8cc6', bg2: '#ffb3d9',
   },
+  comic: {
+    name: '漫画分格', group: '综艺活泼', desc: '粗黑边分格 · 对话框字幕 · 爆炸大字', bgm: 'chip@4', frame: 'comic', cut: 'section', cellGap: 0.25,
+    typeRate: 0.45, hookType: true, type: 'pow', grade: 'pop', bg: 'halftone', title: 'comic', sub: 'speech', subY: 1710, deco: 'comic', trans: ['zoom', 'burst'], chip: 'flat',
+    sfx: { intro: 'boing', cut: 'swish', pop: 'pop', type: 'impact', cell: 'thud', end: 'sparkle' },
+    ink: '#ffffff', hl: '#ffd400', chip1: '#e8202a', chip2: '#9e0f15', card: '#ffffff', cardInk: '#e8202a', dark: 'rgba(0,0,0,0.85)',
+  },
+  bubble: {
+    name: '泡泡糖', group: '综艺活泼', desc: '大小圆泡泡漂着 · 白色药丸字幕', bgm: 'chip@6', frame: 'bubbles', cut: 'section', cellGap: 0.2,
+    typeRate: 0.4, type: 'pop', grade: 'pastel', bg: 'candy', title: 'bubble', sub: 'pill', subY: 1650, deco: 'bubble', trans: ['burst', 'zoom'], chip: 'sticker',
+    sfx: { intro: 'sparkle', cut: 'boing', pop: 'pop', type: 'sparkle', cell: 'pop', end: 'sparkle' },
+    ink: '#ffffff', hl: '#fff07a', chip1: '#ff5fa2', chip2: '#b8327a', card: '#ffffff', cardInk: '#b8327a', dark: 'rgba(70,20,70,0.82)', bg1: '#ffb3d1', bg2: '#c9b6ff',
+  },
+  brutal: {
+    name: '潮流撞色', group: '综艺活泼', desc: '纯色底 + 黑粗边硬阴影 · 贴纸转圈', bgm: 'house@1', frame: 'brutal', cut: 'line', rotate: true, cellGap: 0.25,
+    typeRate: 0.4, type: 'brutal', grade: 'pop', bg: 'flat', title: 'brutal', sub: 'brutal', subY: 1620, deco: 'brutal', trans: ['page', 'shake'], chip: 'flat',
+    sfx: { intro: 'thud', cut: 'snap', sub: 'snap', subGain: 0.3, pop: 'pop', type: 'thud', cell: 'thud', end: 'ding' },
+    ink: '#ffffff', hl: '#c6ff3d', chip1: '#7b3dff', chip2: '#4a1fb0', card: '#ffffff', cardInk: '#4a1fb0', dark: 'rgba(0,0,0,0.88)',
+  },
+  live: {
+    name: '直播间', group: '综艺活泼', desc: '直播界面 · 主播消息滚动 · 飘爱心', bgm: 'pop@5', frame: 'full', cut: 'line', shade: true,
+    typeRate: 0, grade: 'fresh', bg: 'black', title: 'notice', sub: 'live', subAlways: true, subY: 1640, deco: 'live', trans: ['zoom'], chip: 'sticker',
+    ov: { s: 0.86, cy: 900, dy: -120 },
+    sfx: { intro: 'heart', cut: 'swish', sub: 'msg', subGain: 0.35, pop: 'heart', type: 'heart', cell: 'pop', end: 'heart' }, lineSfx: true,
+    ink: '#ffffff', hl: '#ffd23f', chip1: '#ff2d55', chip2: '#b3123a', card: '#ffffff', cardInk: '#ff2d55', dark: 'rgba(0,0,0,0.6)',
+  },
+  swipe: {
+    name: '卡片滑动', group: '综艺活泼', desc: '一摞卡片 · 一句甩走一张 · 清新配色', bgm: 'uke@6', frame: 'cards', cut: 'line',
+    typeRate: 0.3, type: 'paper', grade: 'pastel', bg: 'pastel', title: 'card', sub: 'pill', subY: 1620, deco: 'cards', trans: ['zoom'], chip: 'sticker',
+    ov: { s: 0.85, cy: 900, dy: -40 },
+    sfx: { intro: 'pop', cut: 'swipe', sub: 'swipe', subGain: 0.45, pop: 'pop', type: 'paper', cell: 'pop', end: 'sparkle' },
+    ink: '#ffffff', hl: '#ffe066', chip1: '#2fb8a0', chip2: '#1d7f6e', card: '#ffffff', cardInk: '#1d7f6e', dark: 'rgba(20,50,60,0.82)',
+  },
+  // ---------------- 图文笔记 ----------------
+  mag: {
+    name: '杂志画报', group: '图文笔记', desc: '纸张底 + 卡片照片 · 四宫格拼贴', bgm: 'warm', bleed: false, layouts: { single: ['card'], montage: ['grid4', 'stack', 'trio', 'split2'] }, typeRate: 0.55, subcut: false,
+    grade: 'warm', bg: 'paper', title: 'mag', sub: 'ink', subY: 1530, trans: ['page', 'drop'], deco: 'mag', chip: 'flat', themed: true,
+    sfx: { intro: 'shutter', cut: 'paper', pop: 'click', type: 'paper', cell: 'shutter', end: 'ding' },
+    ink: '#ffffff', hl: '#ff6f3c', chip1: '#ff6f3c', chip2: '#e04e1c', card: '#ffffff', cardInk: '#e04e1c', dark: 'rgba(29,26,22,0.88)', paper: '#f4eee4', paperInk: '#1f1b16', bg1: '#e9e1d3', bg2: '#d9cfbe',
+  },
+  note: {
+    name: '种草笔记', group: '图文笔记', desc: '上图下文 · 一句滑一张图 · 像发笔记', bgm: 'uke@1', frame: 'note', cut: 'line',
+    typeRate: 0, grade: 'fresh', bg: 'solid', bgColor: '#ffffff', title: 'none', sub: 'note', subY: 1560, deco: 'note', trans: [], chip: 'sticker', themed: true,
+    ov: { s: 0.8, cy: 620, dy: 0 },
+    sfx: { intro: 'pop', cut: 'swipe', sub: 'swipe', subGain: 0.4, pop: 'pop', type: 'pop', cell: 'pop', end: 'heart' },
+    ink: '#ffffff', hl: '#ffe14d', chip1: '#ff2442', chip2: '#c4122c', card: '#ffffff', cardInk: '#ff2442', dark: 'rgba(30,30,36,0.85)',
+  },
+  scrap: {
+    name: '手帐拼贴', group: '图文笔记', desc: '方格纸 + 拍立得 + 胶带涂鸦', bgm: 'uke@3', frame: 'scrap', cut: 'section', cellGap: 0.35,
+    typeRate: 0.35, type: 'paper', grade: 'warm', bg: 'grid', title: 'hand', sub: 'hand', subY: 1700, deco: 'scrap', trans: ['drop', 'page'], chip: 'sticker',
+    ov: { s: 0.85, cy: 900, dy: 0 },
+    sfx: { intro: 'tape', cut: 'tape', pop: 'pop', type: 'paper', cell: 'shutter', end: 'sparkle' },
+    ink: '#ffffff', hl: '#ffd36e', chip1: '#ef6f6c', chip2: '#b8423f', card: '#ffffff', cardInk: '#b8423f', dark: 'rgba(60,45,35,0.85)',
+  },
+  post: {
+    name: '朋友圈动态', group: '图文笔记', desc: '一段一条动态 · 往上刷着看', bgm: 'lofi@0', frame: 'post', cut: 'section',
+    typeRate: 0, grade: 'fresh', bg: 'feed', title: 'feedHead', sub: 'caption', subY: 1540, deco: 'none', trans: [], chip: 'sticker', themed: true,
+    ov: { s: 0.82, cy: 960, dy: 0 },
+    sfx: { intro: 'msg', cut: 'swipe', pop: 'heart', type: 'pop', cell: 'pop', end: 'heart' },
+    ink: '#ffffff', hl: '#ffd23f', chip1: '#3d7bff', chip2: '#1f4fc4', card: '#ffffff', cardInk: '#1f4fc4', dark: 'rgba(25,30,40,0.85)',
+  },
+  chat: {
+    name: '聊天记录', group: '图文笔记', desc: '像聊天一样发图发消息 · 一条条往上顶', bgm: 'lofi@3', frame: 'chat', cut: 'section', ov: false,
+    typeRate: 0, grade: 'fresh', bg: 'solid', bgColor: '#e9ebef', title: 'none', sub: 'none', subY: 1600, deco: 'chat', trans: [], chip: 'sticker',
+    sfx: { intro: 'msg', cut: 'msg', sub: 'msg', subGain: 0.4, pop: 'msg', type: 'msg', cell: 'pop', end: 'ding' }, lineSfx: true,
+    ink: '#ffffff', hl: '#ffd23f', chip1: '#2f7bf6', chip2: '#1a56c0', card: '#ffffff', cardInk: '#1a56c0', dark: 'rgba(25,30,40,0.85)', bubble: '#2f7bf6',
+  },
+  paper: {
+    name: '报纸头条', group: '图文笔记', desc: '报头 + 黑白大照片 + 引语框', bgm: 'story@2', frame: 'paper', cut: 'section',
+    typeRate: 0.35, type: 'extra', grade: 'news', bg: 'news', title: 'none', sub: 'pull', subY: 1660, deco: 'paper', trans: ['page'], chip: 'flat',
+    ov: { s: 0.8, cy: 860, dy: 0 },
+    sfx: { intro: 'paper', cut: 'paper', pop: 'click', type: 'thud', cell: 'click', end: 'ding' },
+    ink: '#ffffff', hl: '#ffd400', chip1: '#c8161f', chip2: '#8e0e15', card: '#ffffff', cardInk: '#c8161f', dark: 'rgba(22,19,15,0.9)',
+  },
+  // ---------------- 电影质感 ----------------
+  cinema: {
+    name: '电影叙事', group: '电影质感', desc: '上下黑边宽银幕 · 字一个个浮现', bgm: 'story', bleed: false, layouts: { single: ['letter'], montage: ['letter', 'letter2'] }, typeRate: 0.7, subcut: false,
+    grade: 'film', bg: 'black', title: 'cine', sub: 'cine', subY: 1560, trans: ['fade', 'iris', 'blinds'], deco: 'cine', chip: 'outline',
+    sfx: { intro: 'boom', cut: 'whoosh', cutGain: 0.35, pop: 'click', type: 'boom', cell: 'click', end: 'boom' },
+    ink: '#ffffff', hl: '#f1d39a', chip1: '#3a3328', chip2: '#1e1a14', card: '#f6efe2', cardInk: '#7a5a2a', dark: 'rgba(0,0,0,0.78)', bg1: '#141414', bg2: '#050505',
+  },
+  film: {
+    name: '胶片放映', group: '电影质感', desc: '竖着走的胶片条 · 暖黄字幕 · 颗粒', bgm: 'story@4', frame: 'filmstrip', cut: 'line',
+    typeRate: 0.4, type: 'leader', grade: 'amber', bg: 'film', title: 'film', sub: 'film', subY: 1520, deco: 'film', trans: ['fade'], chip: 'outline',
+    ov: { s: 0.82, cy: 900, dy: 0 },
+    sfx: { intro: 'shutter', cut: 'shutter', sub: 'click', subGain: 0.3, pop: 'click', type: 'boom', cell: 'click', end: 'boom' },
+    ink: '#ffffff', hl: '#ffb347', chip1: '#3b2a1a', chip2: '#1e150c', card: '#f6efe2', cardInk: '#8a5a20', dark: 'rgba(20,14,8,0.85)',
+  },
+  docu: {
+    name: '纪录片', group: '电影质感', desc: '整屏慢推 · 片名卡 · 人名条 · 叠化', bgm: 'warm@6', frame: 'full', cut: 'section', noHookOv: true,
+    typeRate: 0.25, type: 'cine', grade: 'teal', bg: 'black', title: 'doc', sub: 'doc', subY: 1710, deco: 'doc', trans: ['dissolve'], chip: 'outline',
+    sfx: { intro: 'boom', introGain: 0.5, cut: 'whoosh', cutGain: 0.22, pop: 'click', type: 'boom', cell: 'click', end: 'chime' },
+    ink: '#ffffff', hl: '#f2c46d', chip1: '#2c3a40', chip2: '#151d20', card: '#f6efe2', cardInk: '#7a5a2a', dark: 'rgba(0,0,0,0.75)',
+  },
+  mono: {
+    name: '黑白留白', group: '电影质感', desc: '黑白画面 + 大段留白 · 左对齐大字', bgm: 'warm@3', frame: 'mono', cut: 'line',
+    typeRate: 0.45, type: 'mono', grade: 'mono', bg: 'black', title: 'mono', sub: 'monoBig', subY: 1460, deco: 'mono', trans: ['fade', 'dissolve'], chip: 'outline',
+    ov: { s: 0.75, cy: 640, dy: 0 },
+    sfx: { intro: 'boom', cut: 'click', sub: 'click', subGain: 0.25, pop: 'click', type: 'thud', cell: 'click', end: 'boom' },
+    ink: '#ffffff', hl: '#e8e2d4', chip1: '#2a2a2a', chip2: '#111111', card: '#f4f1ea', cardInk: '#222222', dark: 'rgba(0,0,0,0.85)',
+  },
+  mask: {
+    name: '文字镂空', group: '电影质感', desc: '大字里透出画面 · 圆角大图 · 浅底', bgm: 'house@4', frame: 'mask', cut: 'section',
+    typeRate: 0.35, type: 'mask', grade: 'fresh', bg: 'offwhite', title: 'mask', sub: 'dark', subY: 1660, deco: 'mask', trans: ['slideUp'], chip: 'flat', themed: true,
+    ov: { s: 0.72, cy: 1150, dy: 0 },
+    sfx: { intro: 'whoosh', cut: 'swish', pop: 'pop', type: 'impact', cell: 'swish', end: 'ding' },
+    ink: '#ffffff', hl: '#ffd400', chip1: '#ff5a1f', chip2: '#c43d0a', card: '#ffffff', cardInk: '#c43d0a', dark: 'rgba(22,20,15,0.88)',
+  },
+  gallery: {
+    name: '美术馆', group: '电影质感', desc: '挂在墙上的画框 · 展签 · 安静叠化', bgm: 'warm@2', frame: 'gallery', cut: 'section',
+    typeRate: 0.3, type: 'museum', grade: 'warm', bg: 'wall', title: 'museum', sub: 'elegant', subY: 1700, deco: 'gallery', trans: ['dissolve'], chip: 'outline',
+    ov: { s: 0.75, cy: 960, dy: 0 },
+    sfx: { intro: 'chime', cut: 'click', cutGain: 0.3, pop: 'click', type: 'chime', cell: 'click', end: 'chime' },
+    ink: '#ffffff', hl: '#d9b46a', chip1: '#5b4a36', chip2: '#33291d', card: '#fbfaf7', cardInk: '#8a5a20', dark: 'rgba(42,37,31,0.88)',
+  },
+  // ---------------- 复古怀旧 ----------------
+  dv: {
+    name: 'DV 日记', group: '复古怀旧', desc: '摄像机取景框 · 像素字打字机', bgm: 'chip', bleed: true, layouts: { single: ['full'], montage: ['full', 'stack', 'grid4'] }, typeRate: 0.55, subcut: true,
+    grade: 'vhs', bg: 'noise', title: 'dv', sub: 'type', subY: 1450, trans: ['static', 'glitch', 'shake'], deco: 'dv', chip: 'pixel',
+    sfx: { intro: 'beep', cut: 'static', sub: 'click', pop: 'click', type: 'key', cell: 'shutter', end: 'beep' },
+    ink: '#ffffff', hl: '#7dff9a', chip1: '#161616', chip2: '#000000', card: '#111111', cardInk: '#7dff9a', dark: 'rgba(0,0,0,0.8)', bg1: '#161616', bg2: '#000000',
+  },
+  tv: {
+    name: '老电视', group: '复古怀旧', desc: '木壳电视机 · 换台雪花 · 七十年代墙纸', bgm: 'citypop@1', frame: 'tv', cut: 'section',
+    typeRate: 0.3, type: 'tv', grade: 'vhs', bg: 'retro', title: 'tv', sub: 'retro', subY: 1570, deco: 'tv', trans: [], chip: 'flat',
+    ov: { s: 0.62, cy: 810, dy: 0 },
+    sfx: { intro: 'channel', cut: 'channel', pop: 'beep', type: 'channel', cell: 'click', end: 'ding' },
+    ink: '#ffffff', hl: '#ffb000', chip1: '#d9542b', chip2: '#8e3214', card: '#fff3d6', cardInk: '#8e3214', dark: 'rgba(59,36,20,0.88)',
+  },
+  hk: {
+    name: '港风胶片', group: '复古怀旧', desc: '青红调色 + 漏光 · 竖排大字 · 日期戳', bgm: 'citypop@0', frame: 'full', cut: 'line', leak: true,
+    typeRate: 0.3, type: 'vert', grade: 'hk', bg: 'black', title: 'vertical', sub: 'film', subY: 1660, subInk: '#fff7c2', subKey: '#ffb347', deco: 'hk', trans: ['fade', 'flash'], chip: 'outline',
+    vShadow: true, vInk: '#ffffff', vInk2: '#ffd9a0', typeBg: '#0c0a08', typeInk: '#fff4dc', typeInk2: '#ff6a4d',
+    sfx: { intro: 'shutter', cut: 'shutter', sub: 'click', subGain: 0.25, pop: 'click', type: 'boom', cell: 'click', end: 'shutter' },
+    ink: '#ffffff', hl: '#ffb347', chip1: '#7a1f1f', chip2: '#4a1010', card: '#fff4dc', cardInk: '#7a1f1f', dark: 'rgba(10,8,6,0.82)',
+  },
+  guofeng: {
+    name: '国风雅韵', group: '复古怀旧', desc: '宣纸水墨 · 月洞窗 · 竖排题字 · 古筝笛子', bgm: 'guofeng@0', frame: 'moon', cut: 'section',
+    typeRate: 0.35, type: 'vert', grade: 'ink', bg: 'rice', title: 'vertical', sub: 'ink', subY: 1560, deco: 'moon', trans: ['dissolve'], chip: 'outline',
+    vInk: '#2f2118', vInk2: '#6b5340', typeBg: '#f3ecdd', typePaper: true, typeInk: '#2f2118', typeInk2: '#b8322a',
+    ov: { s: 0.75, cy: 880, dy: 0 },
+    sfx: { intro: 'chime', cut: 'chime', cutGain: 0.3, pop: 'click', type: 'thud', cell: 'click', end: 'chime' },
+    ink: '#ffffff', hl: '#d9a441', chip1: '#8c2f24', chip2: '#5a1c15', card: '#fbf6ea', cardInk: '#8c2f24', dark: 'rgba(47,33,24,0.88)',
+  },
+  // ---------------- 干净专业 ----------------
+  news: {
+    name: '新闻现场', group: '干净专业', desc: '直播角标 · 字幕条 · 底部滚动新闻条', bgm: 'tech', bleed: true, layouts: { single: ['full', 'pip'], montage: ['side', 'pip', 'split2'] }, typeRate: 0.5, subcut: false,
+    grade: 'cool', bg: 'studio', title: 'news', sub: 'bar', subY: 1400, trans: ['sting', 'wipe'], deco: 'news', chip: 'flat',
+    sfx: { intro: 'sting', cut: 'swish', pop: 'click', type: 'sting', cell: 'swish', end: 'sting' },
+    ink: '#ffffff', hl: '#ffd400', chip1: '#e8202a', chip2: '#a8121a', card: '#ffffff', cardInk: '#c8161f', dark: 'rgba(10,22,48,0.9)', bar: '#0f2a5c', bg1: '#13233f', bg2: '#060c18',
+  },
+  clean: {
+    name: '极简留白', group: '干净专业', desc: '白底 4:5 大图 · 左对齐小字 · 很高级', bgm: 'warm@1', frame: 'clean', cut: 'section',
+    typeRate: 0.35, type: 'clean', grade: 'fresh', bg: 'solid', bgColor: '#fafaf8', title: 'clean', sub: 'clean', subY: 1520, deco: 'clean', trans: [], chip: 'flat',
+    ov: { s: 0.78, cy: 885, dy: 0 },
+    sfx: { intro: 'click', cut: 'swish', cutGain: 0.3, pop: 'click', type: 'click', cell: 'click', end: 'ding' },
+    ink: '#ffffff', hl: '#f3d36b', chip1: '#c8442f', chip2: '#8e2a1b', card: '#ffffff', cardInk: '#c8442f', dark: 'rgba(20,20,20,0.85)',
+  },
+  hud: {
+    name: '科技窗口', group: '干净专业', desc: '深蓝网格 · 窗口画面 · 打字机字幕', bgm: 'tech@3', frame: 'window', cut: 'line',
+    typeRate: 0.35, type: 'hud', grade: 'cool', bg: 'navy', title: 'hud', sub: 'terminal', subY: 1450, deco: 'hud', trans: ['glitch'], chip: 'outline',
+    ov: { s: 0.82, cy: 840, dy: 0 },
+    sfx: { intro: 'beep', cut: 'zap', sub: 'key', subGain: 0.4, pop: 'beep', type: 'zap', cell: 'beep', end: 'beep' }, lineSfx: true,
+    ink: '#ffffff', hl: '#5ee7ff', chip1: '#123a6b', chip2: '#0a2244', card: '#0b1a36', cardInk: '#5ee7ff', dark: 'rgba(6,16,36,0.9)',
+  },
+  timeline: {
+    name: '时间轴', group: '干净专业', desc: '左边节点一格格走 · 右边画面卡片', bgm: 'pop@2', frame: 'timeline', cut: 'section',
+    typeRate: 0.3, type: 'clean', typeBg: '#f3f5fa', grade: 'fresh', bg: 'soft', title: 'tl', sub: 'clean', subX: 190, subY: 1420, deco: 'timeline', trans: [], chip: 'flat', themed: true,
+    ov: { s: 0.7, cy: 960, dy: 0 },
+    sfx: { intro: 'ding', cut: 'swish', pop: 'pop', type: 'pop', cell: 'pop', end: 'ding' },
+    ink: '#ffffff', hl: '#ffd23f', chip1: '#3d7bff', chip2: '#1f4fc4', card: '#ffffff', cardInk: '#1f4fc4', dark: 'rgba(18,24,38,0.85)',
+  },
+  spread: {
+    name: '左右对开', group: '干净专业', desc: '一边纯色竖条写字 · 一边整条画面 · 每段换边', bgm: 'house@5', frame: 'spread', cut: 'section',
+    typeRate: 0.3, type: 'mono', grade: 'cool', bg: 'black', title: 'none', sub: 'column', subY: 1330, deco: 'spread', trans: [], chip: 'flat',
+    ov: { s: 0.8, cy: 960, dy: 0 },
+    sfx: { intro: 'whoosh', cut: 'whoosh', pop: 'click', type: 'thud', cell: 'click', end: 'ding' },
+    ink: '#ffffff', hl: '#ffcf33', chip1: '#1d1d1d', chip2: '#000000', card: '#ffffff', cardInk: '#111111', dark: 'rgba(0,0,0,0.85)',
+  },
 };
 const LOOK_IDS = Object.keys(skins);
+/** 首页 / 风格面板用：版式分组 */
+export const lookGroups = (() => {
+  const g = new Map();
+  for (const [id, s] of Object.entries(skins)) { if (!g.has(s.group)) g.set(s.group, []); g.get(s.group).push(id); }
+  return [...g].map(([name, ids]) => ({ name, ids }));
+})();
 const TYPE_VIS = new Set(['hook', 'big', 'quote', 'stamp', 'stat']);
 const NEED = { full: 1, card: 1, letter: 1, circle: 1, pip: 2, split2: 2, side: 2, letter2: 2, trio: 3, stack: 3, grid4: 4, type: 0 };
 const CELL_GAP = 0.28; // 拼图里每个格子依次出现的间隔
+/** 新版式每个镜头同时要几个画面 */
+const FRAME_NEED = { tri: 3, slash: 2, grid9: 9, comic: (n) => Math.min(3, Math.max(1, n)), scrap: (n) => (n >= 2 ? 2 : 1), bubbles: (n) => Math.min(3, Math.max(1, n)), brutal: (n) => (n >= 2 ? 2 : 1) };
+const needOf = (frame, poolN) => { const v = FRAME_NEED[frame]; return typeof v === 'function' ? v(poolN) : v || 1; };
 
-function darker(hex, amt = 0.35) { const n = parseInt(hex.slice(1), 16); const f = (v) => Math.round(v * (1 - amt)); return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`; }
 const seedOf = (script) => Number(script.seed) || 1;
 const lookOf = (script, skinId) => (skins[skinId] ? skinId : skins[script.look] ? script.look : 'bold');
+/** 这条视频背景音乐的“曲风@变奏”：客户在声音里挑过曲风就用他挑的 */
+const bgmOfScript = (script, look) => script.bgm || look.bgm;
 
 // ---------- 时间规划 ----------
 const itemCount = (v) => {
@@ -115,6 +321,13 @@ function rawLayout(script, look, idx, poolN) {
   return poolN >= NEED[L] ? L : look.layouts.single[0];
 }
 function layoutOf(script, look, idx, poolN) {
+  if (look.frame) {
+    // 新版式：讲观点的镜头按概率变成大字画面，其余都按这套版式摆
+    const v = script.sections[idx]?.visual?.type || 'shot';
+    if (!look.typeRate || !TYPE_VIS.has(v)) return look.frame;
+    if (v === 'hook') return look.hookType ? 'type' : look.frame;
+    return hash(seedOf(script) * 0.001 + idx * 1.7) < look.typeRate ? 'type' : look.frame;
+  }
   let L = rawLayout(script, look, idx, poolN);
   // 相邻两个镜头别用同一种拼法
   if (L !== 'type' && idx > 0 && L === rawLayout(script, look, idx - 1, poolN)) {
@@ -125,122 +338,60 @@ function layoutOf(script, look, idx, poolN) {
   }
   return L;
 }
-/** 从素材池里给这个镜头再挑一个画面（不和主画面重复） */
-function extraMedia(script, pool, main, idx, k) {
-  if (pool.length <= 1) return main || pool[0];
-  let n = Math.floor(hash(seedOf(script) * 0.0007 + idx * 7.31 + k * 2.17) * pool.length);
-  for (let tries = 0; tries < pool.length && pool[n] === main; tries++) n = (n + 1) % pool.length;
-  return pool[n];
+/** 这个镜头能用的画面顺序：自己那张打头，其余按随机种子排好（一句一换、卡点换、拼图都从这里依次取，不重样） */
+function seqOf(script, pool, main, idx) {
+  const rest = pool.filter((x) => x !== main).map((m, k) => [hash(seedOf(script) * 0.0007 + idx * 7.31 + k * 2.17), m]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
+  const s = main ? [main, ...rest] : rest;
+  return s.length ? s : [null];
 }
-/** 这一刻这个镜头里有哪些画面：{layout, items:[{m, lane, start}], cutAt} */
-function sceneOf({ script, tl, planData, assets, t }, look, idx) {
+/** 这个镜头里在哪些时间点换画面 */
+function cutTimes(data, look, idx, layout) {
+  const { script, tl, planData } = data; const sec = tl.sections[idx]; const p = planData[idx];
+  if (layout === 'type' || !sec || !p) return [];
+  const mode = look.frame ? look.cut : (look.subcut && layout === 'full' ? 'line' : 'section');
+  if (mode === 'line') return sec.lines.slice(1).map((l) => l.start - 0.05);
+  if (mode === 'beat') {
+    const bpm = bgmTempo(bgmOfScript(script, look)) || 120; const iv = (60 / bpm) * (look.beats || 2);
+    const out = []; for (let x = Math.ceil((p.start + iv * 0.6) / iv) * iv; x < p.end - iv * 0.45; x += iv) out.push(x);
+    return out;
+  }
+  return [];
+}
+/** 这一刻这个镜头里有哪些画面：{layout, items:[{m, lane, start, prev, cutAt, still}], cutAt, cutK, seq} */
+function sceneOf(data, look, idx, t = data.t) {
+  const { script, planData, assets } = data;
   const pool = poolOf(assets);
-  const layout = layoutOf(script, look, idx, pool.length);
-  const p = planData[idx]; const sec = tl.sections[idx];
+  const p = planData[idx];
   const main = assets?.media?.[idx] || pool[idx % Math.max(1, pool.length)] || null;
-  const items = [];
+  const seq = seqOf(script, pool, main, idx);
+  const layout = layoutOf(script, look, idx, pool.length);
   if (layout === 'type') {
-    if (look.bg === 'paper' || look.bg === 'dots') items.push({ m: main, lane: 0, start: p.start });
-  } else if (layout === 'full' && look.subcut && sec.lines.length > 1) {
-    // 一句话换一个画面
-    let j = 0; sec.lines.forEach((l, k) => { if (t >= l.start - 0.05) j = k; });
-    const used = [main]; let m = main;
-    for (let k = 1; k <= j; k++) { const rest = pool.filter((x) => !used.includes(x)); m = extraMedia(script, rest.length ? rest : pool, main, idx, k); used.push(m); }
-    items.push({ m, lane: j, start: j ? sec.lines[j].start : p.start });
-    return { layout, items, cutAt: j ? sec.lines[j].start : p.start };
-  } else {
-    const need = NEED[layout]; const used = [main];
-    items.push({ m: main, lane: 0, start: p.start });
-    for (let k = 1; k < need; k++) {
-      const rest = pool.filter((x) => !used.includes(x));
-      const m = extraMedia(script, rest.length ? rest : pool, main, idx, k); used.push(m);
-      items.push({ m, lane: k, start: p.start + k * CELL_GAP });
-    }
+    const show = !look.frame ? (look.bg === 'paper' || look.bg === 'dots') : look.type === 'mask';
+    return { layout, items: show ? [{ m: main, lane: 0, start: p.start }] : [], cutAt: p.start, cutK: 0, seq };
   }
-  return { layout, items, cutAt: p.start };
+  const n = look.frame ? needOf(look.frame, pool.length) : NEED[layout];
+  const cuts = cutTimes(data, look, idx, layout);
+  const cutK = cuts.filter((x) => t >= x).length;
+  const rotate = look.rotate && n > 1;
+  const L = seq.length;
+  const items = [];
+  for (let c = 0; c < n; c++) {
+    // 这个格子被换过几次：轮换模式下第 j 刀只换第 j % n 格，其余模式每一刀都换第 0 格
+    const mine = cuts.map((x, j) => [x, j + 1]).filter(([, j]) => (rotate ? j % n === c : c === 0));
+    const done = mine.filter(([x]) => t >= x);
+    const v = done.length;
+    const at = (vv) => seq[(c + vv * n) % L];
+    const stagger = look.frame ? (look.cellGap ? c * look.cellGap : 0) : c * CELL_GAP;
+    items.push({
+      m: at(v), lane: c, start: v ? done[v - 1][0] + 0.05 : p.start + stagger,
+      prev: v ? at(v - 1) : null, cutAt: v ? done[v - 1][0] : null,
+      still: look.frame === 'grid9' && c !== 4,
+    });
+  }
+  return { layout, items, cutAt: cutK ? cuts[cutK - 1] + 0.05 : p.start, cutK, seq };
 }
 
-// ---------- 画面 ----------
-const dims = (img) => [img.displayWidth || img.width, img.displayHeight || img.height];
-const clipT = (m, start, t) => (m.offset + Math.max(0, t - start)) % m.clip.dur;
-function imageOf(it, t) {
-  const m = it?.m; if (!m) return null;
-  const img = isClip(m) ? clipFrame(m.clip, clipT(m, it.start, t), it.lane) || m.poster : m;
-  if (!img) return null;
-  const [iw, ih] = dims(img);
-  return iw && ih ? img : null;
-}
-function coverIn(ctx, img, R, z = 1, ox = 0) {
-  const [iw, ih] = dims(img);
-  const s = Math.max(R.w / iw, R.h / ih) * z;
-  const dw = iw * s; const dh = ih * s;
-  const fy = ih > iw ? 0.42 : 0.5;
-  const x = clamp(R.x + R.w / 2 - dw / 2 + ox, R.x + R.w - dw, R.x);
-  const y = clamp(R.y + R.h / 2 - dh * fy, R.y + R.h - dh, R.y);
-  ctx.drawImage(img, x, y, dw, dh);
-}
-let _tiny = null;
-function blurFill(ctx, img, x, y, w, h) {
-  if (!_tiny) _tiny = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(54, 96) : Object.assign(document.createElement('canvas'), { width: 54, height: 96 });
-  const [iw, ih] = dims(img);
-  const tg = _tiny.getContext('2d'); const ts = Math.max(54 / iw, 96 / ih);
-  tg.drawImage(img, 27 - (iw * ts) / 2, 48 - (ih * ts) / 2, iw * ts, ih * ts);
-  ctx.save(); ctx.imageSmoothingQuality = 'high'; ctx.drawImage(_tiny, x - 40, y - 60, w + 80, h + 120); ctx.restore();
-}
-/** 推拉摇移：视频轻推，照片按镜头号换花样 */
-function motion(isVideo, i, k) {
-  if (isVideo) return [1 + 0.05 * k, 0];
-  const mode = Math.floor(hash(i * 7 + 3) * 4);
-  if (mode === 0) return [1.02 + 0.12 * k, 0];
-  if (mode === 1) return [1.14 - 0.12 * k, 0];
-  return [1.14, (mode === 2 ? 1 : -1) * (k - 0.5) * 90];
-}
-function drawPlaceholder(ctx, skin, label, R) {
-  ctx.fillStyle = grad(ctx, R.y, R.y + R.h, '#2a2d36', '#0d0e12'); ctx.fillRect(R.x, R.y, R.w, R.h);
-  if (label) { const size = fitSlant(ctx, label, 120, R.w - 80); ctx.globalAlpha = 0.18; slantText(ctx, label, R.x + R.w / 2, R.y + R.h / 2, size, '#ffffff'); ctx.globalAlpha = 1; }
-}
-
-// ---------- 调色 / 颗粒 / 扫描线（混合模式，便宜） ----------
-let _noise = null;
-function noiseTile() {
-  if (!_noise) {
-    const c = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(256, 256) : Object.assign(document.createElement('canvas'), { width: 256, height: 256 });
-    const g = c.getContext('2d'); const d = g.createImageData(256, 256); let s = 7;
-    for (let i = 0; i < d.data.length; i += 4) { s = (s * 1664525 + 1013904223) >>> 0; const v = s >>> 24; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; }
-    g.putImageData(d, 0, 0); _noise = c;
-  }
-  return _noise;
-}
-function grain(ctx, R, t, alpha, op = 'overlay') {
-  const pat = ctx.createPattern(noiseTile(), 'repeat');
-  const f = Math.floor(t * 24);
-  ctx.save(); ctx.beginPath(); ctx.rect(R.x, R.y, R.w, R.h); ctx.clip();
-  ctx.globalCompositeOperation = op; ctx.globalAlpha = alpha;
-  ctx.translate((f * 73) % 256, (f * 151) % 256); ctx.fillStyle = pat; ctx.fillRect(R.x - 256, R.y - 256, R.w + 512, R.h + 512); ctx.restore();
-}
-function vignette(ctx, R, a) {
-  const g = ctx.createRadialGradient(R.x + R.w / 2, R.y + R.h / 2, Math.min(R.w, R.h) * 0.3, R.x + R.w / 2, R.y + R.h / 2, Math.hypot(R.w, R.h) * 0.6);
-  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, `rgba(0,0,0,${a})`); ctx.fillStyle = g; ctx.fillRect(R.x, R.y, R.w, R.h);
-}
-function blend(ctx, R, op, color) { ctx.save(); ctx.globalCompositeOperation = op; ctx.fillStyle = color; ctx.fillRect(R.x, R.y, R.w, R.h); ctx.restore(); }
-function grade(ctx, look, R, t) {
-  switch (look.grade) {
-    case 'punch': blend(ctx, R, 'overlay', 'rgba(255,190,0,0.10)'); vignette(ctx, R, 0.35); break;
-    case 'warm': blend(ctx, R, 'soft-light', 'rgba(255,222,170,0.5)'); blend(ctx, R, 'screen', 'rgba(70,50,30,0.10)'); break;
-    case 'film': blend(ctx, R, 'saturation', 'rgba(128,128,128,0.78)'); blend(ctx, R, 'soft-light', 'rgba(20,95,115,0.45)'); vignette(ctx, R, 0.5); grain(ctx, R, t, 0.13); break;
-    case 'cool': blend(ctx, R, 'soft-light', 'rgba(70,130,255,0.18)'); break;
-    case 'vhs': blend(ctx, R, 'overlay', 'rgba(255,110,40,0.18)'); blend(ctx, R, 'saturation', 'rgba(255,0,60,0.12)'); vignette(ctx, R, 0.6); grain(ctx, R, t, 0.16); break;
-    case 'vivid': blend(ctx, R, 'saturation', 'rgba(255,0,140,0.28)'); blend(ctx, R, 'soft-light', 'rgba(255,140,210,0.18)'); break;
-    default: break;
-  }
-}
-let _scan = null;
-function scanlines(ctx, a) {
-  if (!_scan) { _scan = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(4, 6) : Object.assign(document.createElement('canvas'), { width: 4, height: 6 }); const g = _scan.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, 4, 2); }
-  ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = ctx.createPattern(_scan, 'repeat'); ctx.fillRect(0, 0, W, H); ctx.restore();
-}
-
-// ---------- 背景（拼图、卡片、大字画面露出来的地方） ----------
+// ---------- 背景（老版式：拼图、卡片、大字画面露出来的地方） ----------
 function drawBg(ctx, look, skin, t, tEmoji) {
   switch (look.bg) {
     case 'paper':
@@ -277,7 +428,7 @@ function drawBg(ctx, look, skin, t, tEmoji) {
   }
 }
 
-// ---------- 构图：格子在哪 ----------
+// ---------- 构图：格子在哪（老版式） ----------
 function cellsOf(layout, look, idx) {
   const tilt = (k) => (look.bg === 'dots' ? (hash(idx * 3 + k) - 0.5) * 0.12 : look.bg === 'paper' ? (hash(idx * 3 + k) - 0.5) * 0.05 : 0);
   const B = look.bleed;
@@ -335,8 +486,8 @@ function drawCell(ctx, look, skin, cell, it, k, p, t, idx, label) {
       blurFill(ctx, img, 0, 0, W, H); ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(0, 0, W, H);
       const s = (W / iw) * 1.18 * z; ctx.drawImage(img, W / 2 - (iw * s) / 2, 760 - (ih * s) / 2, iw * s, ih * s);
     } else coverIn(ctx, img, cell, z, ox * (cell.w / W));
-    grade(ctx, look, cell, t);
-  } else drawPlaceholder(ctx, skin, label, cell);
+    gradeIt(ctx, look.grade, cell, t);
+  } else drawPlaceholder(ctx, label, cell);
   ctx.restore();
   // 新闻分屏：每路画面一个角标
   if (look.deco === 'news' && (cell.w < W || cell.h < H) && (k === 0 || e > 0)) {
@@ -346,24 +497,7 @@ function drawCell(ctx, look, skin, cell, it, k, p, t, idx, label) {
   }
 }
 
-// ---------- 大字画面（讲观点的镜头：不放素材，字就是画面） ----------
-function typeParts(v) {
-  switch (v.type) {
-    case 'hook': case 'big': return (v.lines || []).filter(Boolean);
-    case 'quote': return [v.text].filter(Boolean);
-    case 'stamp': return [v.text, v.note].filter(Boolean);
-    case 'stat': return [String(v.big || '') + (v.unit || ''), v.label].filter(Boolean);
-    default: return [];
-  }
-}
-/** 按字数把一句切成几行（大字画面一行别太长） */
-function chunk(text, n = 6) {
-  const cs = [...String(text)]; if (cs.length <= n + 1) return [text];
-  const k = Math.ceil(cs.length / Math.ceil(cs.length / n)); const out = [];
-  for (let i = 0; i < cs.length; i += k) out.push(cs.slice(i, i + k).join(''));
-  for (let j = 1; j < out.length; j++) while (/^[，。！？、；：,.!?”]/.test(out[j])) { out[j - 1] += out[j][0]; out[j] = out[j].slice(1); }
-  return out.filter(Boolean);
-}
+// ---------- 大字画面（老版式：讲观点的镜头，不放素材，字就是画面） ----------
 function drawTypeScene(ctx, look, skin, sec, p, t, idx, it, tEmoji) {
   const v = sec.visual; const parts = typeParts(v); const st = p.steps;
   const at = (k) => st[k] ?? (p.start + 0.25 + k * 0.45);
@@ -403,7 +537,7 @@ function drawTypeScene(ctx, look, skin, sec, p, t, idx, it, tEmoji) {
           ctx.save(); ctx.translate(760, 1180); ctx.rotate(0.07);
           ctx.shadowColor = 'rgba(40,30,20,0.35)'; ctx.shadowBlur = 26; ctx.shadowOffsetY = 10; ctx.fillStyle = '#fff'; ctx.fillRect(-190, -150, 380, 330); ctx.shadowColor = 'transparent';
           const box = { x: -170, y: -130, w: 340, h: 250 };
-          ctx.save(); ctx.beginPath(); ctx.rect(box.x, box.y, box.w, box.h); ctx.clip(); coverIn(ctx, img, box); grade(ctx, look, box, t); ctx.restore();
+          ctx.save(); ctx.beginPath(); ctx.rect(box.x, box.y, box.w, box.h); ctx.clip(); coverIn(ctx, img, box); gradeIt(ctx, look.grade, box, t); ctx.restore();
           ctx.restore();
         });
       }
@@ -473,8 +607,13 @@ function drawTypeScene(ctx, look, skin, sec, p, t, idx, it, tEmoji) {
 }
 
 // ---------- 转场（整个画面，只用当前帧，导出时多线程乱序画帧也不会出错） ----------
-const TRANS_DUR = { flash: 0.22, zoom: 0.3, shake: 0.35, whip: 0.28, page: 0.4, drop: 0.38, wipe: 0.38, sting: 0.6, iris: 0.5, blinds: 0.5, fade: 0.55, glitch: 0.32, static: 0.3, burst: 0.4 };
+const TRANS_DUR = { flash: 0.22, zoom: 0.3, shake: 0.35, whip: 0.28, page: 0.4, drop: 0.38, wipe: 0.38, sting: 0.6, iris: 0.5, blinds: 0.5, fade: 0.55, glitch: 0.32, static: 0.3, burst: 0.4, dissolve: 0.7, slideUp: 0.45 };
 function transOf(script, look, idx) {
+  if (look.frame) {
+    if (!look.trans?.length) return '';
+    if (idx === 0) return look.trans.includes('dissolve') || look.trans.includes('fade') ? 'fade' : look.trans[0] === 'glitch' ? 'glitch' : 'zoom';
+    return look.trans[Math.floor(hash(seedOf(script) * 0.013 + idx * 3.7) * look.trans.length)];
+  }
   if (idx === 0) return look.title === 'cine' ? 'fade' : look.deco === 'dv' ? 'static' : look.title === 'mag' ? 'drop' : 'zoom';
   const list = look.trans; return list[Math.floor(hash(seedOf(script) * 0.013 + idx * 3.7) * list.length)];
 }
@@ -486,6 +625,7 @@ function transPre(ctx, type, k) {
   else if (type === 'whip') ctx.translate(-W * 0.5 * (1 - e), 0);
   else if (type === 'page') ctx.translate(W * (1 - e), 0);
   else if (type === 'drop') { const z = 1.12 - 0.12 * e; ctx.translate(cx, cy); ctx.scale(z, z); ctx.translate(-cx, -cy); ctx.globalAlpha = clamp(k * 2.5); }
+  else if (type === 'slideUp') { ctx.translate(0, H * 0.18 * (1 - e)); ctx.globalAlpha = clamp(k * 2); }
 }
 function transPost(ctx, type, k, skin, idx, account) {
   const e = easeOut(k);
@@ -534,7 +674,7 @@ function transPost(ctx, type, k, skin, idx, account) {
   }
 }
 
-// ---------- 标题（每套版式一种） ----------
+// ---------- 标题（老版式，每套一种） ----------
 function drawTitle(ctx, look, skin, script, t, account, tEmoji) {
   const [h1, h2] = script.headline || [script.title || '', ''];
   const ap = easeOut(clamp((t - 0.1) / 0.5));
@@ -615,27 +755,7 @@ function drawTitle(ctx, look, skin, script, t, account, tEmoji) {
   ctx.restore();
 }
 
-// ---------- 字幕（重做：去掉句末标点、关键词变色放大、每套一种出字方式） ----------
-const cleanSub = (s) => String(s).trim().replace(/[。！？!?…~～，、；：,;:]+$/g, '').replace(/[，、；,;。！？!?]/g, ' ').replace(/\s+/g, ' ').trim();
-/** 字幕里每个字是不是关键词 */
-function markKeys(text, keys) {
-  const chars = [...text]; const on = new Array(chars.length).fill(false);
-  for (const k of keys || []) {
-    if (!k) continue;
-    let i = text.indexOf(k);
-    while (i >= 0) { const ci = [...text.slice(0, i)].length; for (let j = 0; j < [...k].length; j++) on[ci + j] = true; i = text.indexOf(k, i + k.length); }
-  }
-  return chars.map((ch, i) => ({ ch, key: on[i] }));
-}
-/** 均匀折成 1-2 行，优先在空格处断 */
-function subRows(ctx, chars, maxW) {
-  const w = chars.reduce((a, c) => a + ctx.measureText(c.ch).width, 0);
-  if (w <= maxW) return [chars];
-  let best = Math.ceil(chars.length / 2); let bd = 1e9;
-  chars.forEach((c, i) => { if (i < 2 || i > chars.length - 2) return; const d = Math.abs(i - chars.length / 2) - (c.ch === ' ' ? 3 : 0); if (d < bd) { bd = d; best = i; } });
-  const trim = (r) => { while (r.length && r[0].ch === ' ') r.shift(); while (r.length && r[r.length - 1].ch === ' ') r.pop(); return r; };
-  return [trim(chars.slice(0, best)), trim(chars.slice(best))];
-}
+// ---------- 字幕（老版式：去掉句末标点、关键词变色放大、每套一种出字方式） ----------
 function drawSub(ctx, look, skin, ln, keys, t, y, li) {
   const text = cleanSub(ln.text); if (!text) return;
   const chars = markKeys(text, keys);
@@ -725,7 +845,7 @@ function drawSub(ctx, look, skin, ln, keys, t, y, li) {
   ctx.restore();
 }
 
-// ---------- 装饰（每套版式一种） ----------
+// ---------- 装饰（老版式，每套一种） ----------
 const tc = (t) => { const s = Math.floor(t); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
 function drawDeco(ctx, look, skin, script, tl, t, idx, p, account, tEmoji, layout) {
   const label = script.sections[idx]?.label || '';
@@ -821,14 +941,96 @@ export async function prepareFrame(data) {
   const look = skins[lookOf(script, skinId)];
   const idx = currentIdx(planData, t);
   const sc = sceneOf(data, look, idx);
-  await Promise.all(sc.items.filter((it) => isClip(it.m)).map((it) => prepareClip(it.m.clip, clipT(it.m, it.start, t), it.lane)));
+  await Promise.all(sc.items.filter((it) => isClip(it.m) && !it.still).map((it) => prepareClip(it.m.clip, clipT(it.m, it.start, t), it.lane)));
+}
+
+/** 主题色：跟着行业走的版式，把主色换成行业色 */
+function skinFor(script, look) {
+  const theme = normalizeTheme(script.theme); const th = THEMES[theme?.key];
+  return th && look.themed ? { ...look, chip1: th.red, chip2: darker(th.red), cardInk: th.red, ...(look.bg === 'paper' ? { hl: th.red } : {}) } : look;
+}
+/** 新版式：这一刻要用到的全部信息 */
+function frameCtx(ctx, data, look, skin, idx, t = data.t) {
+  const { script, tl, planData, assets } = data;
+  const pool = poolOf(assets); const p = planData[idx]; const sec = tl.sections[idx];
+  const sc = sceneOf({ ...data, t }, look, idx, t);
+  const bpm = bgmTempo(bgmOfScript(script, look)) || 120;
+  return {
+    ctx, look, skin, script, tl, planData, t, idx, p, sec, s: script.sections[idx], sc, seq: sc.seq,
+    account: script.account || '我的账号', tEmoji: themeEmoji(normalizeTheme(script.theme)),
+    k: p ? clamp((t - p.start) / Math.max(0.5, p.end - p.start)) : 0, beatLen: 60 / bpm,
+    mainOf: (i) => assets?.media?.[i] || pool[i % Math.max(1, pool.length)] || null,
+  };
+}
+/** 新版式画一个镜头的画面层（背景 + 画面 / 大字） */
+function paintScene(F) {
+  const { ctx, look, s, p, t, idx } = F;
+  (BGS[look.bg] || BGS.black)(F);
+  if (F.sc.layout === 'type') {
+    if (look.frame === 'tv') FRAMES.tv(F); // 大字也放在电视机里
+    const parts = typeParts(s.visual || {}); const at = (k) => p.steps[k] ?? (p.start + 0.25 + k * 0.45);
+    if (TYPES[look.type]) TYPES[look.type](F, parts, at);
+    else drawTypeScene(ctx, { ...look, title: look.type }, F.skin, s, p, t, idx, F.sc.items[0], F.tEmoji);
+  } else (FRAMES[look.frame] || FRAMES.full)(F);
+}
+let _prev = null;
+/** 叠化：上一个镜头画在一张小画布上，按透明度盖在这一个上面 */
+function paintPrev(F, alpha) {
+  const { ctx } = F; const c = ctx.canvas; if (!c || alpha <= 0.01) return;
+  if (!_prev || _prev.width !== c.width || _prev.height !== c.height) _prev = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(c.width, c.height) : Object.assign(document.createElement('canvas'), { width: c.width, height: c.height });
+  const g = _prev.getContext('2d'); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, _prev.width, _prev.height); g.setTransform(ctx.getTransform());
+  const P = frameCtx(g, F.data, F.look, F.skin, F.idx - 1, F.t);
+  P.sc.items.forEach((it) => { it.still = true; });
+  P.k = 1;
+  paintScene(P);
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = alpha; ctx.drawImage(_prev, 0, 0); ctx.restore();
+}
+function drawFrameNew(ctx, data, look) {
+  const { script, tl, planData, t } = data;
+  const skin = skinFor(script, look);
+  const idx = currentIdx(planData, t);
+  const F = frameCtx(ctx, data, look, skin, idx); F.data = data;
+  const { s, p, sc } = F;
+  if (!s || !p) { (BGS[look.bg] || BGS.black)(F); return; }
+  const tr = transOf(script, look, idx); const k = tr ? clamp((t - p.start) / (TRANS_DUR[tr] || 0.3)) : 1;
+  ctx.save();
+  if (k < 1 && tr !== 'dissolve') transPre(ctx, tr, k);
+  // 卡点：每一拍画面轻轻一跳
+  if (look.bump && sc.layout !== 'type') { const ph = (t / F.beatLen) % 1; const z = 1 + look.bump * Math.pow(1 - ph, 3); ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2); }
+  // 镜头内的小切点：快速推近
+  const kc = sc.cutAt > p.start ? clamp((t - sc.cutAt) / 0.2) : 1;
+  if (kc < 1 && look.cutFx) { const z = 1 + 0.1 * (1 - easeOut(kc)); ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2); }
+  paintScene(F);
+  ctx.restore();
+  if (kc < 1 && look.cutFx === 'flash') { ctx.fillStyle = `rgba(255,255,255,${0.3 * (1 - kc)})`; ctx.fillRect(0, 0, W, H); }
+  if (tr === 'dissolve' && k < 1 && idx > 0) paintPrev(F, 1 - easeOut(k));
+  else if (k < 1) transPost(ctx, tr, k, skin, idx, F.account);
+  // 贴片（标签、步骤、数字卡……）：按版式缩放到画面区域里
+  if (sc.layout !== 'type' && look.ov !== false && !(look.noHookOv && s.visual?.type === 'hook')) {
+    const drawInner = (box) => { const img = imageOf(sc.items[0], t); if (img) coverIn(ctx, img, box); else drawPlaceholder(ctx, s.label, box); };
+    const o = look.ov || null; const os = o?.s || 1; const oy = (o?.cy ?? 960) + (o?.dy || 0);
+    // 贴片压暗、横条只盖住画面那一块（换算到贴片自己的坐标里）
+    const M = F.mediaR || { x: 0, y: 0, w: W, h: H };
+    const R = { x: (M.x - W / 2) / os + W / 2, y: (M.y - oy) / os + 960, w: M.w / os, h: M.h / os, noDim: !!M.noDim };
+    ctx.save();
+    if (o) { ctx.translate(W / 2, oy); ctx.scale(os, os); ctx.translate(-W / 2, -960); }
+    drawOverlay(ctx, s.visual || { type: 'shot' }, p, t, skin, R, idx, drawInner);
+    ctx.restore();
+  }
+  (DECOS[look.deco] || DECOS.none)(F);
+  if (sc.layout !== 'type' || look.titleOnType) (TITLES[look.title] || TITLES.none)(F);
+  const sec = tl.sections[idx];
+  const li = sec ? sec.lines.findIndex((l) => t >= l.start && t < l.end + 0.15) : -1;
+  const sub = SUBS[look.sub] || SUBS.none;
+  if (look.subAlways) sub(F, sec?.lines[Math.max(0, li)], li);
+  else if (li >= 0 && (sc.layout !== 'type' || look.subOnType !== false)) sub(F, sec.lines[li], idx * 3 + li);
 }
 
 export function drawFrame(ctx, data) {
   const { script, tl, planData, t, skinId } = data;
-  const theme = normalizeTheme(script.theme); const th = THEMES[theme?.key]; const tEmoji = themeEmoji(theme);
   const look = skins[lookOf(script, skinId)];
-  const skin = th && look.themed ? { ...look, chip1: th.red, chip2: darker(th.red), cardInk: th.red, ...(look.bg === 'paper' ? { hl: th.red } : {}) } : look;
+  if (look.frame) { ctx.save(); drawFrameNew(ctx, data, look); ctx.restore(); return; }
+  const skin = skinFor(script, look); const tEmoji = themeEmoji(normalizeTheme(script.theme));
   const account = script.account || '我的账号';
   ctx.save();
   drawBg(ctx, look, skin, t, tEmoji);
@@ -855,7 +1057,7 @@ export function drawFrame(ctx, data) {
     }
     if (k < 1) transPost(ctx, tr, k, skin, idx, account);
     if (layout !== 'type') {
-      const drawInner = (box) => { const img = imageOf(sc.items[0], t); if (img) coverIn(ctx, img, box); else drawPlaceholder(ctx, skin, s.label, box); };
+      const drawInner = (box) => { const img = imageOf(sc.items[0], t); if (img) coverIn(ctx, img, box); else drawPlaceholder(ctx, s.label, box); };
       drawOverlay(ctx, s.visual || { type: 'shot' }, p, t, skin, { x: 0, y: 0, w: W, h: H }, idx, drawInner);
     }
   }
@@ -869,45 +1071,66 @@ export function drawFrame(ctx, data) {
   ctx.restore();
 }
 
-/** 这套版式默认配的背景音乐 */
+/** 这套版式默认配的背景音乐（曲风@变奏） */
 export const bgmFor = (script, skinId) => skins[lookOf(script, skinId)].bgm;
 
-/** 音效：开场、每次切镜头、一句一换、贴片弹出、拼图格子出现、大字砸下、结尾 */
+/** 音效：开场、每次切镜头、镜头内换画面（一句一换 / 卡点）、贴片弹出、拼图格子出现、大字砸下、结尾 */
 export function sfxCues(data) {
   const { script, tl, planData, skinId } = data;
   const look = skins[lookOf(script, skinId)]; const S = look.sfx; const out = [];
-  out.push({ t: 0.05, kind: S.intro, gain: 0.8 });
+  out.push({ t: 0.05, kind: S.intro, gain: S.introGain ?? 0.8 });
   planData.forEach((p, i) => {
     const v = script.sections[i].visual || {};
-    const sc = sceneOf({ ...data, t: p.start + 0.01 }, look, i);
+    const sc = sceneOf({ ...data, t: p.start + 0.01 }, look, i, p.start + 0.01);
     if (i > 0) out.push({ t: Math.max(0, p.start - 0.12), kind: S.cut, gain: S.cutGain ?? 0.7 });
     if (sc.layout === 'type') {
       typeParts(v).forEach((_, k) => out.push({ t: p.steps[k] ?? p.start + 0.25 + k * 0.45, kind: S.type, gain: 0.75 }));
-    } else {
-      if (v.type === 'cta') out.push({ t: p.steps[0] ?? p.start + 0.3, kind: S.end, gain: 0.8 });
-      else p.steps.slice(0, 4).forEach((st) => out.push({ t: st, kind: S.pop, gain: 0.45 }));
-      const n = NEED[sc.layout] || 1;
-      for (let k = 1; k < n; k++) out.push({ t: p.start + k * CELL_GAP, kind: S.cell, gain: 0.5 });
-      if (look.subcut && sc.layout === 'full') tl.sections[i].lines.slice(1).forEach((l) => out.push({ t: l.start - 0.05, kind: S.sub || S.cut, gain: 0.45 }));
+      return;
     }
+    if (v.type === 'cta') out.push({ t: p.steps[0] ?? p.start + 0.3, kind: S.end, gain: 0.8 });
+    else if (look.ov !== false) p.steps.slice(0, 4).forEach((st) => out.push({ t: st, kind: S.pop, gain: 0.45 }));
+    // 拼图格子一个个出现
+    const n = sc.items.length; const gap = look.frame ? look.cellGap : CELL_GAP;
+    if (gap) for (let k = 1; k < n; k++) out.push({ t: p.start + k * gap, kind: S.cell, gain: 0.5 });
+    // 镜头里换画面：卡点每一刀一个鼓点，一句一换每句一个“嗖”
+    const cuts = cutTimes(data, look, i, sc.layout);
+    const beat = look.frame && look.cut === 'beat';
+    cuts.forEach((x) => out.push({ t: Math.max(0, x - (beat ? 0.01 : 0.03)), kind: beat ? (S.beat || S.cut) : (S.sub || S.cut), gain: beat ? (S.beatGain ?? 0.4) : (S.subGain ?? 0.45) }));
+    // 每句话一个提示音（聊天、直播、打字机）
+    if (look.lineSfx && !cuts.length) tl.sections[i].lines.forEach((l, k) => { if (k || i) out.push({ t: Math.max(0, l.start - 0.02), kind: S.sub, gain: S.subGain ?? 0.4 }); });
   });
-  return out.sort((a, b) => a.t - b.t);
+  return out.filter((c) => c.kind).sort((a, b) => a.t - b.t);
 }
 
+// 画面上固定会出现的字（界面文字、装饰字），出片前和文案里的字一起按需加载字体
+const UI_TEXT = '0123456789%?？—@”“✓✗:/·▶◀×★☆♡↗💬📍RECLIVESCPLAYBREAKINGDAYKODAKFPSCHISO1080P// > _.mp4[]现场关注真实课堂实拍记录快讯原话数据画面ABCD'
+  + '赞收藏评论转发刚刚分钟前日报第版特刊直击本报讯号外主播公告正在上课直播划重点上课流程我们做到一句话说别处问注意看今天的样子展'
+  + '主题公开课学员老师校区作品练习示范环境日常第一天';
 export async function preloadFonts(script) {
-  const text = JSON.stringify(script) + '0123456789%?？—@”✓✗:/·▶RECLIVESCPLAYBREAKING现场关注真实课堂实拍记录快讯原话数据画面ABCD';
+  const text = JSON.stringify(script) + UI_TEXT;
   await loadFontFaces([`900 40px "Noto Sans SC"`, `700 40px "Noto Sans SC"`, `48px "${PIXEL_FAMILY}"`], text);
 }
 
-/** 挑一套版式：最近 3 条用过的先不用，连着做几条看起来都不一样 */
-function pickLook() {
+/** 挑一套版式：最近用过的先不用，连着做几条看起来都不一样（exclude：这一次已经挑走的） */
+export function pickLook(exclude = []) {
   let recent = [];
   try { recent = JSON.parse(globalThis.localStorage?.getItem('ycp.footageLooks') || '[]'); } catch { /* */ }
-  const pool = LOOK_IDS.filter((x) => !recent.includes(x));
-  const list = pool.length ? pool : LOOK_IDS;
-  const pick = list[Math.floor(Math.random() * list.length)];
-  try { globalThis.localStorage?.setItem('ycp.footageLooks', JSON.stringify([pick, ...recent].slice(0, 3))); } catch { /* */ }
+  const ok = (x) => !exclude.includes(x);
+  // 先在最近没用过的里面挑；同一组（比如都是卡点）的也尽量隔开
+  const lastGroup = recent[0] ? skins[recent[0]]?.group : '';
+  let pool = LOOK_IDS.filter((x) => ok(x) && !recent.includes(x) && skins[x].group !== lastGroup);
+  if (!pool.length) pool = LOOK_IDS.filter((x) => ok(x) && !recent.includes(x));
+  if (!pool.length) pool = LOOK_IDS.filter(ok);
+  if (!pool.length) pool = LOOK_IDS;
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  rememberLook(pick);
   return pick;
+}
+/** 记下用过哪套（最近 12 套都先不重复） */
+export function rememberLook(id) {
+  let recent = [];
+  try { recent = JSON.parse(globalThis.localStorage?.getItem('ycp.footageLooks') || '[]'); } catch { /* */ }
+  try { globalThis.localStorage?.setItem('ycp.footageLooks', JSON.stringify([id, ...recent.filter((x) => x !== id)].slice(0, 12))); } catch { /* */ }
 }
 
 /** AI 结果兜底 */
@@ -919,10 +1142,10 @@ export function normalize(s, splitLine) {
   s.theme = normalizeTheme(s.theme);
   if (!skins[s.look]) s.look = pickLook();
   if (!Number(s.seed)) s.seed = 1 + Math.floor(Math.random() * 999999);
-  const TYPES = ['shot', 'hook', 'chips', 'big', 'stat', 'quote', 'steps', 'checklist', 'nametag', 'location', 'ticker', 'compare', 'cta', 'qa', 'polaroid', 'focus', 'stamp'];
+  const TYPES_OK = ['shot', 'hook', 'chips', 'big', 'stat', 'quote', 'steps', 'checklist', 'nametag', 'location', 'ticker', 'compare', 'cta', 'qa', 'polaroid', 'focus', 'stamp'];
   s.sections = (s.sections || []).filter(Boolean).map((x) => {
     const v = x.visual || {};
-    const type = TYPES.includes(v.type) ? v.type : 'shot';
+    const type = TYPES_OK.includes(v.type) ? v.type : 'shot';
     const lines = (x.lines || []).map((l) => String(l).trim()).filter(Boolean).flatMap((l) => (splitLine ? splitLine(l) : [l])).slice(0, 3);
     const items = (n, len) => (v.items || []).map((q) => str(q, len)).filter(Boolean).slice(0, n);
     const all = lines.join('');

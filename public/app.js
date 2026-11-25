@@ -5,6 +5,7 @@ import { buildTimeline, synthesize, mixAudio, mixWithBgm, envelope, getAudioCtx 
 import { BGM_STYLES, renderBgm, warmBgm } from './engine/music.js';
 import { listPhotos, savePhoto, deletePhoto, shrinkPhoto } from './engine/photos.js';
 import { exportInWorker, exportSupported } from './engine/exporter.js';
+import { planFootage } from './engine/footage.js';
 
 // 注意：这里故意不预先下载字体。中文字体按 unicode-range 拆成上百个分片，页面一打开就抢带宽会让首页更慢；
 // 真正出片/预览时由 engine/font-preload.js 的 loadFontFaces 按文案里用到的字按需加载。
@@ -139,10 +140,24 @@ function loadPreview(form) {
   return previewCache.get(form.id);
 }
 const GW = 360; const GH = 640;
-function drawPreview(ctx, form, d, t) {
+/** 画一帧示例；look：实拍混剪指定用哪套版式；客户传过自己的素材，示例就用他自己的照片放 */
+function drawPreview(ctx, form, d, t, look) {
   ctx.setTransform(ctx.canvas.width / W, 0, 0, ctx.canvas.height / H, 0, 0);
-  form.module.drawFrame(ctx, { script: d.script, tl: d.tl, planData: d.planData, t, skinId: form.autoSkin ? d.script.look : Object.keys(form.module.skins)[0], env: null, fps: FPS, assets: d.assets });
+  form.module.drawFrame(ctx, { script: d.script, tl: d.tl, planData: d.planData, t, skinId: look || (form.autoSkin ? d.script.look : Object.keys(form.module.skins)[0]), env: null, fps: FPS, assets: (form.multiLook && ownHeroAssets(d)) || d.assets });
   ctx.setTransform(1, 0, 0, 1, 0, 0);
+}
+/** 客户自己的照片和视频（至少 3 个）铺进示例：首页看到的就是“我的素材做出来的样子” */
+let ownHero = { key: '', assets: null };
+function ownHeroAssets(d) {
+  const list = state.assets?.footage || [];
+  if (list.length < 3) return null;
+  const key = list.length + ':' + d.script.sections.length;
+  if (ownHero.key !== key) {
+    const f = planFootage(d.script.sections.length, list);
+    const media = f.media.map((m, i) => m || f.slots[i % f.slots.length]);
+    ownHero = { key, assets: { media, pool: [...new Set([...f.slots, ...media])] } };
+  }
+  return ownHero.assets;
 }
 const coverIdx = (form, d) => Math.min(form?.coverIdx ?? 1, d.planData.length - 1);
 const coverTime = (d, form) => showcaseTime(d.planData[coverIdx(form, d)]);
@@ -150,7 +165,7 @@ const CHECK = '<svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" stroke=
 function renderStrip() {
   $('#tplStrip').innerHTML = forms.map((f, i) => `
     <button class="t" data-id="${f.id}" type="button" title="${esc(f.outcome || f.tagline)}" style="--i:${i}">
-      <span class="thumb"><canvas width="${GW}" height="${GH}"></canvas><span class="prog"><i></i></span><span class="ok">${CHECK}</span><span class="rec-badge">推荐</span></span>
+      <span class="thumb"><canvas width="${GW}" height="${GH}"></canvas><span class="prog"><i></i></span><span class="ok">${CHECK}</span><span class="rec-badge">推荐</span>${f.multiLook ? `<span class="ml-badge">${Object.keys(f.module.skins).length} 种版式</span>` : ''}</span>
       <b>${f.name}</b><small>${TPL_USE[f.id] || f.category}</small>
     </button>`).join('');
   document.querySelectorAll('#tplStrip .t').forEach((el) => {
@@ -183,6 +198,9 @@ async function startHero(f) {
   if (!f) return;
   cancelAnimationFrame(heroLoop); heroFor = f;
   $('#heroName').textContent = f.name; $('#heroUse').textContent = TPL_USE[f.id] || f.category || '';
+  const multi = !!f.multiLook;
+  $('#show').classList.toggle('multi', multi);
+  $('#lookChip').classList.toggle('hidden', !multi); $('#lookTicks').classList.toggle('hidden', !multi);
   const d = await loadPreview(f);
   if (heroFor !== f || $('#gallery').classList.contains('hidden')) return;
   const ctx = $('#heroCanvas').getContext('2d'); const bar = $('#heroProg');
@@ -190,19 +208,61 @@ async function startHero(f) {
   const t0 = performance.now(); let last = 0; let lastGlow = 0;
   if (heroShown && heroShown !== f) { const p = $('#heroPhone'); p.classList.remove('swap'); void p.offsetWidth; p.classList.add('swap'); }
   heroShown = f;
-  drawPreview(ctx, f, d, coverTime(d, f)); // 先有一帧，不黑屏
+  if (multi) { renderLookTicks(f); hero.t0 = performance.now(); }
+  drawPreview(ctx, f, d, coverTime(d, f), multi ? heroLookNow(f) : undefined); // 先有一帧，不黑屏
   sampleGlow();
   const loop = (now) => {
     heroLoop = requestAnimationFrame(loop);
     if (now - last < 1000 / 30) return;
     last = now;
-    const t = ((now - t0) / 1000) % dur;
-    drawPreview(ctx, f, d, t);
+    // 实拍混剪：跳过开头的大字，直接从有画面的地方放
+    const t = ((now - t0) / 1000 + (multi ? d.planData[1]?.start || 0 : 0)) % dur;
+    let look;
+    if (multi) {
+      look = heroLookNow(f);
+      if (look !== hero.shown) { // 换版式：手机闪一下，牌子跟着换
+        if (hero.shown) { const p = $('#heroPhone'); p.classList.remove('swap'); void p.offsetWidth; p.classList.add('swap'); }
+        hero.shown = look; renderLookChip(f, look);
+      }
+      const k = hero.hover ? 0 : ((now - hero.t0) / 1000 / LOOK_EVERY) % 1;
+      $('#lookTicks').style.setProperty('--k', k.toFixed(3));
+    }
+    drawPreview(ctx, f, d, t, look);
     bar.style.width = `${(t / dur) * 100}%`;
     if (now - lastGlow > 700) { lastGlow = now; sampleGlow(); }
   };
   heroLoop = requestAnimationFrame(loop);
 }
+// ---------- 实拍混剪：示例每几秒换一套版式放，告诉客户“这个模板下面还有很多种” ----------
+const LOOK_EVERY = 4; // 秒
+const hero = { order: [], base: 0, t0: 0, hover: '', shown: '' };
+/** 轮播顺序：几组轮着来，相邻两个不是同一类（卡点完了是笔记，笔记完了是电影……） */
+function heroOrder(f) {
+  if (hero.order.length) return hero.order;
+  const groups = f.module.lookGroups.map((g) => [...g.ids]); const out = [];
+  for (let i = 0; out.length < Object.keys(f.module.skins).length; i++) groups.forEach((g) => { if (g[i]) out.push(g[i]); });
+  return (hero.order = out);
+}
+function heroLookNow(f) {
+  if (hero.hover) return hero.hover;
+  const o = heroOrder(f); const n = Math.floor((performance.now() - hero.t0) / 1000 / LOOK_EVERY);
+  return o[(hero.base + n) % o.length];
+}
+function renderLookChip(f, look) {
+  const o = heroOrder(f); const s = f.module.skins[look]; if (!s) return;
+  const own = (state.assets?.footage?.length || 0) >= 3;
+  $('#lookChip').innerHTML = `<span class="lc-n">版式 ${String(o.indexOf(look) + 1).padStart(2, '0')}<i>/${o.length}</i></span><b>${esc(s.name)}</b><em>${esc(s.desc || '')}</em>`;
+  $('#heroUse').textContent = own ? '正在用你自己的素材预览' : `同一份素材，${o.length} 种排版自动换着放`;
+  $('#lookTicks').querySelectorAll('i').forEach((el) => el.classList.toggle('on', el.dataset.look === look));
+}
+function renderLookTicks(f) {
+  const o = heroOrder(f);
+  $('#lookTicks').innerHTML = o.map((id, i) => `<i data-look="${id}" data-i="${i}" title="${esc(f.module.skins[id].name)}"></i>`).join('');
+}
+$('#lookTicks').addEventListener('click', (e) => {
+  const el = e.target.closest('i'); if (!el) return;
+  hero.base = Number(el.dataset.i); hero.t0 = performance.now(); hero.hover = '';
+});
 function stopHero() { cancelAnimationFrame(heroLoop); heroFor = null; }
 let heroShown = null;
 // 手机背后的光晕跟着画面变色：从正在放的画面里挑最鲜艳的颜色（白底的就退回品牌橙）
@@ -283,7 +343,73 @@ function selectForm(id) {
   syncAttach();
   renderDurLabels();
   renderPhotoRows();
+  renderLooksPanel();
   warmBgm(bgmOf().style, getAudioCtx().sampleRate); // 用户打字时，后台先把音乐合成好
+}
+// ---------- 实拍混剪下面的“版式”：33 种排版，挑几种、一次出几条 ----------
+const MAX_VER = 3;
+const lookPicks = () => (prefs.lookPicks || []).filter((id) => state.form?.module.skins?.[id]).slice(0, MAX_VER);
+const lookCount = () => Math.max(lookPicks().length, Math.min(MAX_VER, Math.max(1, Number(prefs.lookCount) || 1)));
+function renderLooksPanel() {
+  const f = state.form; const el = $('#looksPanel');
+  el.classList.toggle('hidden', !f?.multiLook);
+  if (!f?.multiLook) { updateGo(); return; }
+  const mod = f.module; const n = Object.keys(mod.skins).length;
+  el.innerHTML = `
+    <div class="lk-head"><b>选版式</b><em class="lk-big">${n} 种</em><span>同一份素材换个版式就是一条新片子：画面摆法、剪辑节奏、背景音乐、音效全都不一样</span></div>
+    <div class="lk-bar">
+      <span class="lk-k">一次出</span>
+      <div class="seg lk-seg" id="lkCount"><i class="seg-thumb"></i>${[1, 2, 3].map((k) => `<button type="button" data-v="${k}">${k} 条</button>`).join('')}</div>
+      <span class="lk-tip" id="lkTip"></span>
+    </div>
+    <div class="lk-groups">${mod.lookGroups.map((g) => `<div class="lk-group"><div class="lk-gname">${esc(g.name)}</div><div class="lk-row">${g.ids.map((id) => `<button type="button" class="lk" data-look="${id}" title="${esc(`${mod.skins[id].name}：${mod.skins[id].desc || ''}`)}"><span class="lk-shot"><canvas width="96" height="170"></canvas><i class="lk-no"></i></span><small>${esc(mod.skins[id].name)}</small></button>`).join('')}</div></div>`).join('')}</div>
+    <p class="lk-foot">鼠标移到版式上，左边大手机就放给你看；点一下就选上（最多 3 种），不选就每次自动换，最近用过的不重复。</p>`;
+  setSeg('#lkCount', lookCount());
+  markLooks(); drawLookThumbs();
+}
+function markLooks() {
+  const picks = lookPicks(); const cnt = lookCount();
+  $('#looksPanel').querySelectorAll('.lk').forEach((b) => { const k = picks.indexOf(b.dataset.look); b.classList.toggle('on', k >= 0); b.querySelector('.lk-no').textContent = k >= 0 ? 'ABC'[k] : ''; });
+  const rnd = cnt - picks.length; const tip = $('#lkTip');
+  if (tip) tip.textContent = picks.length ? (rnd > 0 ? `已挑 ${picks.length} 种，另外 ${rnd} 条随机配` : `就用你挑的这 ${picks.length} 种`) : (cnt > 1 ? `${cnt} 条各用一种版式，自动挑不重样的` : '不挑就自动换一种，每次都不一样');
+  updateGo();
+}
+let lookThumbJob = 0;
+async function drawLookThumbs() {
+  const f = state.form; if (!f?.multiLook) return;
+  const job = ++lookThumbJob; const d = await loadPreview(f);
+  const paint = () => { if (job !== lookThumbJob) return; document.querySelectorAll('#looksPanel .lk').forEach((b) => drawPreview(b.querySelector('canvas').getContext('2d'), f, d, coverTime(d, f), b.dataset.look)); };
+  paint(); setTimeout(paint, 1500); setTimeout(paint, 4500); // 示例图片是陆续加载的，晚一点再补画
+}
+$('#looksPanel').addEventListener('click', (e) => {
+  const seg = e.target.closest('#lkCount button');
+  if (seg) {
+    const v = Number(seg.dataset.v); prefs.lookCount = v;
+    if (lookPicks().length > v) prefs.lookPicks = lookPicks().slice(0, v);
+    savePrefs(); setSeg('#lkCount', v); markLooks(); return;
+  }
+  const b = e.target.closest('.lk'); if (!b) return;
+  let picks = lookPicks(); const id = b.dataset.look;
+  if (picks.includes(id)) picks = picks.filter((x) => x !== id);
+  else { picks.push(id); if (picks.length > MAX_VER) picks.shift(); }
+  prefs.lookPicks = picks; prefs.lookCount = Math.max(Number(prefs.lookCount) || 1, picks.length); savePrefs();
+  setSeg('#lkCount', lookCount()); markLooks();
+  // 选上的这个，左边手机就从它开始轮播
+  const o = heroOrder(state.form); if (picks.includes(id)) { hero.base = o.indexOf(id); hero.t0 = performance.now(); }
+});
+$('#looksPanel').addEventListener('mouseover', (e) => { const b = e.target.closest('.lk'); if (b && hero.hover !== b.dataset.look) hero.hover = b.dataset.look; });
+$('#looksPanel').addEventListener('mouseleave', () => { if (hero.hover) { const o = heroOrder(state.form); hero.base = Math.max(0, o.indexOf(hero.hover)); hero.t0 = performance.now(); hero.hover = ''; } });
+/** 生成前排好这次的几条版式：先用客户挑的，不够的随机补（不和最近用过的重复） */
+function planVersions(script) {
+  state.versions = null; state.vi = 0;
+  const mod = state.form?.module; if (!state.form?.multiLook || !mod?.pickLook) return script;
+  const looks = lookPicks();
+  while (looks.length < lookCount()) looks.push(mod.pickLook(looks));
+  looks.forEach((id) => mod.rememberLook(id));
+  const seed = Number(script.seed) || 1;
+  state.versions = looks.map((look, i) => ({ look, seed: seed + i * 7919, done: false }));
+  script.look = looks[0]; script.seed = seed; delete script.skin; delete script.bgm;
+  return script;
 }
 $('#tplStrip').addEventListener('click', (e) => {
   const el = e.target.closest('.t'); if (!el) return;
@@ -569,8 +695,8 @@ function updateGo() {
   const b = $('#btnGo');
   if (state.mode === 'video') {
     b.disabled = !rm.file || !!rm.error;
-    b.firstChild.textContent = rm.wantGo && rm.busy ? '听完就开始写…' : '生成我的原创视频';
-  } else { b.disabled = false; b.firstChild.textContent = '生成视频'; }
+    b.firstChild.textContent = rm.wantGo && rm.busy ? '听完就开始写…' : (state.form?.multiLook && lookCount() > 1 ? `生成 ${lookCount()} 条原创视频` : '生成我的原创视频');
+  } else { b.disabled = false; b.firstChild.textContent = state.form?.multiLook && lookCount() > 1 ? `一次生成 ${lookCount()} 条视频` : '生成视频'; }
   const ready = state.mode === 'video' ? !b.disabled && !!$('#rmIndustry').value.trim() : !!($('#input').value.trim() || state.attachments.length);
   b.classList.toggle('ready', ready);
 }
@@ -644,8 +770,15 @@ $('#btnSample').addEventListener('click', async () => {
   primeAudio();
   enterStudio();
   overlaySpin('正在载入示例', '');
-  const script = await (await fetch(state.form.sample)).json();
+  let script = await (await fetch(state.form.sample)).json();
   if (prefs.account) script.account = prefs.account;
+  state.versions = null;
+  if (state.form.multiLook) {
+    // 示例：就用左边手机正在放的那套版式（客户刚看中的就是它）
+    script = prepScript(state.form, script);
+    const look = hero.shown || script.look;
+    state.versions = [{ look, seed: Number(script.seed) || 1, done: false }]; state.vi = 0; script.look = look;
+  }
   await startWithScript(script);
 });
 
@@ -739,7 +872,7 @@ async function generate(input = $('#input').value.trim()) {
     takeQuota(data);
     state.flags = Array.isArray(data._flags) ? data._flags : [];
     busy.writing = false;
-    await startWithScript(state.form.module.normalize ? state.form.module.normalize(data, splitLongLine) : normalize(data));
+    await startWithScript(planVersions(prepScript(state.form, data)));
     await afterJobExport();
   } catch (err) {
     busy.writing = false;
@@ -934,7 +1067,7 @@ async function replicate() {
     takeQuota(data);
     state.flags = Array.isArray(data._flags) ? data._flags : [];
     busy.writing = false;
-    await startWithScript(prepScript(state.form, data));
+    await startWithScript(planVersions(prepScript(state.form, data)));
     await afterJobExport();
   } catch (err) {
     busy.writing = false;
@@ -1109,7 +1242,7 @@ function enterStudio() {
   $('#editor').innerHTML = Array.from({ length: 5 }, (_, i) => `<div class="sec-skel" style="--i:${i}"><i></i><i></i><i class="short"></i></div>`).join('');
   $('#title').value = '';
   $('#footNote').textContent = '';
-  renderRemixNote();
+  renderRemixNote(); $('#verBar').classList.add('hidden');
   $('#btnExport').disabled = true;
   switchTab('script');
   show('studio');
@@ -1127,7 +1260,7 @@ async function startWithScript(script) {
   await state.form.module.preloadFonts(script);
   if (!prefs.voicePicked) prefs.voice = autoVoice(script);
   state.assets.media = [];
-  renderEditor();
+  renderEditor(); renderVerBar();
   refresh();
   state.t = 0;
   drawNow();
@@ -1222,19 +1355,53 @@ $('#editor').addEventListener('focusin', (e) => {
   seek(showcaseTime(p));
 });
 
+// ---------- 版本条（实拍混剪：同一份文案出几条不同版式） ----------
+function renderVerBar() {
+  const el = $('#verBar'); const vs = state.versions; const mod = state.form?.module;
+  const show = !!(state.form?.multiLook && vs?.length && state.script);
+  el.classList.toggle('hidden', !show); if (!show) return;
+  el.innerHTML = `<div class="vb-k">${vs.length > 1 ? `同一份文案，出了 <b>${vs.length}</b> 条不同版式` : '这条用的版式'}<span>画面、节奏、音乐都不一样，点一下就换</span></div>
+    <div class="vb-list">${vs.map((v, i) => `<button type="button" class="vb ${i === state.vi ? 'on' : ''}" data-vi="${i}"><i>${'ABC'[i]}</i><b>${esc(mod.skins[v.look]?.name || '')}</b>${v.done ? '<em>已导出</em>' : ''}</button>`).join('')}
+    <button type="button" class="vb-dice" id="vbDice" title="这一条随机换一种版式（文案不变）"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="9" r="1.4" fill="currentColor"/><circle cx="15" cy="15" r="1.4" fill="currentColor"/><circle cx="15" cy="9" r="1.4" fill="currentColor"/><circle cx="9" cy="15" r="1.4" fill="currentColor"/></svg>换个版式</button></div>`;
+}
+/** 换到第 i 条：文案、配音不变，换版式、音乐、音效 */
+function useVersion(i) {
+  const v = state.versions?.[i]; if (!v || !state.script || state.exporting) return;
+  state.vi = i; state.script.look = v.look; state.script.seed = v.seed; delete state.script.skin;
+  if (v.bgm) state.script.bgm = v.bgm; else delete state.script.bgm;
+  renderVerBar();
+  if (!$('#tab-style').classList.contains('hidden')) renderSkins();
+  if (!$('#tab-voice').classList.contains('hidden')) renderVoices();
+  const t = state.t; const p = $('.phone'); p?.classList.remove('vswap'); void p?.offsetWidth; p?.classList.add('vswap');
+  remix(); state.t = t; drawNow();
+}
+$('#verBar').addEventListener('click', (e) => {
+  if (e.target.closest('#vbDice')) {
+    const vs = state.versions; if (!vs || state.exporting) return;
+    const mod = state.form.module; const id = mod.pickLook(vs.map((v) => v.look));
+    vs[state.vi] = { ...vs[state.vi], look: id, bgm: undefined, done: false };
+    useVersion(state.vi); toast(`换成了「${mod.skins[id].name}」：${mod.skins[id].desc || ''}`); return;
+  }
+  const b = e.target.closest('.vb'); if (b) useVersion(Number(b.dataset.vi));
+});
+
 // ---------- 风格 ----------
 function renderSkins() {
-  const skins = state.form.module.skins;
-  $('#skins').innerHTML = Object.entries(skins).map(([k, s]) => `
-    <button class="skin ${k === skinOf() ? 'on' : ''}" data-skin="${k}">
-      <div class="shot"><canvas width="${W / 3}" height="${H / 3}"></canvas></div>${s.name}
-    </button>`).join('');
+  const mod = state.form.module; const skins = mod.skins;
+  const k3 = mod.lookGroups ? 4 : 3; // 版式多：缩略图画小一点
+  const card = (k, s) => `
+    <button class="skin ${k === skinOf() ? 'on' : ''}" data-skin="${k}" title="${esc(s.desc || '')}">
+      <div class="shot"><canvas width="${W / k3}" height="${H / k3}"></canvas></div>${s.name}${s.desc ? `<small>${esc(s.desc)}</small>` : ''}
+    </button>`;
+  $('#skins').innerHTML = mod.lookGroups
+    ? mod.lookGroups.map((g) => `<div class="skin-group">${esc(g.name)}<span>${g.ids.length} 种</span></div>` + g.ids.map((k) => card(k, skins[k])).join('')).join('')
+    : Object.entries(skins).map(([k, s]) => card(k, s)).join('');
   if (!state.script) return;
   const p = state.planData[Math.min(1, state.planData.length - 1)];
   const t = showcaseTime(p);
   document.querySelectorAll('.skin').forEach((b) => {
     const ctx = b.querySelector('canvas').getContext('2d');
-    ctx.setTransform(1 / 3, 0, 0, 1 / 3, 0, 0);
+    ctx.setTransform(1 / k3, 0, 0, 1 / k3, 0, 0);
     state.form.module.drawFrame(ctx, {
       script: state.script, tl: state.tl, planData: state.planData, t, skinId: b.dataset.skin, env: null, fps: FPS, assets: state.assets,
     });
@@ -1242,7 +1409,13 @@ function renderSkins() {
 }
 $('#skins').addEventListener('click', (e) => {
   const b = e.target.closest('.skin'); if (!b) return;
-  if (state.form.autoSkin) { if (state.script) { state.script.skin = b.dataset.skin; delete state.script.bgm; remix(); } } else { prefs.skins = { ...(prefs.skins || {}), [state.form.id]: b.dataset.skin }; savePrefs(); }
+  if (state.form.autoSkin) {
+    if (state.script) {
+      const v = state.versions?.[state.vi];
+      if (v) { v.look = b.dataset.skin; v.bgm = undefined; v.done = false; useVersion(state.vi); }
+      else { state.script.look = b.dataset.skin; delete state.script.skin; delete state.script.bgm; remix(); }
+    }
+  } else { prefs.skins = { ...(prefs.skins || {}), [state.form.id]: b.dataset.skin }; savePrefs(); }
   document.querySelectorAll('.skin').forEach((x) => x.classList.toggle('on', x === b));
   drawNow();
 });
@@ -1268,7 +1441,7 @@ function renderVoices() {
   setSeg('#rate', prefs.rate);
   const cur = bgmOf();
   $('#bgms').innerHTML = Object.entries(BGM_STYLES).map(([k, b]) => `
-    <div class="voice bgm ${k === cur.style ? 'on' : ''}" data-bgm="${k}" role="button" tabindex="0">
+    <div class="voice bgm ${k === String(cur.style).split('@')[0] ? 'on' : ''}" data-bgm="${k}" role="button" tabindex="0">
       <span class="av">${k === 'none' ? '—' : '♪'}</span>
       <span><div class="vn">${b.name}</div><div class="vd">${b.desc}</div></span>
       ${k === 'none' ? '' : `<button class="listen" data-bgm-listen="${k}" title="试听"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg></button>`}
@@ -1326,7 +1499,12 @@ $('#bgms').addEventListener('click', async (e) => {
     return;
   }
   const b = e.target.closest('[data-bgm]'); if (!b) return;
-  if (state.form.autoSkin && state.script) state.script.bgm = b.dataset.bgm; else { prefs.bgm = { ...(prefs.bgm || {}), [state.form.id]: b.dataset.bgm }; savePrefs(); }
+  if (state.form.autoSkin && state.script) {
+    // 换曲风时保留这套版式自己的“变奏”（调、速度、旋律），和别的版式听起来还是不一样
+    const own = String(state.form.module.bgmFor?.(state.script, skinOf()) || '').split('@')[1];
+    state.script.bgm = b.dataset.bgm === 'none' || !own ? b.dataset.bgm : `${b.dataset.bgm}@${own}`;
+    const v = state.versions?.[state.vi]; if (v) v.bgm = state.script.bgm;
+  } else { prefs.bgm = { ...(prefs.bgm || {}), [state.form.id]: b.dataset.bgm }; savePrefs(); }
   document.querySelectorAll('[data-bgm]').forEach((x) => x.classList.toggle('on', x === b));
   remix();
 });
@@ -1456,8 +1634,14 @@ async function exportVideo({ skipAccountPrompt = false, saveToWorks = true, jobI
       audioBuffer: state.master, signal, threads: EXPORT_THREADS,
       onProgress: (p, left) => (tabTitle(`${Math.round(p * 100)}% 正在导出`), overlayProgress(p, '正在生成视频', `${p < 0.06 ? `一般要 1–5 分钟（视频越长越久）` : left > 90 ? `还要约 ${Math.round(left / 60)} 分钟` : `还要约 ${Math.max(5, Math.ceil(left / 5) * 5)} 秒`} · 可以先去忙别的`)),
     });
-    const name = `${state.script.title || '我的视频'}.mp4`.replace(/[\\/:*?"<>|]/g, '');
+    // 一次出了几条：文件名带上版式名，存下来分得清
+    const ver = state.versions?.length > 1 ? state.versions[state.vi] : null;
+    const verName = ver ? `-${'ABC'[state.vi]}-${state.form.module.skins[ver.look]?.name || ''}` : '';
+    const name = `${state.script.title || '我的视频'}${verName}.mp4`.replace(/[\\/:*?"<>|]/g, '');
     const file = new File([blob], name, { type: 'video/mp4' });
+    if (state.versions?.[state.vi]) { state.versions[state.vi].done = true; renderVerBar(); }
+    const nextVi = state.versions ? state.versions.findIndex((v) => !v.done) : -1;
+    const nextAct = nextVi >= 0 ? [{ label: `接着导出 ${'ABC'[nextVi]} 条（${state.form.module.skins[state.versions[nextVi].look]?.name || ''}）`, primary: true, fn: () => { hideOverlay(); useVersion(nextVi); setTimeout(() => exportVideo({ skipAccountPrompt: true }), 300); } }] : [];
     const canShare = matchMedia('(pointer: coarse)').matches && navigator.canShare?.({ files: [file] });
     if (jobId) {
       const up = await fetch('/api/jobs/' + encodeURIComponent(jobId) + '/complete?title=' + encodeURIComponent(state.script?.title || name.replace(/\.mp4$/, '')), {
@@ -1477,8 +1661,9 @@ async function exportVideo({ skipAccountPrompt = false, saveToWorks = true, jobI
     }
     if (document.hidden) { titleDone = true; tabTitle('✓ 视频好了'); } else tabTitle('');
     overlayDone('视频已导出', `${name} · ${(blob.size / 1048576).toFixed(0)} MB · ${canShare ? '点下面按钮存到相册或发给微信' : '已保存到下载文件夹，也存进了我的作品'}`, [
-      ...(canShare ? [{ label: '存到手机 / 分享', primary: true, fn: () => navigator.share({ files: [file], title: state.script?.title || '' }).catch(() => {}) }] : []),
-      { label: '再做一条', primary: !canShare, fn: () => { hideOverlay(); show('gallery'); } },
+      ...nextAct,
+      ...(canShare ? [{ label: '存到手机 / 分享', primary: !nextAct.length, fn: () => navigator.share({ files: [file], title: state.script?.title || '' }).catch(() => {}) }] : []),
+      { label: '再做一条', primary: !canShare && !nextAct.length, fn: () => { hideOverlay(); show('gallery'); } },
       { label: '看我的作品', fn: () => { location.href = '/works.html'; } },
       { label: '继续修改', fn: hideOverlay },
     ]);
@@ -1735,6 +1920,7 @@ async function loadPhotos(kind = photoKind()) {
     ? state.photoLists[kind].map((p) => (p.clip ? { type: 'video', clip: p.clip, poster: p.bitmap } : { type: 'photo', bitmap: p.bitmap }))
     : state.photoLists[kind].map((p) => p.bitmap);
   renderPhotoRows();
+  if (kind === 'footage' && state.form?.multiLook && !$('#gallery').classList.contains('hidden')) drawLookThumbs(); // 首页的版式缩略图用客户自己的素材画
   if (state.script && kind === 'footage' && photoKind() === 'footage' && state.tl) findMedia().catch(() => {}); // 在成片页加了素材：重新铺一遍
   else if (state.script) drawNow();
 }

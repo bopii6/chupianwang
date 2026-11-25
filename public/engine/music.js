@@ -10,6 +10,11 @@ export const BGM_STYLES = {
   warm: { name: '温暖钢琴', desc: '钢琴+木吉他+弦乐，轻松治愈', bpm: 80 },
   tech: { name: '科技律动', desc: '电子律动，适合讲数据讲趋势', bpm: 100 },
   story: { name: '悬念纪录', desc: '小调+钟表声，适合讲真相讲误区', bpm: 76 },
+  lofi: { name: '松弛 Lo-fi', desc: '电钢琴+黑胶底噪，慵懒放松，适合日常记录', bpm: 82 },
+  house: { name: '律动浩室', desc: '四四拍底鼓+钢琴和弦，时髦有律动', bpm: 122 },
+  citypop: { name: '复古 City Pop', desc: '七和弦+跳跃贝斯，港风复古', bpm: 108 },
+  uke: { name: '清新尤克里里', desc: '尤克里里+口哨+拍手，明亮轻快', bpm: 120 },
+  guofeng: { name: '国风古韵', desc: '五声音阶拨弦+笛子+鼓，雅致有韵味', bpm: 86 },
   none: { name: '不要音乐', desc: '只保留人声' },
 };
 
@@ -19,8 +24,10 @@ function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 10139
 // 和弦：根音 MIDI + 大/小三和弦
 const CH = {
   C: [60, 'M'], Dm: [62, 'm'], Em: [52, 'm'], E: [52, 'M'], F: [53, 'M'], G: [55, 'M'], Am: [57, 'm'],
+  Cmaj7: [60, 'M7'], Fmaj7: [53, 'M7'], Dm7: [62, 'm7'], Em7: [52, 'm7'], Am7: [57, 'm7'], G7: [55, '7'], Gsus: [55, 's'],
 };
-const triad = (name) => { const [r, q] = CH[name]; return [r, r + (q === 'M' ? 4 : 3), r + 7]; };
+const Q = { M: [4, 7], m: [3, 7], M7: [4, 7, 11], m7: [3, 7, 10], 7: [4, 7, 10], s: [5, 7] };
+const triad = (name) => { const [r, q] = CH[name]; return [r, ...Q[q].map((iv) => r + iv)]; };
 
 const PROGS = {
   chip: { A: ['C', 'G', 'Am', 'F'], B: ['F', 'G', 'Em', 'Am'], C: ['Am', 'F', 'C', 'G'] },
@@ -31,13 +38,35 @@ const PROGS = {
   edm: { A: ['Am', 'F', 'C', 'G'], B: ['Am', 'F', 'C', 'G'], C: ['F', 'G', 'Am', 'G'] },
   phonk: { A: ['Am', 'Am', 'Dm', 'E'], B: ['Am', 'F', 'Dm', 'E'], C: ['F', 'F', 'E', 'E'] },
   rock: { A: ['Am', 'F', 'C', 'G'], B: ['F', 'C', 'G', 'Am'], C: ['F', 'G', 'Am', 'G'] },
+  lofi: { A: ['Fmaj7', 'Em7', 'Dm7', 'Cmaj7'], B: ['Dm7', 'G7', 'Cmaj7', 'Am7'], C: ['Fmaj7', 'Fmaj7', 'Em7', 'Am7'] },
+  house: { A: ['Am7', 'Fmaj7', 'Cmaj7', 'G'], B: ['Fmaj7', 'G', 'Em7', 'Am7'], C: ['Dm7', 'Em7', 'Fmaj7', 'G'] },
+  citypop: { A: ['Fmaj7', 'Em7', 'Dm7', 'Cmaj7'], B: ['Fmaj7', 'G7', 'Em7', 'Am7'], C: ['Dm7', 'G7', 'Cmaj7', 'Cmaj7'] },
+  uke: { A: ['C', 'G', 'Am', 'F'], B: ['F', 'C', 'G', 'C'], C: ['Am', 'F', 'C', 'G'] },
+  guofeng: { A: ['C', 'Am', 'Dm', 'G'], B: ['F', 'G', 'Em', 'Am'], C: ['Am', 'G', 'F', 'C'] },
 };
+// 同一种风格的不同“版本”：换调、换速度、换旋律（写成 'pop@3'），每套版式的歌听起来都不一样
+const VARIANTS = [
+  { tr: 0, bs: 1 }, { tr: 2, bs: 1.04 }, { tr: -3, bs: 0.95 }, { tr: 5, bs: 1 }, { tr: -2, bs: 1.07 },
+  { tr: 3, bs: 0.93 }, { tr: -5, bs: 1.03 }, { tr: 1, bs: 0.97 }, { tr: -1, bs: 1.05 },
+];
+/** 'pop@3' → { base:'pop', v:3 } */
+export function parseBgm(style) {
+  const [base, v] = String(style || '').split('@');
+  return { base, v: Math.max(0, Math.min(VARIANTS.length - 1, Number(v) || 0)) };
+}
+/** 这首歌每分钟几拍（卡点剪辑按这个算） */
+export function bgmTempo(style) {
+  const { base, v } = parseBgm(style);
+  const b = BGM_STYLES[base]?.bpm; if (!b) return 0;
+  return b * VARIANTS[v].bs;
+}
 const MAJOR = [0, 2, 4, 5, 7, 9, 11];
 const MINOR = [9, 11, 0, 2, 4, 5, 7, 8]; // A 小调（含升 G，配 E 大三和弦）
+const PENTA = [0, 2, 4, 7, 9]; // 五声音阶：宫商角徵羽
 
 const INTRO_BARS = 2;
 // 段落顺序：快歌是“主歌 → 蓄力 → 爆发 → 爆发变奏”
-const ORDERS = { edm: ['A', 'C', 'B', 'B2'], phonk: ['A', 'B', 'C', 'B2'], rock: ['A', 'B', 'A2', 'B2'] };
+const ORDERS = { edm: ['A', 'C', 'B', 'B2'], phonk: ['A', 'B', 'C', 'B2'], rock: ['A', 'B', 'A2', 'B2'], house: ['A', 'B', 'C', 'B2'] };
 const DEFAULT_ORDER = ['A', 'B', 'A2', 'C'];
 const SEC_BARS = 8;
 const LOOP_BARS = 4 * SEC_BARS;
@@ -125,7 +154,10 @@ const cache = new Map();
 export async function renderBgm(style, duration, sampleRate = 48000) {
   const key = style + '|' + sampleRate;
   if (!cache.has(key)) cache.set(key, renderSegment(style, sampleRate));
-  const { buf, introLen, loopLen } = await cache.get(key);
+  const job = cache.get(key);
+  cache.delete(key); cache.set(key, job); // 最近用过的排到最后
+  while (cache.size > 6) cache.delete(cache.keys().next().value); // 每首一两分钟的音频占几十兆，只留最近 6 首
+  const { buf, introLen, loopLen } = await job;
   const len = Math.ceil(duration * sampleRate);
   const out = new AudioBuffer({ numberOfChannels: 2, length: len, sampleRate });
   const xf = Math.floor(sampleRate * 0.04);
@@ -145,14 +177,17 @@ export async function renderBgm(style, duration, sampleRate = 48000) {
   return out;
 }
 
-async function renderSegment(style, sr) {
+async function renderSegment(styleKey, sr) {
+  const { base: style, v } = parseBgm(styleKey);
   if (!PROGS[style]) throw new Error('未知的音乐风格');
-  const bpm = BGM_STYLES[style].bpm;
+  const { tr } = VARIANTS[v];
+  const bpm = bgmTempo(styleKey);
   const beat = 60 / bpm; const bar = beat * 4;
-  const rand = rng(style.split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 7));
+  const rand = rng(style.split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 7) + v * 7919);
   const minor = style === 'story' || style === 'phonk';
   const SECTIONS = ORDERS[style] || DEFAULT_ORDER;
-  const scale = minor ? MINOR : MAJOR;
+  const scale = style === 'guofeng' ? PENTA : minor ? MINOR : MAJOR;
+  const hzT = (m) => hz(m + tr); // 换调：所有音高一起挪
   const prog = PROGS[style];
   const chordsOf = (sec) => { const p = prog[sec === 'A2' ? 'A' : sec === 'B2' ? 'B' : sec]; return [...p, ...p].map(triad); };
 
@@ -178,7 +213,7 @@ async function renderSegment(style, sr) {
     const bus = ac.createGain(); bus.gain.value = 0.9; bus.connect(ac.destination);
     // 侧链“呼吸感”：科技风的铺底和贝斯每拍被压一下
     const pump = ac.createGain(); pump.connect(bus);
-    if (style === 'tech') {
+    if (style === 'tech' || style === 'house') {
       for (let k = 0; k * beat < bar + TAIL; k++) { pump.gain.setValueAtTime(0.35, k * beat); pump.gain.linearRampToValueAtTime(1, k * beat + beat * 0.55); }
     }
     const wetBus = ac.createGain();
@@ -219,7 +254,7 @@ async function renderSegment(style, sr) {
     const I = {
       osc(type, m, ta, dur, peak, { attack = 0.005, detune = 0, lp = 0, send = 0, pan = 0, toPump = false, vib = 0 } = {}) {
         const t = R(ta); if (t < 0) return;
-        const o = ac.createOscillator(); o.type = type; o.frequency.value = hz(m); o.detune.value = detune;
+        const o = ac.createOscillator(); o.type = type; o.frequency.value = hzT(m); o.detune.value = detune;
         if (vib) { const l = ac.createOscillator(); l.frequency.value = 5.5; const lg = ac.createGain(); lg.gain.value = vib; l.connect(lg).connect(o.detune); l.start(t); l.stop(t + attack + dur + 0.1); }
         const g = ac.createGain(); env(g, t, peak, attack, dur);
         let n = o.connect(g);
@@ -231,7 +266,7 @@ async function renderSegment(style, sr) {
         const t = R(ta); if (t < 0) return;
         const decay = Math.min(dur + 0.8, 2.4);
         [[1, 1, 1], [2, 0.45, 0.55], [3, 0.2, 0.32]].forEach(([k, gk, dk]) => {
-          const o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = hz(m) * k * (1 + 0.0007 * k * k);
+          const o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = hzT(m) * k * (1 + 0.0007 * k * k);
           const g = ac.createGain(); env(g, t, 0.09 * vel * gk, 0.004, decay * dk);
           out(o.connect(g), { send, pan }); o.start(t); o.stop(t + decay * dk + 0.05);
         });
@@ -239,7 +274,7 @@ async function renderSegment(style, sr) {
       ks(m, ta, dur, vel, { send = 0.2, pan = 0, bright = 3800 } = {}) {
         const t = R(ta); if (t < 0) return;
         const s = ac.createBufferSource();
-        s.buffer = ksBuffer(m, sr);
+        s.buffer = ksBuffer(m + tr, sr);
         const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = bright;
         const g = ac.createGain(); g.gain.setValueAtTime(0.32 * vel, t);
         g.gain.setValueAtTime(0.32 * vel, t + dur); g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.25);
@@ -252,7 +287,7 @@ async function renderSegment(style, sr) {
       bell(m, ta, vel, { send = 0.45, pan = 0 } = {}) {
         const t = R(ta); if (t < 0) return;
         [[1, 1, 1.3], [2.76, 0.28, 0.45], [5.4, 0.09, 0.18]].forEach(([k, gk, dk]) => {
-          const o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = hz(m) * k;
+          const o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = hzT(m) * k;
           const g = ac.createGain(); env(g, t, 0.06 * vel * gk, 0.002, dk);
           out(o.connect(g), { send, pan }); o.start(t); o.stop(t + dk + 0.1);
         });
@@ -261,7 +296,7 @@ async function renderSegment(style, sr) {
         const t = R(ta); if (t < 0) return;
         [...chord, chord[0] - 12].forEach((m, k) => {
           for (const dt of [-9, 9]) {
-            const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = hz(m); o.detune.value = dt;
+            const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = hzT(m); o.detune.value = dt;
             const g = ac.createGain();
             g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.011 * vel, t + 0.6);
             g.gain.setValueAtTime(0.011 * vel, t + dur); g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.9);
@@ -272,7 +307,7 @@ async function renderSegment(style, sr) {
       },
       pluck(m, ta, vel, { send = 0.35, pan = 0, toPump = false } = {}) {
         const t = R(ta); if (t < 0) return;
-        const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = hz(m);
+        const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = hzT(m);
         const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.Q.value = 3;
         f.frequency.setValueAtTime(4200, t); f.frequency.exponentialRampToValueAtTime(380, t + 0.22);
         const g = ac.createGain(); env(g, t, 0.06 * vel, 0.003, 0.3);
@@ -335,7 +370,7 @@ async function renderSegment(style, sr) {
         const t = R(ta); if (t < 0) return;
         [...chord, chord[0] + 12].forEach((m, k) => {
           for (const dt of [-24, -11, 0, 11, 24]) {
-            const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = hz(m); o.detune.value = dt;
+            const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = hzT(m); o.detune.value = dt;
             const g = ac.createGain();
             g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.0055 * vel, t + 0.01);
             g.gain.setValueAtTime(0.0055 * vel, t + dur); g.gain.linearRampToValueAtTime(0.0001, t + dur + release);
@@ -348,7 +383,7 @@ async function renderSegment(style, sr) {
       lead(m, ta, dur, vel, { lp = 4200 } = {}) {
         const t = R(ta); if (t < 0) return;
         for (const dt of [-12, 0, 12]) {
-          const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = hz(m); o.detune.value = dt;
+          const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = hzT(m); o.detune.value = dt;
           const l = ac.createOscillator(); l.frequency.value = 5.8; const lg = ac.createGain(); lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(14, t + Math.min(0.4, dur));
           l.connect(lg).connect(o.detune);
           const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.016 * vel, t + 0.012);
@@ -375,7 +410,7 @@ async function renderSegment(style, sr) {
       b808(m, ta, dur, vel, from = 0) {
         const t = R(ta); if (t < 0) return;
         const o = ac.createOscillator(); o.type = 'sine';
-        if (from) { o.frequency.setValueAtTime(hz(from), t); o.frequency.exponentialRampToValueAtTime(hz(m), t + 0.09); } else o.frequency.value = hz(m);
+        if (from) { o.frequency.setValueAtTime(hzT(from), t); o.frequency.exponentialRampToValueAtTime(hzT(m), t + 0.09); } else o.frequency.value = hzT(m);
         const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.5 * vel, t + 0.005);
         g.gain.setValueAtTime(0.45 * vel, t + dur * 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.1);
         o.connect(g).connect(I.dist(2.2)); o.start(t); o.stop(t + dur + 0.15);
@@ -383,16 +418,16 @@ async function renderSegment(style, sr) {
       /** 牛铃：两个方波 + 带通，Phonk 的灵魂 */
       cowbell(m, ta, vel) {
         const t = R(ta); if (t < 0) return;
-        const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = hz(m) * 2.2; f.Q.value = 1.6;
+        const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = hzT(m) * 2.2; f.Q.value = 1.6;
         const g = ac.createGain(); env(g, t, 0.16 * vel, 0.002, 0.28);
-        for (const k of [1, 1.48]) { const o = ac.createOscillator(); o.type = 'square'; o.frequency.value = hz(m) * k; o.connect(f); o.start(t); o.stop(t + 0.35); }
+        for (const k of [1, 1.48]) { const o = ac.createOscillator(); o.type = 'square'; o.frequency.value = hzT(m) * k; o.connect(f); o.start(t); o.stop(t + 0.35); }
         out(f.connect(g), { send: 0.3, pan: 0.1 });
       },
       /** 失真强力和弦（根音 + 五度 + 八度），mute=true 是闷音“咚咚咚” */
       power(rootM, ta, dur, vel, mute = false) {
         const t = R(ta); if (t < 0) return;
         for (const [iv, dt] of [[0, -8], [0, 8], [7, -6], [12, 5]]) {
-          const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = hz(rootM + iv); o.detune.value = dt;
+          const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = hzT(rootM + iv); o.detune.value = dt;
           const g = ac.createGain();
           g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.05 * vel, t + 0.004);
           if (mute) g.gain.exponentialRampToValueAtTime(0.0001, t + Math.min(dur, 0.14));
@@ -402,6 +437,31 @@ async function renderSegment(style, sr) {
         }
       },
       ride(ta, peak) { I.noise(ta, 'bandpass', 6500, peak, 0.32, { q: 1, pan: -0.2 }); },
+      // ---- 新风格用的乐器 ----
+      /** 电钢琴（Rhodes 味）：正弦 + 一点三角波，带颤音 */
+      ep(m, ta, dur, vel, { pan = 0, send = 0.3 } = {}) {
+        const t = R(ta); if (t < 0) return;
+        const decay = Math.min(dur + 0.6, 2.2);
+        [[1, 'sine', 1], [2, 'triangle', 0.18], [4, 'sine', 0.05]].forEach(([k, type, gk]) => {
+          const o = ac.createOscillator(); o.type = type; o.frequency.value = hzT(m) * k;
+          const g = ac.createGain(); env(g, t, 0.085 * vel * gk, 0.006, decay);
+          const trem = ac.createGain(); trem.gain.value = 1;
+          const l = ac.createOscillator(); l.frequency.value = 4.2; const lg = ac.createGain(); lg.gain.value = 0.25; l.connect(lg).connect(trem.gain); l.start(t); l.stop(t + decay + 0.1);
+          out(o.connect(g).connect(trem), { send, pan }); o.start(t); o.stop(t + decay + 0.05);
+        });
+      },
+      /** 笛子：带气声和颤音的正弦 */
+      flute(m, ta, dur, vel, { pan = 0.1 } = {}) {
+        const t = R(ta); if (t < 0) return;
+        const o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = hzT(m);
+        const l = ac.createOscillator(); l.frequency.value = 5.2; const lg = ac.createGain(); lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(16, t + Math.min(0.5, dur)); l.connect(lg).connect(o.detune);
+        const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.05 * vel, t + 0.06);
+        g.gain.setValueAtTime(0.045 * vel, t + dur); g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.18);
+        out(o.connect(g), { send: 0.45, pan }); o.start(t); o.stop(t + dur + 0.2); l.start(t); l.stop(t + dur + 0.2);
+        I.noise(ta, 'bandpass', hzT(m) * 2, 0.012 * vel, dur * 0.8, { q: 3, attack: 0.05, pan });
+      },
+      /** 黑胶底噪：随机的小噼啪 */
+      crackle(ta, n) { for (let k = 0; k < n; k++) I.noise(ta + rand() * beat * 4, 'highpass', 2500 + rand() * 3000, 0.02 + rand() * 0.03, 0.004, { pan: rand() - 0.5 }); },
     };
     return { I, render: () => ac.startRendering() };
   }
@@ -592,12 +652,76 @@ async function renderSegment(style, sr) {
         mel.forEach((n) => I.bell(n.m - (sec === 'B' ? 0 : 12), beatT(n.t - bi * 4), sec === 'C' ? 0.6 : 0.85, { pan: 0.15, send: 0.5 }));
         if (sec !== 'C') { I.timp(beatT(0), 0.5); if (full) { I.timp(beatT(2.5), 0.35); I.snare(beatT(3), 0.05); } }
       }
+        } else if (style === 'lofi') {
+      // 慵懒：电钢琴七和弦 + 摇摆的鼓 + 黑胶噼啪
+      const sw = (x) => (x % 1 === 0.5 ? x + 0.08 : x); // 八分音符后半拍晚一点，摇摆感
+      I.crackle(beatT(0), 6);
+      I.ep(chord[0] - 12, beatT(0), beat * 1.8, 0.8, { pan: -0.1 });
+      chord.slice(1).forEach((m) => I.ep(m, beatT(0), beat * 1.8, 0.6, { pan: 0.15 }));
+      chord.slice(1).forEach((m) => I.ep(m, beatT(sw(2.5)), beat * 1.2, 0.45, { pan: 0.15 }));
+      I.osc('sine', root - 24, beatT(0), beat * 1.5, 0.2, { attack: 0.02 });
+      I.osc('sine', root - 24 + 7, beatT(sw(2.5)), beat * 0.9, 0.14, { attack: 0.02 });
+      if (!intro) {
+        mel.forEach((n) => I.bell(n.m - 12, beatT(n.t - bi * 4), sec === 'B' ? 0.75 : 0.5, { pan: 0.2, send: 0.55 }));
+        if (sec !== 'C') {
+          I.kick(beatT(0), 0.42); I.kick(beatT(sw(1.5)), 0.28); I.kick(beatT(2.25), 0.3);
+          I.snare(beatT(1), 0.09); I.snare(beatT(3), 0.09);
+          for (let i = 0; i < 8; i++) I.hat(beatT(sw(i / 2)), i % 2 ? 0.018 : 0.03);
+        } else for (let i = 0; i < 4; i++) I.hat(beatT(i + 0.5), 0.02);
+      }
+    } else if (style === 'house') {
+      // 浩室：四四拍底鼓、反拍开镲、钢琴切分和弦、反拍贝斯
+      if (!intro) for (let i = 0; i < 4; i++) I.kick(beatT(i), sec === 'C' ? 0.35 : 0.62);
+      for (let i = 0; i < 4; i++) I.hat(beatT(i + 0.5), 0.05, true);
+      if (!intro && sec !== 'C') { I.clap(beatT(1), 0.17); I.clap(beatT(3), 0.17); for (let i = 0; i < 16; i++) if (i % 4) I.hat(beatT(i / 4), 0.018); }
+      for (const x of [0, 0.75, 1.5, 2.5, 3.25]) chord.forEach((m) => I.piano(m + 12, beatT(x), beat * 0.3, 0.55, { pan: 0.1, send: 0.2 }));
+      for (let i = 0; i < 4; i++) I.osc('sawtooth', root - 24, beatT(i + 0.5), beat * 0.35, 0.12, { lp: 520, toPump: true });
+      if (!intro) mel.forEach((n) => I.pluck(n.m, beatT(n.t - bi * 4), sec === 'B' || sec === 'B2' ? 1.1 : 0.7, { send: 0.4 }));
+      if (sec === 'B' || sec === 'B2') I.strings(chord, beatT(0), bar * 0.95, 0.6, { lp: 2200 });
+      if (sec === 'C' && bi >= 6) I.riser(beatT(0), bar, 0.06);
+    } else if (style === 'citypop') {
+      // 城市流行：七和弦电钢琴 + 八度跳跃的贝斯 + 明亮的拨弦主旋律
+      I.ep(chord[0], beatT(0), beat * 1.4, 0.7, { pan: -0.15 }); chord.slice(1).forEach((m) => I.ep(m + 12, beatT(0), beat * 1.4, 0.55, { pan: 0.2 }));
+      chord.slice(1).forEach((m) => I.ep(m + 12, beatT(1.5), beat * 0.8, 0.5, { pan: 0.2 }));
+      chord.slice(1).forEach((m) => I.ep(m + 12, beatT(3), beat * 0.8, 0.45, { pan: 0.2 }));
+      const bass = [[0, 0], [0.5, 12], [1.5, 0], [2, 7], [2.5, 12], [3.5, 10]];
+      bass.forEach(([x, iv]) => I.osc('triangle', root - 24 + iv, beatT(x), beat * 0.4, 0.2, { lp: 900 }));
+      if (!intro) {
+        mel.forEach((n) => I.pluck(n.m + 12, beatT(n.t - bi * 4), 0.9, { send: 0.4, pan: 0.15 }));
+        if (sec === 'B') { I.strings(chord, beatT(0), bar * 0.95, 0.7, { lp: 2600 }); mel.forEach((n) => I.bell(n.m + 12, beatT(n.t - bi * 4), 0.4)); }
+        if (sec !== 'C') {
+          I.kick(beatT(0), 0.5); I.kick(beatT(2.5), 0.4); I.snare(beatT(1), 0.13); I.snare(beatT(3), 0.13); I.clap(beatT(3), 0.08);
+          for (let i = 0; i < 16; i++) I.shaker(beatT(i / 4), i % 2 ? 0.016 : 0.03);
+        } else I.shaker(beatT(0), 0.03);
+      }
+    } else if (style === 'uke') {
+      // 尤克里里：高把位扫弦 + 口哨 + 拍手 + 钟琴
+      const hi = (c) => c.map((m) => m + 12);
+      const pat = [[0, true, 0.9], [1, true, 0.6], [1.5, false, 0.5], [2.5, false, 0.55], [3, true, 0.65], [3.5, false, 0.5]];
+      pat.forEach(([x, down, v]) => { if (!(intro && x > 0)) (down ? hi(chord) : [...hi(chord)].reverse()).forEach((m, k) => I.ks(m, beatT(x) + k * 0.012, beat * 0.4, v * 0.7, { pan: (k - 1) * 0.15, bright: 6000 })); });
+      I.osc('sine', root - 24, beatT(0), beat * 0.8, 0.18); I.osc('sine', root - 24 + 7, beatT(2), beat * 0.8, 0.15);
+      if (!intro) {
+        mel.forEach((n) => I.osc('sine', n.m + 12, beatT(n.t - bi * 4), n.d * beat, sec === 'C' ? 0.02 : 0.03, { attack: 0.03, vib: 22, send: 0.45 }));
+        if (sec === 'B') mel.forEach((n, k) => { if (k % 2 === 0) I.bell(n.m + 12, beatT(n.t - bi * 4), 0.5); });
+        if (sec !== 'C') { I.kick(beatT(0), 0.4); I.kick(beatT(2), 0.35); I.clap(beatT(1), 0.2); I.clap(beatT(3), 0.2); for (let i = 0; i < 8; i++) I.shaker(beatT(i / 2), 0.025); }
+      }
+    } else if (style === 'guofeng') {
+      // 国风：五声音阶拨弦（像古筝）+ 笛子 + 低沉的鼓 + 弦乐铺底
+      I.strings(chord, beatT(0), bar * 0.97, intro ? 0.6 : 0.75, { lp: 1200 });
+      const arp = [0, 2, 1, 2, 0, 1, 2, 1];
+      for (let i = 0; i < 8; i++) I.ks(chord[arp[i] % chord.length] + (i % 4 === 3 ? 12 : 0), beatT(i / 2), beat * 0.9, i % 4 === 0 ? 0.8 : 0.5, { pan: -0.25, bright: 5200 });
+      if (!intro) {
+        if (sec === 'C') mel.forEach((n) => I.ks(n.m + 12, beatT(n.t - bi * 4), n.d * beat, 0.9, { pan: 0.2, bright: 6500, send: 0.5 }));
+        else mel.forEach((n) => I.flute(n.m, beatT(n.t - bi * 4), n.d * beat, sec === 'B' ? 1 : 0.8));
+        if (sec !== 'C') { I.tom(beatT(0), 0.45, 90); I.tom(beatT(2.5), 0.3, 110); if (sec === 'B') { I.tom(beatT(1.5), 0.25, 140); I.tick(beatT(3), 0.06); } }
+        if (newSection) I.bell(chord[0] + 12, beatT(0), 0.5, { send: 0.6 });
+      }
     }
 
     if (FAST.has(style)) playFast(I, { intro, sec, bi, chord, root, nextRoot, lastBar, beatT, mel, newSection });
 
     // 过门、镲片、上扬：让段落之间有“换气”感
-    if (!intro && !FAST.has(style) && style !== 'story' && style !== 'warm') {
+    if (!intro && !FAST.has(style) && !['story', 'warm', 'lofi', 'guofeng', 'house'].includes(style)) {
       if (newSection && sec !== 'C') I.crash(beatT(0), 0.07);
       if (lastBar && SECTIONS[Math.floor(li / SEC_BARS) + 1] !== 'C' && sec !== 'C') {
         [3, 3.25, 3.5, 3.75].forEach((x, k) => I.snare(beatT(x), 0.07 + k * 0.03));
@@ -636,6 +760,6 @@ async function renderSegment(style, sr) {
 
 /** 提前在后台把音乐合成好（进入创作台时调用） */
 export function warmBgm(style, sampleRate = 48000) {
-  if (!style || style === 'none' || !PROGS[style]) return;
+  if (!style || style === 'none' || !PROGS[parseBgm(style).base]) return;
   renderBgm(style, 1, sampleRate).catch(() => {});
 }
