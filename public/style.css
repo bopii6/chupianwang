@@ -1004,7 +1004,7 @@ body { background: var(--surface); }
 #gallery::before, #gallery::after { display: none; }
 
 /* 放映区 */
-.show { position: sticky; top: 60px; height: calc(100vh - 60px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px; color: var(--ink-text); overflow: hidden; background: var(--stage-bg); }
+section.show { position: sticky; top: 60px; height: calc(100vh - 60px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px; color: var(--ink-text); overflow: hidden; background: var(--stage-bg); }
 .show-phone { position: relative; flex: none; height: min(calc(100vh - 60px - 150px), 760px); aspect-ratio: 9 / 16; padding: 0; border: none; border-radius: 28px; overflow: hidden; background: #000; cursor: pointer;
   box-shadow: 0 0 0 6px #1d1c1a, 0 0 0 7px rgba(255, 255, 255, .12), 0 50px 100px -30px rgba(0, 0, 0, .9), 0 0 140px -20px rgba(255, 106, 43, .38); transition: transform .45s var(--ease); animation: rise .8s var(--ease) both; }
 .show-phone:hover { transform: translateY(-4px); }
@@ -1076,7 +1076,7 @@ body { background: var(--surface); }
 @media (max-width: 760px) {
   :root { --pad: 16px; }
   #gallery { display: block; padding-right: 0; }
-  .show { position: relative; top: auto; height: 236px; justify-content: flex-start; padding: 20px 16px 0; }
+  section.show { position: relative; top: auto; height: 236px; justify-content: flex-start; padding: 20px 16px 0; }
   .show-phone { height: 330px; border-radius: 22px; }
   .show-cap, .show-sample { display: none; }
   .home { position: relative; margin-top: -24px; padding: 26px var(--pad) 0; min-height: 0; border-radius: 24px 24px 0 0; background: var(--surface); box-shadow: 0 -12px 30px -10px rgba(0, 0, 0, .5); }
@@ -1205,11 +1205,11 @@ body { background: var(--surface); }
 /* ===== 首页 v0.6：一眼“高级” ===== */
 /* 1. 放映区：光晕跟着画面变色，慢慢呼吸 */
 @property --glow { syntax: '<color>'; inherits: true; initial-value: rgb(255, 106, 43); }
-.show { transition: --glow 1.6s ease; isolation: isolate; }
-.show::before { content: ""; position: absolute; left: 50%; top: 46%; width: min(780px, 120%); aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; z-index: -1; pointer-events: none;
+section.show { transition: --glow 1.6s ease; isolation: isolate; }
+section.show::before { content: ""; position: absolute; left: 50%; top: 46%; width: min(780px, 120%); aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; z-index: -1; pointer-events: none;
   background: radial-gradient(closest-side, color-mix(in srgb, var(--glow) 34%, transparent), color-mix(in srgb, var(--glow) 10%, transparent) 55%, transparent);
   filter: blur(10px); animation: glowBreath 7s ease-in-out infinite; }
-.show::after { content: ""; position: absolute; left: 50%; bottom: 13%; width: 46%; height: 60px; transform: translateX(-50%); border-radius: 50%; z-index: -1; pointer-events: none;
+section.show::after { content: ""; position: absolute; left: 50%; bottom: 13%; width: 46%; height: 60px; transform: translateX(-50%); border-radius: 50%; z-index: -1; pointer-events: none;
   background: radial-gradient(closest-side, color-mix(in srgb, var(--glow) 45%, transparent), transparent); filter: blur(18px); opacity: .7; }
 @keyframes glowBreath { 0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: .9; } 50% { transform: translate(-50%, -50%) scale(1.08); opacity: 1; } }
 
@@ -1254,7 +1254,7 @@ body { background: var(--surface); }
 
 /* ---------- 实拍混剪的“版式”：模板下面的模板 ---------- */
 /* 左边放映区：手机上方的“版式 07/33”牌子 + 下面一排小刻度 */
-.show.multi .show-phone { height: min(calc(100vh - 60px - 250px), 700px); }
+section.show.multi .show-phone { height: min(calc(100vh - 60px - 250px), 700px); }
 .look-chip { display: flex; align-items: baseline; gap: 10px; max-width: 92%; padding: 8px 16px 8px 10px; border-radius: 999px; background: rgba(255, 255, 255, .07); box-shadow: 0 0 0 1px rgba(255, 255, 255, .1); white-space: nowrap; animation: rise .5s var(--ease) both; }
 .look-chip .lc-n { font-size: 12px; font-weight: 800; color: #fff; background: var(--accent); padding: 3px 9px; border-radius: 999px; letter-spacing: .5px; }
 .look-chip .lc-n i { font-style: normal; opacity: .75; font-weight: 600; }
@@ -1319,7 +1319,7 @@ body { background: var(--surface); }
 .skin small { display: block; font-size: 11.5px; color: var(--text-3); line-height: 1.45; margin-top: 2px; }
 @media (max-width: 760px) {
   .look-chip em, .look-ticks { display: none; }
-  .show.multi .show-phone { height: 300px; }
+  section.show.multi .show-phone { height: 300px; }
   .lk-gname { width: 40px; font-size: 11px; }
 }
 .tpl-strip .ml-badge { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); white-space: nowrap; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; background: var(--accent); color: #fff; box-shadow: 0 4px 10px -4px rgba(255, 90, 31, .8); }
@@ -1330,3 +1330,6 @@ body { background: var(--surface); }
 .ov-actions { flex-wrap: wrap; justify-content: center; max-width: 340px; }
 .ov-actions:has(button:nth-child(3)) button.primary { flex-basis: 100%; }
 .ov-actions button { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+
+/* 提示条：长句子折行，不要横跨整个屏幕 */
+.toast { max-width: min(560px, calc(100vw - 32px)); text-align: center; line-height: 1.6; }
