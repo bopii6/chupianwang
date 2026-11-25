@@ -258,7 +258,7 @@ function renderLookChip(f, look) {
   const n = Object.keys(f.module.skins).length; const no = lookNo(f, look);
   const own = (state.assets?.footage?.length || 0) >= 3; const picked = pickedLook() === look;
   $('#lookChip').innerHTML = `<span class="lc-n">版式 ${String(no).padStart(2, '0')}<i>/${n}</i></span><b>${esc(s.name)}</b><em>${esc(s.desc || '')}</em>`
-    + `<button type="button" class="lc-use${picked ? ' on' : ''}" id="lcUse">${picked ? '✓ 已选用' : '用这个版式'}</button>`;
+    + (picked ? '<span class="lc-use on">✓ 你选的</span>' : '');
   $('#heroUse').textContent = own ? '正在用你自己的素材预览' : `同一份素材，${n} 种排版自动换着放`;
   $('#lookTicks').querySelectorAll('i').forEach((el) => el.classList.toggle('on', el.dataset.look === look));
 }
@@ -272,13 +272,6 @@ $('#lookTicks').addEventListener('click', (e) => {
   const el = e.target.closest('i'); if (!el) return;
   // 点一下：手机跳到这个版式，从这里接着轮播
   hero.base = heroOrder(state.form).indexOf(el.dataset.look); hero.t0 = performance.now(); hero.hover = ''; hero.browsing = true;
-});
-$('#lookChip').addEventListener('click', (e) => {
-  if (!e.target.closest('#lcUse')) return;
-  const look = hero.shown; if (!look) return;
-  prefs.lookPick = pickedLook() === look ? '' : look; savePrefs(); // 再点一下就取消
-  hero.browsing = false; hero.base = Math.max(0, heroOrder(state.form).indexOf(look)); hero.t0 = performance.now();
-  renderLookChip(state.form, look); renderLooksPanel();
 });
 function stopHero() { cancelAnimationFrame(heroLoop); heroFor = null; }
 let heroShown = null;
@@ -363,24 +356,46 @@ function selectForm(id) {
   renderLooksPanel();
   warmBgm(bgmOf().style, getAudioCtx().sampleRate); // 用户打字时，后台先把音乐合成好
 }
-// ---------- 实拍混剪下面的“版式”：右边只留一行说明，挑版式在左边大手机上点 ----------
-// 一次只出一条（客户反馈：选项太多有压力）；不指定就每次自动换一种，最近用过的不重复
+// ---------- 实拍混剪下面的“版式”：在右边选，但不一下子铺开 33 个 ----------
+// 折中：第一张是「自动换（推荐）」，后面按 6 类分标签，一次只摆一类的 4–6 个；点哪个就用哪个，左边手机放你选的。
+// 一次只出一条；鼠标划过缩略图不动左边（不跳），点了才换。
 const lookPicks = () => (pickedLook() ? [pickedLook()] : []);
 const lookCount = () => 1;
+let lookTab = '';
 function renderLooksPanel() {
   const f = state.form; const el = $('#looksPanel');
   el.classList.toggle('hidden', !f?.multiLook);
   if (!f?.multiLook) { updateGo(); return; }
   const mod = f.module; const n = Object.keys(mod.skins).length; const pick = pickedLook();
-  el.innerHTML = pick
-    ? `<div class="lk-line"><b>版式</b><span class="lk-pick">已指定「${esc(mod.skins[pick].name)}」</span><button type="button" class="link quiet" id="lkAuto">改回每次自动换</button></div>`
-    : `<div class="lk-line"><b>版式</b><span>每次自动换一种，<em>${n} 种</em>不重样</span><span class="lk-hint">想用哪种，在左边预览上点「用这个版式」</span></div>`;
+  const groups = mod.lookGroups;
+  if (!groups.some((g) => g.name === lookTab)) lookTab = (pick && groups.find((g) => g.ids.includes(pick))?.name) || groups[0].name;
+  const g = groups.find((x) => x.name === lookTab);
+  el.innerHTML = `
+    <div class="lk-head"><b>选版式</b><em class="lk-big">${n} 种</em><span>${pick ? `已选「${esc(mod.skins[pick].name)}」，左边放的就是它` : '不选就每次自动换一种，最近用过的不重复'}</span></div>
+    <div class="lk-tabs">${groups.map((x) => `<button type="button" class="lk-tab${x.name === lookTab ? ' on' : ''}${pick && x.ids.includes(pick) ? ' has' : ''}" data-tab="${esc(x.name)}">${esc(x.name)}</button>`).join('')}</div>
+    <div class="lk-row lk-pickrow">
+      <button type="button" class="lk lk-auto${pick ? '' : ' on'}" data-look="" title="每次自动换一种版式，最近用过的不重复"><span class="lk-shot"><b>🎲</b><em>自动换</em></span><small>推荐</small></button>
+      ${g.ids.map((id) => `<button type="button" class="lk${id === pick ? ' on' : ''}" data-look="${id}" title="${esc(`${mod.skins[id].name}：${mod.skins[id].desc || ''}`)}"><span class="lk-shot"><canvas width="96" height="170"></canvas><i class="lk-no">✓</i></span><small>${esc(mod.skins[id].name)}</small></button>`).join('')}
+    </div>`;
+  drawLookThumbs();
   updateGo();
 }
+let lookThumbJob = 0;
+async function drawLookThumbs() {
+  const f = state.form; if (!f?.multiLook) return;
+  const job = ++lookThumbJob; const d = await loadPreview(f);
+  const paint = () => { if (job !== lookThumbJob) return; document.querySelectorAll('#looksPanel .lk canvas').forEach((c) => drawPreview(c.getContext('2d'), f, d, coverTime(d, f), c.closest('.lk').dataset.look)); };
+  paint(); setTimeout(paint, 1500); setTimeout(paint, 4500); // 示例图片是陆续加载的，晚一点再补画
+}
 $('#looksPanel').addEventListener('click', (e) => {
-  if (!e.target.closest('#lkAuto')) return;
-  prefs.lookPick = ''; savePrefs(); hero.browsing = false; hero.t0 = performance.now();
-  renderLooksPanel(); if (hero.shown) renderLookChip(state.form, hero.shown);
+  const tab = e.target.closest('.lk-tab');
+  if (tab) { lookTab = tab.dataset.tab; renderLooksPanel(); return; }
+  const b = e.target.closest('.lk'); if (!b) return;
+  prefs.lookPick = b.dataset.look; savePrefs();
+  // 选了一个：左边手机就放它；选回「自动换」：左边接着轮播
+  hero.browsing = false; hero.t0 = performance.now();
+  if (b.dataset.look) hero.base = Math.max(0, heroOrder(state.form).indexOf(b.dataset.look));
+  renderLooksPanel();
 });
 /** 生成前排好这次的几条版式：先用客户挑的，不够的随机补（不和最近用过的重复） */
 function planVersions(script) {
@@ -1903,6 +1918,7 @@ async function loadPhotos(kind = photoKind()) {
     ? state.photoLists[kind].map((p) => (p.clip ? { type: 'video', clip: p.clip, poster: p.bitmap } : { type: 'photo', bitmap: p.bitmap }))
     : state.photoLists[kind].map((p) => p.bitmap);
   renderPhotoRows();
+  if (kind === 'footage' && state.form?.multiLook && !$('#gallery').classList.contains('hidden')) drawLookThumbs(); // 版式缩略图用客户自己的素材画
   if (state.script && kind === 'footage' && photoKind() === 'footage' && state.tl) findMedia().catch(() => {}); // 在成片页加了素材：重新铺一遍
   else if (state.script) drawNow();
 }

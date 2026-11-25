@@ -1358,3 +1358,16 @@ section.show.multi .show-phone { height: min(calc(100vh - 60px - 200px), 720px);
 .looks .lk-line .lk-hint { flex-basis: 100%; font-size: 12px; color: var(--text-3); }
 .looks .lk-line .lk-pick { font-weight: 700; color: var(--accent); }
 @media (max-width: 760px) { .look-ticks { display: none; } .look-chip .lc-use { display: none; } }
+
+/* ---------- 选版式（折中版）：6 个分类标签，一次只摆一类；第一张是「自动换」 ---------- */
+.lk-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 10px; }
+.lk-tab { position: relative; height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--hair-2); background: var(--surface); color: var(--text-2); font-size: 12.5px; cursor: pointer; transition: all .2s; }
+.lk-tab:hover { color: var(--text); border-color: rgba(255, 90, 31, .4); }
+.lk-tab.on { background: var(--text); border-color: var(--text); color: #fff; font-weight: 600; }
+.lk-tab.has::after { content: ""; position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.lk-pickrow { padding: 4px 3px 2px; gap: 10px; }
+.lk-pickrow .lk, .lk-pickrow .lk-shot { width: 62px; }
+.lk-auto .lk-shot { display: grid; place-content: center; gap: 2px; text-align: center; background: linear-gradient(160deg, #fff4ec, #ffe3d3); }
+.lk-auto .lk-shot b { font-size: 22px; line-height: 1; }
+.lk-auto .lk-shot em { font-style: normal; font-size: 11px; font-weight: 700; color: var(--accent); }
+.lk.on .lk-no { display: grid; }
