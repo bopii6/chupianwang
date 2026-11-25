@@ -23,6 +23,7 @@ import { jsonChat } from './lib/ai-json.js';
 import { noteError, recentErrors, loadRecentErrors, installId, setErrorVersion } from './lib/errors.js';
 import { setupReport, reportError } from './lib/report.js';
 import { handleSupportApi, cleanupSupport } from './lib/support.js';
+import { noteTopic, queryTopics, cleanupTopics } from './lib/topics.js';
 import { handleSettings, deepseekKeyOf, pexelsKeyOf } from './lib/settings.js';
 import { APP_ROOT, ENV_FILE, LOG_FILE, WORKS_DIR, CACHE_DIR, MODELS_DIR } from './lib/paths.js';
 
@@ -83,6 +84,9 @@ setupReport({ version: PKG.version, install: installId(), hosted: HOSTED });
 // 收到的上报按天存，只留 90 天
 cleanupSupport().catch(() => {});
 setInterval(() => cleanupSupport().catch(() => {}), 6 * 3600e3).unref();
+// 客户问过什么（只留 90 天）
+cleanupTopics().catch(() => {});
+setInterval(() => cleanupTopics().catch(() => {}), 6 * 3600e3).unref();
 
 // ---------- 公网版：限流 + 资源保护（本地版完全不生效） ----------
 // 服务器只有 4 核 1Mbps 出口，一个客户连点「生成」就能把所有人拖慢，所以按账号限一下频率
@@ -574,10 +578,21 @@ function fabricated(text, source) {
 
 async function handleScript(req, res, { key = '', acct = null } = {}) {
   const { form, input, minutes = 2, account = '', materials = [], reference = '', plan = null, industry = '' } = await readJson(req);
-  if (!key) return sendJson(res, 400, { error: '还没填 AI 密钥。点右上角账号 →「我的设置」，把 DeepSeek 的密钥填进去', code: 'no-key' });
+  // 客户问了什么，先记着：下面几处提前返回（没密钥、模板不对）也要留下他想的题目
+  const asked = {
+    user: acct ? acct.username : '',
+    kind: reference ? 'remix' : 'script',
+    form,
+    minutes,
+    text: String(input || '').trim().slice(0, 300),
+    materialCount: Array.isArray(materials) ? materials.length : 0,
+    industry: String(industry || '').slice(0, 60),
+  };
+  const askedFail = (why) => { if (acct) noteTopic({ ...asked, ok: false, error: why }); };
+  if (!key) { askedFail('没填 AI 密钥'); return sendJson(res, 400, { error: '还没填 AI 密钥。点右上角账号 →「我的设置」，把 DeepSeek 的密钥填进去', code: 'no-key' }); }
   const who = acct ? acct.username : '';
   const promptFile = path.join(ROOT, 'prompts', `${String(form).replace(/[^a-z0-9-]/g, '')}.md`);
-  if (!fs.existsSync(promptFile)) return sendJson(res, 400, { error: '未知的形式' });
+  if (!fs.existsSync(promptFile)) { askedFail('未知的模板'); return sendJson(res, 400, { error: '未知的形式' }); }
   const system = await fsp.readFile(promptFile, 'utf8');
   const perMin = form === 'series-intro' || form === 'deep-dive' || form === 'sketch-talk' || form === 'footage-mix' ? 14 : form === 'pixel-story' ? 9 : 4.5; // 像素小剧场是短镜头，段数更多
   const sections = Math.max(4, Math.min(30, Math.round(Number(minutes) * perMin)));
@@ -690,8 +705,11 @@ ${ref}` : '';
       if (fresh) { data._generations = fresh.generations || 0; data._quota = quotaState(fresh); }
     }
     data._flags = [...c.illegal.map((x) => ({ word: x.word, why: x.reason || '广告法风险' })), ...c.fab, ...c.copied.map((x) => ({ word: x, why: '和原视频一样' }))].slice(0, 10);
+    // 记一句“客户问的是什么”：后台能看到客户到底想做什么内容（只记他自己写的那句话）
+    if (acct) noteTopic({ ...asked, ok: true, title: data?.title, chars: c.chars });
     sendJson(res, 200, data);
   } catch (e) {
+    askedFail(String(e.message || e));
     sendJson(res, e.status || 500, { error: String(e.message || e), ...(e.code ? { code: e.code } : {}) });
   }
 }
@@ -817,10 +835,13 @@ http.createServer(async (req, res) => {
 
     // 出错上报：客户电脑 → 服务器（不需要登录）；后台查看只有管理员能进
     if (pathname.startsWith('/api/support/')) {
-      if (pathname === '/api/support/errors' && HOSTED) {
+      if (HOSTED && pathname !== '/api/support/report') {
         const g = await gate();
         if (g.fail || !g.user) return deny(g.fail || g);
-        if (!isAdminUser(g.user)) return sendJson(res, 403, { error: '出错记录只有管理员能看' });
+        if (!isAdminUser(g.user)) return sendJson(res, 403, { error: '这个只有管理员能看' });
+      }
+      if (req.method === 'GET' && pathname === '/api/support/topics') {
+        return sendJson(res, 200, await queryTopics(params.get('day'), params.get('limit')));
       }
       return await handleSupportApi(req, res, pathname, { readJson, sendJson });
     }
@@ -947,7 +968,7 @@ http.createServer(async (req, res) => {
     }
     if (req.method === 'GET' && pathname === '/api/status') { if (!process.env.PEXELS_API_KEY) loadEnv(); return sendJson(res, 200, { ai: !!process.env.DEEPSEEK_API_KEY, stock: !!process.env.PEXELS_API_KEY, hosted: HOSTED, asrBase: process.env.ASR_MODEL_BASE || '/models/asr/', asrModel: process.env.ASR_MODEL || 'whisper-base', authRequired: HOSTED, jobWorker: process.env.JOB_WORKER === '1', version: PKG.version, commit: COMMIT }); }
     // 账号管理页面本身也不给陌生人看：没登录或不管理员就回首页登录（接口那边还有一道校验）
-    if ((pathname === '/admin/accounts.html' || pathname === '/admin/errors.html') && HOSTED) {
+    if ((pathname === '/admin/accounts.html' || pathname === '/admin/errors.html' || pathname === '/admin/topics.html') && HOSTED) {
       const g = await gate();
       if (g.fail || !isAdminUser(g.user)) { res.writeHead(302, { Location: '/?admin=1' }); return res.end(); }
     }

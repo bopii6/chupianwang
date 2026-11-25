@@ -19,11 +19,12 @@ Thumbs.db
 tmp/
 .chrome-dump/
 .chrome-shot2/
-# 本机运行记录（出错记录、机器编号、收到/发出去的上报），不是代码
+# 本机运行记录（出错记录、机器编号、收到/发出去的上报、客户问过什么），不是代码
 errors.jsonl
 install.json
 support/
 report.json
+topic-log/
 _diag/
 !.env.example
 

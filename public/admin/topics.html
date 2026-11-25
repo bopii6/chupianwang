@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>客户在问什么 · 出片王</title>
+  <link rel="icon" href="/favicon.svg" />
+  <link rel="stylesheet" href="/admin/accounts.css" />
+  <style>
+    .toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 14px; }
+    .toolbar select, .toolbar input { height: 36px; border-radius: 9px; border: 1px solid #d8d4cc; background: #fff; padding: 0 10px; font: inherit; }
+    .toolbar input { min-width: 200px; }
+    .toolbar .spacer { flex: 1; }
+    .stat { color: #6b6560; font-size: 13px; }
+    .stat b { color: #1d1a17; font-weight: 600; }
+    .ask { display: grid; grid-template-columns: 76px 120px 1fr; gap: 14px; padding: 14px 4px; border-bottom: 1px solid #f1ede5; }
+    .ask:hover { background: #fbf9f5; }
+    .ask .t { color: #4a443e; font-variant-numeric: tabular-nums; font-size: 13px; }
+    .ask .who { font-size: 13px; color: #6b6560; word-break: break-all; }
+    .ask .who b { display: block; color: #1d1a17; font-weight: 600; }
+    .ask .q { font-size: 15px; line-height: 1.6; color: #1d1a17; word-break: break-word; }
+    .ask .meta { margin-top: 5px; font-size: 12px; color: #8a837b; }
+    .ask .meta span { margin-right: 12px; }
+    .ask.fail .q { color: #b23b2e; }
+    .tagf { display: inline-block; padding: 0 7px; border-radius: 999px; background: #f1ede5; color: #6b6560; font-size: 11px; }
+    .empty { padding: 40px 0; text-align: center; color: #8a837b; }
+    .bars { display: flex; gap: 16px; flex-wrap: wrap; margin: 0 0 10px; font-size: 13px; color: #6b6560; }
+    .bars b { color: #1d1a17; }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="/"><span class="mark">▶</span>出片王</a>
+    <span class="crumb">客户在问什么</span>
+    <span class="grow"></span>
+    <span class="admin" id="who"></span>
+    <button class="quiet" id="btnLogout" type="button">退出</button>
+  </header>
+
+  <main>
+    <section class="deny hidden" id="deny">
+      <h1>先登录管理员账号</h1>
+      <p>客户写的内容只有管理员能看。</p>
+      <a class="primary" href="/?admin=1">去登录</a>
+    </section>
+
+    <div id="app" class="hidden">
+      <section class="lede">
+        <div>
+          <h1>客户在问什么</h1>
+          <p>客户在首页输入框里写的那句话，用来看出他们真正想做什么内容。<b>这是客户原话，只有你能看</b>，三个月后自动清掉。</p>
+        </div>
+      </section>
+
+      <section class="sheet">
+        <div class="toolbar">
+          <select id="day"></select>
+          <input id="q" type="text" placeholder="搜内容或账号" />
+          <button class="quiet" id="btnReload" type="button">刷新</button>
+          <span class="spacer"></span>
+          <span class="stat" id="stat"></span>
+        </div>
+        <div class="bars" id="bars"></div>
+        <div id="list"><div class="empty">正在读取…</div></div>
+      </section>
+    </div>
+  </main>
+
+  <div class="toast" id="toast"></div>
+  <script type="module" src="/admin/topics.js"></script>
+</body>
+</html>
