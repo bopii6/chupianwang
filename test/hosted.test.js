@@ -100,7 +100,7 @@ test('没填自己的密钥就写不了文案；作品墙按账号隔离', async
   const s = await req('GET', '/api/settings?check=1', { cookie: user });
   assert.equal(s.json.hosted, true);
   assert.equal(s.json.deepseek.filled, false);
-  const script = await req('POST', '/api/script', { cookie: user, body: { form: 'photo-talk', input: '测试' } });
+  const script = await req('POST', '/api/script', { cookie: user, body: { form: 'sketch-talk', input: '测试' } });
   assert.equal(script.status, 400);
   assert.equal(script.json.code, 'no-key');
   const w = await req('GET', '/api/works', { cookie: user });
@@ -223,7 +223,7 @@ test('试用号没配平台密钥时：给出明白的提示，不扣次数', as
   const created = await req('POST', '/api/admin/users', { cookie: admin, body: { username: 'trial_nokey', password: 'trial123456', plan: 'trial', quota: 6 } });
   const u = created.json.user;
   const user = cookieOf(await req('POST', '/api/auth/login', { body: { username: 'trial_nokey', password: 'trial123456' } }));
-  const r = await req('POST', '/api/script', { cookie: user, body: { form: 'photo-talk', input: '测试' } });
+  const r = await req('POST', '/api/script', { cookie: user, body: { form: 'sketch-talk', input: '测试' } });
   assert.equal(r.status, 503);
   assert.equal(r.json.code, 'platform-key');
   assert.equal(readUserFile(u.id).quotaUsed, 0, '失败不该扣次数');
@@ -241,7 +241,7 @@ test('试用次数用完不能生成；后台加次数/清零后恢复', async (
   const me = await req('GET', '/api/auth/me', { cookie: user });
   assert.equal(me.json.user.quotaLeft, 0, '剩余次数应该读成 0');
 
-  const script = await req('POST', '/api/script', { cookie: user, body: { form: 'photo-talk', input: '测试' } });
+  const script = await req('POST', '/api/script', { cookie: user, body: { form: 'sketch-talk', input: '测试' } });
   assert.equal(script.status, 403);
   assert.equal(script.json.code, 'quota');
   assert.match(script.json.error, /微信/);
@@ -260,7 +260,7 @@ test('试用次数用完不能生成；后台加次数/清零后恢复', async (
   // 改成自备密钥：变回不限次数，没填密钥就回 no-key
   const self = await req('PATCH', '/api/admin/users/' + u.id, { cookie: admin, body: { plan: 'selfkey' } });
   assert.equal(self.json.user.plan, 'selfkey');
-  const r2 = await req('POST', '/api/script', { cookie: user, body: { form: 'photo-talk', input: '测试' } });
+  const r2 = await req('POST', '/api/script', { cookie: user, body: { form: 'sketch-talk', input: '测试' } });
   assert.equal(r2.status, 400);
   assert.equal(r2.json.code, 'no-key');
 

@@ -5,7 +5,7 @@
 import { W, H, clamp, easeOut, font, fitFont, wrap, hash } from '../engine/draw.js';
 import { loadFontFaces } from '../engine/font-preload.js';
 import { THEMES, themeEmoji, normalizeTheme, EMOJI_FONT } from './themes.js';
-import { demoPresenter } from './photo-talk.js';
+import { demoPresenter } from './presenter.js';
 
 export const meta = {
   id: 'sketch-talk',

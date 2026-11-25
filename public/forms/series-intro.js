@@ -1,19 +1,20 @@
 // 形式 04：系列开场
-// 灵魂：用“每晚睡前看一集，一个月后领先 90% 的人”做钩子，几十秒交代：讲什么、我是谁、怎么带你学、资料备好了、现在关注。
+// 灵魂：给一个“追下去的理由”做钩子（把 X 拆成 N 集、这一路全拍下来、看完你就知道…），几十秒交代：讲什么/拍什么、我凭什么讲、什么节奏更新、追下去能得到什么，现在关注。
+// 适用：知识连载、案例合集、避坑清单、开店/装修/减脂等记录、连载故事……不限于课程。
 // 版式：顶部头像 + 账号 + 话题，绿青渐变系列大字（全片固定）；中间一块深色网格“屏幕”，每句换一个画面；底部一行字幕。
 import { W, H, clamp, easeOut, font, fitFont, wrap } from '../engine/draw.js';
 import { loadFontFaces } from '../engine/font-preload.js';
-import { demoPresenter } from './photo-talk.js';
+import { demoPresenter } from './presenter.js';
 import { themeEmoji, normalizeTheme, drawWallpaper } from './themes.js';
 
 export const meta = {
   id: 'series-intro',
   name: '系列开场',
   category: '获客引流',
-  outcome: '系列课第一集：承诺 + 人设 + 关注引导，专门用来涨粉',
-  ideas: ['每晚睡前10分钟讲一个语法点', '每天一道中考压轴题', '30天搞定初中几何', '每晚记住5个高频单词'],
-  tagline: '“每晚睡前看一集”式系列开篇：打字钩子、人设贴纸、学习路线',
-  fits: '系列课开篇 · 涨粉 · 专栏引流 · 老师人设',
+  outcome: '系列/连载内容的第一集：给追更理由 + 人设 + 关注引导，用来涨粉',
+  ideas: ['装修避坑7集', '开店这三年', '每天一个法律常识', '减脂30天全过程'],
+  tagline: '“这个系列值得追”式开篇：追更钩子、人设贴纸、更新节奏',
+  fits: '知识连载 · 案例合集 · 避坑清单 · 探店/记录 · 连载故事 · 涨粉',
   durations: [1, 2, 3],
   bgm: 'edm',
   needsPhotos: true,
@@ -717,7 +718,7 @@ export function normalize(s) {
   const str = (v, n = 20) => String(v ?? '').trim().replace(/[。.！!]+$/, '').slice(0, n);
   s.title = str(s.title, 16) || '系列开场';
   const series = Array.isArray(s.series) ? s.series : [s.series];
-  s.series = [str(series[0], 10) || '每晚睡前看一集', str(series[1], 14)];
+  s.series = [str(series[0], 10) || '持续更新', str(series[1], 14)];
   s.hashtags = str(s.hashtags, 30);
   s.theme = normalizeTheme(s.theme);
   s.sections = (s.sections || []).filter(Boolean).map((x) => {

@@ -109,7 +109,7 @@ test('坏输入连打 80 次：不返回 5xx，也不会把服务打崩', async 
     ['POST', '/api/tts-batch', { texts: 'abc' }],
     ['POST', '/api/tts-batch', { texts: [] }],
     ['POST', '/api/script', { form: '../package', input: huge.slice(0, 5000) }],
-    ['POST', '/api/script', { form: 'photo-talk', input: huge }],
+    ['POST', '/api/script', { form: 'sketch-talk', input: huge }],
     ['POST', '/api/fetch-url', { url: 'http://127.0.0.1:5173/' }],
     ['POST', '/api/client-error', 'null'],
     ['GET', '/%E0%A4%A', undefined],

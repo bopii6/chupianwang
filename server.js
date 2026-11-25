@@ -555,7 +555,7 @@ async function handleScript(req, res, { key = '', acct = null } = {}) {
   const promptFile = path.join(ROOT, 'prompts', `${String(form).replace(/[^a-z0-9-]/g, '')}.md`);
   if (!fs.existsSync(promptFile)) return sendJson(res, 400, { error: '未知的形式' });
   const system = await fsp.readFile(promptFile, 'utf8');
-  const perMin = form === 'series-intro' || form === 'deep-dive' || form === 'sketch-talk' || form === 'footage-mix' ? 14 : form === 'pixel-story' ? 9 : form === 'photo-talk' ? 6 : 4.5; // 像素小剧场是短镜头，段数更多
+  const perMin = form === 'series-intro' || form === 'deep-dive' || form === 'sketch-talk' || form === 'footage-mix' ? 14 : form === 'pixel-story' ? 9 : 4.5; // 像素小剧场是短镜头，段数更多
   const sections = Math.max(4, Math.min(30, Math.round(Number(minutes) * perMin)));
   // 客户上传的资料（PPT / Word / PDF / 网页提取出的文字），总量控制在约 24000 字
   let budget = 24000;
@@ -595,10 +595,8 @@ ${ref}` : '';
 
 【不许编】客户没提供的人数、比例、价格、适合年龄、教龄、头衔荣誉、服务内容（免费试听、答疑、赠送、名额、一对一等）一律不写；不许用 XX、某某 这种占位词，提到机构就说“我们”${account ? `或“${account}”` : ''}。`;
 
-  // 真人图文口播：每条随机定一个开场画面和两种主打画面，同一句话做两次、换个行业做，出来的样子都不一样
-  // 每条随机定一个开场画面和几种主打画面：同一句话做两次、换个行业做，出来的样子都不一样
+  // 每个形式：每条随机定一个开场画面和几种主打画面，同一句话做两次、换个行业做，出来的样子都不一样
   const LAYOUT_POOLS = {
-    'photo-talk': { open: ['quote', 'ask', 'chat', 'title', 'compare', 'checktest', 'verdict', 'warning', 'keywords', 'rank'], feat: ['quote', 'ask', 'chat', 'compare', 'steps', 'offer', 'tags', 'list', 'emoji', 'table', 'checktest', 'verdict', 'warning', 'formula', 'pyramid', 'rank', 'timeline', 'keywords', 'ticket', 'notify'], n: 3 },
     'series-intro': { open: ['type', 'countdown', 'quote', 'bedtime', 'progress'], feat: ['countdown', 'chat', 'checklist', 'vs', 'calendar', 'episodes', 'quote', 'ask', 'tree', 'cards', 'icons', 'quest', 'levelup', 'lockscreen', 'grid4', 'gift', 'neon', 'pledge', 'timeline', 'quiz', 'notebook', 'top3', 'spotlight', 'faq'], n: 4 },
     'deep-dive': { open: ['question', 'poll', 'marker', 'breaking', 'cinema', 'stamp', 'qa'], feat: ['chips', 'big', 'quote', 'compare', 'steps', 'checklist', 'marker', 'nametag', 'timeline', 'poll', 'ticker', 'caption', 'magnifier', 'qa', 'breaking', 'polaroid', 'top3', 'chain', 'stamp', 'sticky', 'cinema', 'chat', 'tape', 'tug'], n: 4 },
     'footage-mix': { open: ['hook', 'hook', 'qa', 'stamp', 'big', 'quote'], feat: ['chips', 'big', 'quote', 'steps', 'checklist', 'nametag', 'ticker', 'compare', 'qa', 'polaroid', 'focus', 'stamp'], n: 4 },
@@ -616,7 +614,7 @@ ${ref}` : '';
     '让观众在评论区说说自己踩过的坑或者遇到的问题，下期挑着讲',
     '让观众私信你说想了解什么（不要留电话、微信号）',
   ];
-  const ENDS = { 'footage-mix': ['cta'], 'sketch-talk': ['follow', 'button', 'checklist', 'brand'], 'photo-talk': ['ask', 'checktest', 'quote', 'offer', 'notify', 'ticket', 'list', 'verdict', 'title', 'keywords'] };
+  const ENDS = { 'footage-mix': ['cta'], 'sketch-talk': ['follow', 'button', 'checklist', 'brand'] };
   const pickOne = (arr) => arr[Math.floor(Math.random() * arr.length)];
   const cta = pickOne(CTA_STYLES);
   const endVis = ENDS[form] ? pickOne(ENDS[form]) : '';

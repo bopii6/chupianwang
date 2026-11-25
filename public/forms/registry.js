@@ -1,7 +1,6 @@
 // 形式库：每种形式 = 一套结构 + 多套皮肤，对应一类客户需求
 import * as dataCard from './data-card.js';
 import * as pixelStory from './pixel-story.js';
-import * as photoTalk from './photo-talk.js';
 import * as seriesIntro from './series-intro.js';
 import * as deepDive from './deep-dive.js';
 import * as sketchTalk from './sketch-talk.js';
@@ -9,7 +8,6 @@ import * as footageMix from './footage-mix.js';
 
 // 排序：获客的放前面（付费用户最在意的是客资）
 export const forms = [
-  { ...photoTalk.meta, module: photoTalk, url: '/forms/photo-talk.js', sample: '/samples/photo-talk-edu.json' },
   { ...footageMix.meta, module: footageMix, url: '/forms/footage-mix.js', sample: '/samples/footage-mix-edu.json' },
   { ...seriesIntro.meta, module: seriesIntro, url: '/forms/series-intro.js', sample: '/samples/series-intro-edu.json' },
   { ...sketchTalk.meta, module: sketchTalk, url: '/forms/sketch-talk.js', sample: '/samples/sketch-talk-edu.json' },

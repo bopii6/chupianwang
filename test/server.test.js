@@ -113,7 +113,7 @@ test('配音接口校验输入', async () => {
 });
 
 test('没配 AI 密钥时写文案给出明白的提示', async () => {
-  const r = await req('POST', '/api/script', { headers: sameOrigin, body: { form: 'photo-talk', input: '测试' } });
+  const r = await req('POST', '/api/script', { headers: sameOrigin, body: { form: 'sketch-talk', input: '测试' } });
   assert.equal(r.status, 400);
   assert.match(r.json.error, /AI 密钥/);
 });

@@ -112,7 +112,7 @@ let galleryLoop = 0;
 const previewCache = new Map();
 const formOf = (id) => forms.find((f) => f.id === id);
 const prepScript = (form, raw) => (form.module.normalize ? form.module.normalize(raw, splitLongLine) : normalize(raw));
-const TPL_USE = { 'footage-mix': '用自己的素材', 'sketch-talk': '讲干货', 'photo-talk': '招生 · 招商', 'series-intro': '涨粉', 'deep-dive': '立专业人设', 'pixel-story': '好转发', 'data-card': '讲知识点' };
+const TPL_USE = { 'footage-mix': '用自己的素材', 'sketch-talk': '讲干货', 'series-intro': '系列涨粉', 'deep-dive': '立专业人设', 'pixel-story': '好转发', 'data-card': '讲知识点' };
 function loadPreview(form) {
   if (!previewCache.has(form.id)) {
     previewCache.set(form.id, (async () => {
@@ -292,32 +292,17 @@ $('#tplStrip').addEventListener('click', (e) => {
 // 第三段是品类：客户在上面的下拉里选了行业，就只抽这一类的句子。17 类都至少给 3 条，选哪个都不空。
 // 加行业时记得 themes.js、prompts/*.md 和这里一起加。
 const IDEA_POOL = {
-  'photo-talk': [
-    '成人钢琴暑假班招生|成人钢琴暑假班招生，一对一小课|music',
-    '美甲新一期开班|美甲培训新一期开班，零基础也能学|beauty',
-    '驾校周末班报名|驾校周末班开始报名了|driving',
-    '教资冲刺 30 天|考教资冲刺班，最后 30 天怎么学|exam',
-    '少儿编程体验课|少儿编程体验课，带孩子来试一节|coding',
-    '下班学口语|成人英语口语班，下班后也能学|language',
-    '律所免费咨询|本地律所，第一次咨询不收费，先看看有没有必要打官司|legal',
-    '营养师配餐|营养师给你配一周三餐，比办健身卡有用|health',
-    '志愿填报一对一|高考志愿一对一，先出一份能落地的方案|counsel',
-    '30 岁转行学编程|30 岁想转行写代码，先来上一节试听课|coding',
-    '中医调理体验|中医馆调理体验，先号脉再谈方案|health',
-    '会计实操班招生|会计实操班招生，会做账比考完证更有用|finance',
-    '招生方案怎么做|机构的招生方案，别一上来就投广告|business',
-    '游泳第一节课|游泳第一节课，先学的是怎么不呛水|fitness',
-  ],
+  // 系列开场：知识连载、案例合集、避坑清单、记录/日记、连载故事……不限于课程
   'series-intro': [
-    '每晚一个乐理知识|每晚 10 分钟，带你学一个乐理知识|music',
-    '30 天学会美甲|30 天学会美甲基础|beauty',
+    '装修避坑7集|第一次装修，这 7 个坑我先替你踩了|business',
+    '开店这三年|开店三年，每天拍一点给你看|business',
+    '每天一个法律常识|每天 1 分钟，讲一个遇事用得上的法律常识|legal',
+    '减脂30天记录|减脂 30 天，全过程拍给你看|fitness',
+    '每天一个乐理知识|每天 10 分钟，带你学一个乐理知识|music',
     '每天一道科目一题|每天一道科目一易错题|driving',
-    '每天练一句口语|每天 1 分钟，练一句地道英语口语|language',
-    '睡前讲一道数学题|每晚睡前讲一个数学解题思路|k12',
-    '每天一条法律常识|每天 1 分钟，讲一个看得懂的法律常识|legal',
-    '每天一个营养搭配|每天 1 分钟，教你搭一顿不胖的饭|health',
-    '每天一个编程技巧|每天 1 分钟，讲一个能马上用的编程技巧|coding',
+    '每天一条营养搭配|每天 1 分钟，教你搭一顿不胖的饭|health',
     '每周一条升学政策|每周 5 分钟，讲清一条升学政策|counsel',
+    '每天一个编程技巧|每天 1 分钟，讲一个能马上用的编程技巧|coding',
     '每天一个健身动作|每天 1 分钟，学会一个在家能做的动作|fitness',
   ],
   'footage-mix': [
