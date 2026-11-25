@@ -11,6 +11,9 @@ import { exportInWorker, exportSupported } from './engine/exporter.js';
 
 const $ = (s) => document.querySelector(s);
 const FPS = 24; // 与对标样片一致；图文动效 24 帧足够流畅，比 30 帧少 20% 渲染量
+// 导出用几个渲染线程：默认 1。多线程各画各的，个别电脑上成片标题/字幕会逐帧轻微跳动（看着像抽抽），
+// 所以默认单线程求稳。想在控制台试回多线程：localStorage.setItem('ycp.exportThreads','4')
+const EXPORT_THREADS = (() => { try { return Math.max(1, Math.min(4, Number(localStorage.getItem('ycp.exportThreads')) || 1)); } catch { return 1; } })();
 const IDEAS = ['成人学钢琴晚不晚', '少儿编程有什么用', '科目二怎么一次过', '美甲新手接第一单', '律师第一次咨询问什么', '体检报告怎么看', '志愿填错能改吗', '零基础转行学什么'];
 const VOICES = [
   { id: 'zh-CN-YunxiNeural', name: '云希', desc: '阳光男声 · 适合知识讲解', av: '希' },
@@ -1450,8 +1453,8 @@ async function exportVideo({ skipAccountPrompt = false, saveToWorks = true, jobI
     const frameData = { script: structuredClone(state.script), tl: state.tl, planData: state.planData, skinId: skinOf(), env: state.env, fps: FPS, assets: state.form.needsPhotos || state.form.needsStock ? state.assets : null };
     const blob = await exportInWorker({
       formUrl: state.form.url, frameData, width: W, height: H, fps: FPS, duration: state.tl.duration,
-      audioBuffer: state.master, signal,
-      onProgress: (p, left) => (tabTitle(`${Math.round(p * 100)}% 正在导出`), overlayProgress(p, '正在生成视频', `${p < 0.06 ? `一般要 1–3 分钟（视频越长越久）` : left > 90 ? `还要约 ${Math.round(left / 60)} 分钟` : `还要约 ${Math.max(5, Math.ceil(left / 5) * 5)} 秒`} · 可以先去忙别的`)),
+      audioBuffer: state.master, signal, threads: EXPORT_THREADS,
+      onProgress: (p, left) => (tabTitle(`${Math.round(p * 100)}% 正在导出`), overlayProgress(p, '正在生成视频', `${p < 0.06 ? `一般要 1–5 分钟（视频越长越久）` : left > 90 ? `还要约 ${Math.round(left / 60)} 分钟` : `还要约 ${Math.max(5, Math.ceil(left / 5) * 5)} 秒`} · 可以先去忙别的`)),
     });
     const name = `${state.script.title || '我的视频'}.mp4`.replace(/[\\/:*?"<>|]/g, '');
     const file = new File([blob], name, { type: 'video/mp4' });

@@ -211,7 +211,7 @@ export async function encodeMp4({ width, height, fps, duration, draw, prepare, f
  * @param {object} o.frameData 传给 drawFrame 的数据（script/tl/planData/skinId/env/fps）
  * @param {AudioBuffer} o.audioBuffer
  */
-export function exportInWorker({ formUrl, frameData, width, height, fps, duration, audioBuffer, onProgress, signal }) {
+export function exportInWorker({ formUrl, frameData, width, height, fps, duration, audioBuffer, onProgress, signal, threads = 1 }) {
   return new Promise((resolve, reject) => {
     const worker = new Worker('/engine/export-worker.js', { type: 'module' });
     const channels = [0, Math.min(1, audioBuffer.numberOfChannels - 1)].map((c) => audioBuffer.getChannelData(c).slice());
@@ -225,7 +225,7 @@ export function exportInWorker({ formUrl, frameData, width, height, fps, duratio
     };
     worker.onerror = (e) => finish(reject, new Error(e.message || '导出线程出错'));
     worker.postMessage({
-      formUrl, frameData, width, height, fps, duration,
+      formUrl, frameData, width, height, fps, duration, threads,
       fontCss: ['/vendor/noto-sans-sc/700.css', '/vendor/noto-sans-sc/900.css', '/fonts/fusion-pixel-12/font.css'],
       audio: { sampleRate: audioBuffer.sampleRate, channels },
     }, channels.map((c) => c.buffer));

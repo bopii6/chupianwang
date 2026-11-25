@@ -49,12 +49,15 @@ class RenderPool {
 }
 
 self.onmessage = async (e) => {
-  const { formUrl, frameData, width, height, fps, duration, fontCss, audio } = e.data;
+  const { formUrl, frameData, width, height, fps, duration, fontCss, audio, threads } = e.data;
   let pool = null;
   try {
     const cores = self.navigator?.hardwareConcurrency || 4;
-    // 渲染线程最多 4 个：再多会和编码器抢 CPU，反而变慢
-    const k = Math.max(1, Math.min(4, Math.floor(cores / 2) - 1));
+    // 渲染线程数：默认 1。多个线程各画各的，个别电脑上同一帧画出来的位置会差几个像素，
+    // 编码后就是“标题/字幕一直抽抽”，所以默认单线程求稳（编码那一段本来也不能并行，慢不到一倍）。
+    // 要试回多线程：页面控制台 localStorage.setItem('ycp.exportThreads','4')。
+    const cap = Math.max(1, Math.min(4, Math.floor(cores / 2) - 1)); // 最多 4 个：再多会和编码器抢 CPU
+    const k = Math.max(1, Math.min(Number(threads) || 1, cap));
     let frameSource = null; let draw = null; let prepare = null;
     if (k >= 2) {
       pool = new RenderPool(k, { formUrl, frameData, width, height, fps, fontCss });
