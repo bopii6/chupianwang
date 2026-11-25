@@ -220,7 +220,17 @@ export function exportInWorker({ formUrl, frameData, width, height, fps, duratio
     worker.onmessage = (e) => {
       const m = e.data;
       if (m.type === 'progress') onProgress?.(m.p, m.left);
-      else if (m.type === 'done') { globalThis.__lastExportStats = { ...m.stats, threads: m.threads }; finish(resolve, new Blob([m.buffer], { type: 'video/mp4' })); }
+      else if (m.type === 'done') {
+        globalThis.__lastExportStats = { ...m.stats, threads: m.threads, ...(m.fallback ? { fallback: m.fallback } : {}) };
+        // 多线程没起来、自动改用单线程导出成功了：客户看不出区别，记到 server.log / 诊断信息里，方便我们查是哪种浏览器
+        if (m.fallback) {
+          fetch('/api/client-error', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true,
+            body: JSON.stringify({ page: location.pathname + location.search, message: `[导出] 多线程渲染没起来，已自动改用单线程导出（成功）：${m.fallback}`.slice(0, 500), stack: navigator.userAgent }),
+          }).catch(() => {});
+        }
+        finish(resolve, new Blob([m.buffer], { type: 'video/mp4' }));
+      }
       else if (m.type === 'error') finish(reject, new Error(m.message));
     };
     worker.onerror = (e) => finish(reject, new Error(e.message || '导出线程出错'));
