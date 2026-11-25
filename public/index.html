@@ -29,13 +29,16 @@
     <section class="show" id="show">
       <!-- 实拍混剪：手机上方挂一个“版式 7/33”的牌子，手机里每几秒换一种版式放 -->
       <div class="look-chip hidden" id="lookChip"></div>
-      <button class="show-phone" id="heroPhone" type="button" title="点一下，看带声音的完整示例">
-        <canvas id="heroCanvas" width="540" height="960"></canvas>
-        <span class="show-prog"><i id="heroProg"></i></span>
-        <span class="show-play"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg></span>
-      </button>
+      <div class="show-stage">
+        <!-- 实拍混剪：手机左边一竖排小刻度，一格一种版式，鼠标移上去看名字，点一下跳过去 -->
+        <div class="look-ticks hidden" id="lookTicks"></div>
+        <button class="show-phone" id="heroPhone" type="button" title="点一下，看带声音的完整示例">
+          <canvas id="heroCanvas" width="540" height="960"></canvas>
+          <span class="show-prog"><i id="heroProg"></i></span>
+          <span class="show-play"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg></span>
+        </button>
+      </div>
       <div class="show-cap"><b id="heroName"></b><span id="heroUse"></span></div>
-      <div class="look-ticks hidden" id="lookTicks"></div>
       <button class="show-sample" id="btnSample" type="button"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg>看完整示例</button>
     </section>
     <!-- 右边：工作台 -->

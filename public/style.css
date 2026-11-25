@@ -1333,3 +1333,28 @@ section.show.multi .show-phone { height: min(calc(100vh - 60px - 250px), 700px);
 
 /* 提示条：长句子折行，不要横跨整个屏幕 */
 .toast { max-width: min(560px, calc(100vw - 32px)); text-align: center; line-height: 1.6; }
+
+/* ---------- 版式刻度：放到手机左边，竖排（一格一种版式，按 6 类分组） ---------- */
+section.show.multi .show-phone { height: min(calc(100vh - 60px - 200px), 720px); }
+.show-stage { position: relative; flex: none; display: flex; }
+.look-ticks { position: absolute; right: calc(100% + 22px); top: 50%; transform: translateY(-50%); height: auto; max-width: none; flex-direction: column; align-items: flex-end; gap: 12px; }
+.look-ticks .lt-g { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+.look-ticks i { width: 12px; height: 6px; border-radius: 3px; overflow: visible; }
+.look-ticks i:hover { width: 20px; height: 6px; background: rgba(255, 255, 255, .55); }
+.look-ticks i.on { width: 30px; height: 8px; overflow: hidden; }
+/* 鼠标移上去，在左边显示这一格是什么版式 */
+.look-ticks i::before { content: attr(data-name); position: absolute; right: calc(100% + 10px); top: 50%; transform: translateY(-50%); white-space: nowrap; font-size: 12px; font-weight: 600; color: #fff; background: rgba(0, 0, 0, .75); padding: 4px 9px; border-radius: 6px; opacity: 0; pointer-events: none; transition: opacity .15s; }
+.look-ticks i:hover::before { opacity: 1; }
+.look-ticks i.on::before { display: none; }
+/* 牌子上的「用这个版式」 */
+.look-chip { align-items: center; }
+.look-chip .lc-use { flex: none; margin-left: 4px; height: 26px; padding: 0 11px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .35); background: transparent; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; transition: all .2s; }
+.look-chip .lc-use:hover { background: rgba(255, 255, 255, .12); border-color: #fff; }
+.look-chip .lc-use.on { background: var(--accent); border-color: var(--accent); }
+/* 右边工作台：版式只剩一行 */
+.looks .lk-line { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; font-size: 13px; color: var(--text-2); }
+.looks .lk-line b { font-size: 13.5px; font-weight: 700; color: var(--text); }
+.looks .lk-line em { font-style: normal; font-weight: 800; color: var(--accent); }
+.looks .lk-line .lk-hint { flex-basis: 100%; font-size: 12px; color: var(--text-3); }
+.looks .lk-line .lk-pick { font-weight: 700; color: var(--accent); }
+@media (max-width: 760px) { .look-ticks { display: none; } .look-chip .lc-use { display: none; } }
