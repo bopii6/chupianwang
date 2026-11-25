@@ -302,3 +302,30 @@ test('管理员不用填密钥：默认走平台 AI，也不占试用次数', as
   assert.equal(remix.json.code, 'platform-key');
 });
 
+test('客户电脑的出错上报：谁都能发，但只有管理员能看', async () => {
+  // 客户机器上报不需要登录（它本来就没账号）
+  const post = await req('POST', '/api/support/report', {
+    body: {
+      install: 'feedbeef1234',
+      version: '0.6.6',
+      events: [{ at: new Date().toISOString(), local: '2026-11-25 16:20:00 (UTC+08:00)', kind: 'api', where: 'POST /api/script', status: 502, message: 'AI 连着几次没把稿子按格式写完', version: '0.6.6' }],
+    },
+  });
+  assert.equal(post.status, 200, post.text);
+
+  // 没登录、普通客户，都不能看别人家的出错记录
+  assert.equal((await req('GET', '/api/support/errors')).status, 401);
+  const admin = await adminCookie();
+  await req('POST', '/api/admin/users', { cookie: admin, body: { username: 'erruser', password: 'err123456' } });
+  const user = cookieOf(await req('POST', '/api/auth/login', { body: { username: 'erruser', password: 'err123456' } }));
+  assert.ok(user, '普通账号要能登录');
+  assert.equal((await req('GET', '/api/support/errors', { cookie: user })).status, 403);
+  assert.equal((await req('GET', '/admin/errors.html', { cookie: user })).status, 302);
+
+  // 管理员能看到
+  const q = await req('GET', '/api/support/errors', { cookie: admin });
+  assert.equal(q.status, 200, q.text);
+  assert.ok(q.json.events.some((e) => e.install === 'feedbeef1234'), '管理员要能看到刚收的报错');
+  assert.equal((await req('GET', '/admin/errors.html', { cookie: admin })).status, 200);
+});
+

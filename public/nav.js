@@ -30,15 +30,21 @@ if (nav) {
   }));
   fillCopy(here === 'copy');
   fillWorks();
-  // 管理员多一个「账号」入口（普通客户看不到）
+  // 管理员多两个入口：账号、出错记录（普通客户看不到）
   fetch('/api/auth/me', { cache: 'no-store' }).then((r) => r.json()).then((d) => {
     if (d.user?.role !== 'admin' || !nav) return;
-    const a = document.createElement('a');
-    a.href = '/admin/accounts.html';
-    a.title = '账号管理';
-    if (location.pathname.startsWith('/admin/accounts')) { a.className = 'on'; a.setAttribute('aria-current', 'page'); }
-    a.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0z" /></svg><span class="nav-name">账号</span>';
-    nav.append(a);
+    const admin = [
+      { href: '/admin/accounts.html', name: '账号', dir: '/admin/accounts', icon: '<path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0z" />' },
+      { href: '/admin/errors.html', name: '出错', dir: '/admin/errors', icon: '<path d="M12 4 2.5 20h19zM12 9v5m0 3v.5" />' },
+    ];
+    for (const it of admin) {
+      const a = document.createElement('a');
+      a.href = it.href;
+      a.title = it.name === '账号' ? '账号管理' : '客户的出错记录';
+      if (location.pathname.startsWith(it.dir)) { a.className = 'on'; a.setAttribute('aria-current', 'page'); }
+      a.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${it.icon}</svg><span class="nav-name">${it.name}</span>`;
+      nav.append(a);
+    }
   }).catch(() => {});
 }
 

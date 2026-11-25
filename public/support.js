@@ -260,7 +260,8 @@ async function openDiag() {
         ['配音', d.tts && !/^不可用/.test(d.tts) ? '正常' : `<span class="bad">${esc(d.tts || '?')}</span>`],
         ['听写模型', d.asrModel === '已下载' ? '已下载' : `<span class="bad">${esc(d.asrModel || '?')}</span>`],
         ['电脑', d.os ? `${esc(d.os)}，${d.cpus} 核，内存 ${d.memoryGB}GB（空闲 ${d.freeMemoryGB}GB）` : esc(d.error || '?')],
-        ['最近报错', d.clientErrors?.length ? `<span class="bad">${d.clientErrors.length} 条</span>` : '没有'],
+        ['最近出错', d.recentErrors?.length ? `<span class="bad">${esc(d.recentErrors[0].local)} ${esc(d.recentErrors[0].message)}</span>` : '没有'],
+        ['机器编号', d.installId ? esc(d.installId) : '?'],
       ];
   const text = hosted
     ? [
@@ -278,8 +279,13 @@ async function openDiag() {
         `浏览器：${browserName()}  ${navigator.userAgent}`,
         `屏幕：${screen.width}x${screen.height} @${devicePixelRatio}`,
         `能否出片：${problems.length ? problems.join('、') : '正常'}`,
-        `Node ${d.node}  ${d.os}  ${d.cpus} 核  内存 ${d.memoryGB}GB（空闲 ${d.freeMemoryGB}GB）`,
+        `Node ${d.node}  ${d.os}  ${d.cpus} 核  内存 ${d.memoryGB}GB（空闲 ${d.freeMemoryGB}GB）  机器编号 ${d.installId || '?'}`,
         `AI 密钥：${d.aiKey ? '有' : '没有'}  素材库密钥：${d.stockKey ? '有' : '没有'}  配音：${d.tts}  听写模型：${d.asrModel}  作品数：${d.works}`,
+        '',
+        '—— 最近出错（时间 / 哪一步 / 原因）——',
+        ...(d.recentErrors?.length
+          ? d.recentErrors.map((e) => `${e.local}  ${e.where || e.kind}  ${e.status || ''}  ${e.message}${e.detail ? `\n    ${e.detail}` : ''}`)
+          : ['没有']),
         '',
         '—— 页面最近报错 ——',
         ...(d.clientErrors?.length ? d.clientErrors.map((e) => `${e.at} ${e.page} ${e.message}\n${e.stack}`) : ['没有']),

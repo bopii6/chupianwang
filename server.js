@@ -19,6 +19,10 @@ import { bootstrapAdmin, readUser as readAccount, userDir as accountDir, listUse
 import { handleWorks, serveWorkFile } from './lib/works.js';
 import { handleJobs } from './lib/jobs.js';
 import { handleMcp } from './lib/mcp.js';
+import { jsonChat } from './lib/ai-json.js';
+import { noteError, recentErrors, loadRecentErrors, installId, setErrorVersion } from './lib/errors.js';
+import { setupReport, reportError } from './lib/report.js';
+import { handleSupportApi, cleanupSupport } from './lib/support.js';
 import { handleSettings, deepseekKeyOf, pexelsKeyOf } from './lib/settings.js';
 import { APP_ROOT, ENV_FILE, LOG_FILE, WORKS_DIR, CACHE_DIR, MODELS_DIR } from './lib/paths.js';
 
@@ -32,6 +36,9 @@ const PORT = Number((portArg > 0 && process.argv[portArg + 1]) || process.env.PO
 const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const COMMIT = (() => { try { return spawnSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: ROOT, encoding: 'utf8', windowsHide: true }).stdout.trim(); } catch { return ''; } })();
 const STARTED = new Date();
+// 出错记录：带上版本号；启动时把上次运行留下的记录读进来（重启后也查得到）
+setErrorVersion(PKG.version);
+loadRecentErrors();
 
 // ---------- .env ----------
 // 启动时就在环境变量里的（比如测试明确设成空）以它为准；从 .env 读来的，.env 改了再读会更新（填了密钥不用重启）
@@ -70,6 +77,12 @@ const HOSTED = !!PUBLIC_BASE_URL || process.env.AUTH_REQUIRED === '1';
 const ownerDir = (id, sub) => (sub ? path.join(accountDir(id), sub) : accountDir(id));
 function worksDirOf(user) { return HOSTED && user ? ownerDir(user.id, 'works') : WORKS; }
 fs.mkdirSync(WORKS, { recursive: true });
+
+// 本地版出错时，把那条记录发给我们的服务器（客户不用点任何东西）；公网版自己就是服务器，不发
+setupReport({ version: PKG.version, install: installId(), hosted: HOSTED });
+// 收到的上报按天存，只留 90 天
+cleanupSupport().catch(() => {});
+setInterval(() => cleanupSupport().catch(() => {}), 6 * 3600e3).unref();
 
 // ---------- 公网版：限流 + 资源保护（本地版完全不生效） ----------
 // 服务器只有 4 核 1Mbps 出口，一个客户连点「生成」就能把所有人拖慢，所以按账号限一下频率
@@ -237,6 +250,13 @@ function readJson(req) {
   });
 }
 function sendJson(res, code, obj) {
+  // 5xx 都记一笔：客户点「复制诊断信息」发过来时，我们才能看到是哪一步、什么原因失败的。
+  // （以前只记 AI 的成功用量，失败原因一行都不留，客户说“没写成功”我们只能靠猜）
+  if (code >= 500) {
+    const where = `${res.req?.method || ''} ${String(res.req?.url || '').split('?')[0]}`.trim();
+    // 记本地（诊断信息里能看到），同时排进上报队列（本地版会发到我们服务器）
+    reportError(noteError({ kind: 'api', where, status: code, message: obj?.error, user: res.dspUser?.username || '' }));
+  }
   res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify(obj));
 }
@@ -455,29 +475,33 @@ async function handleStock(req, res, query, keyOverride = '') {
 
 // ---------- AI 文案（DeepSeek） ----------
 // key：公网版传客户自己的密钥；本地版不传，用 .env 里的
+// 具体怎么调、AI 没按格式写的时候怎么让它重写，都在 lib/ai-json.js 里；这里只负责把错误翻成客户看得懂的话
 async function deepseek(messages, { temperature = 0.7, max_tokens = 8000, key = '', who = '' } = {}) {
   const auth = key || process.env.DEEPSEEK_API_KEY;
-  let r;
+  const tag = who ? ` ${who}` : '';
   try {
-    // 带超时：DeepSeek 偶尔卡住不回，不能让页面一直转圈
-    r = await fetch('https://api.deepseek.com/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth}` },
-      body: JSON.stringify({ model: process.env.DEEPSEEK_MODEL || 'deepseek-chat', messages, response_format: { type: 'json_object' }, temperature, max_tokens }),
-      signal: AbortSignal.timeout(Number(process.env.AI_TIMEOUT_MS || 240000)),
+    return await jsonChat({
+      key: auth,
+      messages,
+      temperature,
+      maxTokens: max_tokens,
+      label: who,
+      onUsage: (u, round) => {
+        if (!u) return;
+        // 用量记一笔：输入多少（其中多少命中缓存，缓存部分便宜约 10 倍）、输出多少
+        console.log(`[AI 用量]${tag}${round > 1 ? ` 第${round}轮` : ''} 输入 ${u.prompt_tokens}（命中缓存 ${u.prompt_cache_hit_tokens ?? 0}）输出 ${u.completion_tokens}`);
+      },
     });
   } catch (e) {
-    const timeout = e?.name === 'TimeoutError' || e?.name === 'AbortError';
-    throw Object.assign(new Error(timeout ? 'AI 这会儿太忙，等了 4 分钟没回，稍后再点一次' : '连不上 DeepSeek，检查一下网络再试'), { status: 502 });
+    if (e.reason === 'unauthorized') throw Object.assign(new Error('DeepSeek 不认这个密钥（可能填错了或被删了），去设置里换一把'), { status: 400, code: 'no-key' });
+    if (e.reason === 'insufficient') throw Object.assign(new Error('DeepSeek 账户余额不足，充值后再来'), { status: 400 });
+    if (e.reason === 'timeout') throw Object.assign(new Error('AI 这会儿太忙，等了 4 分钟没回，稍后再点一次'), { status: 502 });
+    if (e.reason === 'network') throw Object.assign(new Error('连不上 DeepSeek，检查一下网络再试'), { status: 502 });
+    // 三轮都没写成合法 JSON（多是稿子太长被截断）：告诉客户怎么办，而不是让他一直点重试
+    if (e.reason === 'json') throw Object.assign(new Error('AI 连着几次没把稿子按格式写完（一般是内容太长被截断了）。把时长调短一点、资料少放一点，再点一次'), { status: 502 });
+    if (e.reason === 'http') throw Object.assign(new Error(e.message), { status: 502 });
+    throw e;
   }
-  if (r.status === 401) throw Object.assign(new Error('DeepSeek 不认这个密钥（可能填错了或被删了），去设置里换一把'), { status: 400, code: 'no-key' });
-  if (r.status === 402) throw Object.assign(new Error('DeepSeek 账户余额不足，充值后再来'), { status: 400 });
-  if (!r.ok) throw Object.assign(new Error(`DeepSeek 返回错误 ${r.status}: ${(await r.text()).slice(0, 300)}`), { status: 502 });
-  const j = await r.json();
-  const content = j.choices[0].message.content;
-  // 用量记一笔：输入多少（其中多少命中缓存，缓存部分便宜约 10 倍）、输出多少
-  if (j.usage) console.log(`[AI 用量]${who ? ` ${who}` : ''} 输入 ${j.usage.prompt_tokens}（命中缓存 ${j.usage.prompt_cache_hit_tokens ?? 0}）输出 ${j.usage.completion_tokens}`);
-  try { return { data: JSON.parse(content), content }; } catch { throw Object.assign(new Error('AI 返回的内容不是合法 JSON，请重试'), { status: 502 }); }
 }
 
 // ---------- 复刻对标视频 ----------
@@ -703,6 +727,7 @@ function pushClientError(e) {
   clientErrors.push(e);
   if (clientErrors.length > 30) clientErrors.shift();
   console.error(`[页面出错] ${e.page} ${e.message}${e.stack ? '\n' + e.stack : ''}`);
+  reportError(noteError({ kind: 'page', where: e.page, message: e.message, detail: e.stack }));
 }
 function tail(file, n) {
   try {
@@ -731,6 +756,8 @@ async function handleDiag(req, res) {
     aiKey: !!process.env.DEEPSEEK_API_KEY, stockKey: !!process.env.PEXELS_API_KEY,
     tts: checkPython(), asrModel: fs.existsSync(path.join(asrDir, 'config.json')) ? '已下载' : '没下载',
     works, clientErrors: clientErrors.slice(-10),
+    // 带时间的出错记录：客户说“刚才出错了”，这里能看到是几点几分、哪一步、什么原因
+    recentErrors: recentErrors(20), installId: installId(),
     log: tail(LOG_FILE, 60),
   });
 }
@@ -781,11 +808,22 @@ http.createServer(async (req, res) => {
         if (!HOSTED) return { user: null };
         const r = await (p ||= requireUser(req));
         p = r;
+        // 记在 res 上：出错的时候（sendJson 记日志）能带上是谁，公网版一个日志里才分得清客户
+        if (r.user) res.dspUser = r.user;
         return r.user ? { user: r.user } : { fail: { status: r.status, error: r.error, code: r.code } };
       };
     })();
     const deny = (f) => sendJson(res, f.status || 401, { error: f.error, code: f.code });
 
+    // 出错上报：客户电脑 → 服务器（不需要登录）；后台查看只有管理员能进
+    if (pathname.startsWith('/api/support/')) {
+      if (pathname === '/api/support/errors' && HOSTED) {
+        const g = await gate();
+        if (g.fail || !g.user) return deny(g.fail || g);
+        if (!isAdminUser(g.user)) return sendJson(res, 403, { error: '出错记录只有管理员能看' });
+      }
+      return await handleSupportApi(req, res, pathname, { readJson, sendJson });
+    }
     // 登录 / 账号管理（管理员后台）
     if (pathname.startsWith('/api/auth/') || pathname.startsWith('/api/admin/')) {
       return await handleAuth(req, res, pathname, { readJson, sendJson, hosted: HOSTED });
@@ -909,7 +947,7 @@ http.createServer(async (req, res) => {
     }
     if (req.method === 'GET' && pathname === '/api/status') { if (!process.env.PEXELS_API_KEY) loadEnv(); return sendJson(res, 200, { ai: !!process.env.DEEPSEEK_API_KEY, stock: !!process.env.PEXELS_API_KEY, hosted: HOSTED, asrBase: process.env.ASR_MODEL_BASE || '/models/asr/', asrModel: process.env.ASR_MODEL || 'whisper-base', authRequired: HOSTED, jobWorker: process.env.JOB_WORKER === '1', version: PKG.version, commit: COMMIT }); }
     // 账号管理页面本身也不给陌生人看：没登录或不管理员就回首页登录（接口那边还有一道校验）
-    if (pathname === '/admin/accounts.html' && HOSTED) {
+    if ((pathname === '/admin/accounts.html' || pathname === '/admin/errors.html') && HOSTED) {
       const g = await gate();
       if (g.fail || !isAdminUser(g.user)) { res.writeHead(302, { Location: '/?admin=1' }); return res.end(); }
     }
