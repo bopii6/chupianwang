@@ -1539,7 +1539,21 @@ function overlayProgress(p, title, sub, actions) {
   $('#ovPct').textContent = Math.round(p * 100) + '%';
   $('#ringFill').style.strokeDashoffset = String(RING * (1 - p));
 }
-function hideOverlay() { clearInterval(stageTimer); $('#overlay').className = 'overlay hidden'; }
+function hideOverlay() {
+  clearInterval(stageTimer);
+  const ov = $('#overlay');
+  // 个别显卡/浏览器（尤其被自动化工具启动的 Chrome）在「带玻璃模糊的浮层突然隐藏」时会留下巨大的黑色残影。
+  // 做法：先撤掉模糊，下一帧再真正隐藏，并强制重绘一次舞台，让合成层重新生成。
+  ov.style.backdropFilter = 'none'; ov.style.webkitBackdropFilter = 'none';
+  requestAnimationFrame(() => {
+    ov.className = 'overlay hidden';
+    const st = document.querySelector('.stage');
+    if (st) {
+      st.style.transform = 'translateZ(0)';
+      requestAnimationFrame(() => { st.style.transform = ''; drawNow(); });
+    } else drawNow();
+  });
+}
 
 // ---------- 播放 ----------
 const pctx = $('#preview').getContext('2d');
@@ -1553,6 +1567,14 @@ function drawNow() {
   updateTime();
 }
 function primeAudio() { try { getAudioCtx().resume(); } catch { /* */ } }
+/** 个别显卡/浏览器（尤其被自动化工具启动的 Chrome）合成层会卡住，画面像被一张黑图盖住。
+ *  这里强制把舞台重新合成一遍：切换一下 3D 变换 + 重画当前帧。 */
+function hardRepaint() {
+  const st = document.querySelector('.stage');
+  if (!st) { drawNow(); return; }
+  st.style.transform = 'translateZ(0)';
+  requestAnimationFrame(() => { st.style.transform = ''; drawNow(); });
+}
 function play() {
   if (!state.script || !state.tl) return;
   if (state.t >= state.tl.duration - 0.05) state.t = 0;
@@ -1560,6 +1582,9 @@ function play() {
   $('#playIcon').innerHTML = '<rect x="7" y="5.5" width="3.5" height="13" rx="1" fill="currentColor"/><rect x="13.5" y="5.5" width="3.5" height="13" rx="1" fill="currentColor"/>';
   state.playStartT = state.t;
   state.playStartPerf = performance.now();
+  // 兜底：开始播放 1.8 秒后时间还没走（说明画面卡住了），强制重绘一次
+  clearTimeout(state.playWatch);
+  state.playWatch = setTimeout(() => { if (state.playing && state.t < 0.15) hardRepaint(); }, 1800);
   if (state.master && state.audioKey === audioKey()) {
     const ac = getAudioCtx(); ac.resume();
     const src = ac.createBufferSource();

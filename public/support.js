@@ -7,7 +7,7 @@ const css = `
 .sup-bar b{color:#c2410c}
 .sup-ver{position:fixed;right:10px;bottom:0;z-index:40;font:11px/1 system-ui,sans-serif;color:var(--text-3,#908c84);background:transparent;border:0;padding:1px 8px 2px;border-radius:6px 6px 0 0;cursor:pointer;opacity:.75}
 .sup-ver:hover{opacity:1;background:var(--surface-2,#f3f2ee)}
-.sup-mask{position:fixed;inset:0;z-index:70;background:rgba(20,18,14,.35);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px;animation:supFade .2s ease-out}
+.sup-mask{position:fixed;inset:0;z-index:70;background:rgba(20,18,14,.5);display:flex;align-items:center;justify-content:center;padding:16px;animation:supFade .2s ease-out}
 .sup-mask .sup-card{animation:supIn .32s cubic-bezier(.2,.8,.2,1)}
 @keyframes supFade{from{opacity:0}}
 @keyframes supIn{from{opacity:0;transform:translateY(12px) scale(.98)}}
