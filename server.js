@@ -214,7 +214,10 @@ async function serveStatic(req, res, pathname) {
     try {
       const st = await fsp.stat(file);
       if (!st.isFile()) continue;
-      res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Content-Length': st.size, 'Cache-Control': cache });
+      // 字体分片（.woff2）内容永远不变：一年缓存。以前是 no-cache 又没有 ETag，等于每次都重下——
+      // 导出时每个渲染线程都要重新下一遍上百 KB 字体，客户网慢时字体来不及到就先用替代字体画，成片就“抽抽”，也白白耗服务器带宽
+      const cc = path.extname(file) === '.woff2' ? LONG_CACHE : cache;
+      res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Content-Length': st.size, 'Cache-Control': cc });
       if (req.method === 'HEAD') { res.end(); return true; }
       pipeFile(file, res);
       return true;

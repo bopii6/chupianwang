@@ -1,6 +1,7 @@
 // 导出总线程：开多个渲染子线程并行画帧，自己按顺序编码 + 封装 MP4
 import { encodeMp4 } from './exporter.js';
-import { registerFonts } from './worker-fonts.js';
+import { prepareExportFonts } from './worker-fonts.js';
+import { setDecodeWait } from './footage.js';
 
 /** 渲染线程池：帧 i 固定交给第 i % k 个子线程，每个子线程按先后顺序处理，结果按帧号取 */
 class RenderPool {
@@ -24,7 +25,7 @@ class RenderPool {
             if (res) { this.waiting.delete(m.i); res(buf); } else this.done.set(m.i, buf);
           }
         };
-        w.onerror = (e) => reject(new Error(e.message || '渲染线程出错'));
+        w.onerror = (e) => { e.preventDefault?.(); reject(new Error(e.message ? `${e.message} (${e.filename}:${e.lineno})` : '渲染线程出错（加载失败）')); };
       }));
       w.postMessage({ type: 'init', ...this.init });
       this.workers.push(w);
@@ -53,20 +54,20 @@ self.onmessage = async (e) => {
   let pool = null;
   try {
     const cores = self.navigator?.hardwareConcurrency || 4;
-    // 渲染线程数：默认 1。多个线程各画各的，个别电脑上同一帧画出来的位置会差几个像素，
-    // 编码后就是“标题/字幕一直抽抽”，所以默认单线程求稳（编码那一段本来也不能并行，慢不到一倍）。
-    // 要试回多线程：页面控制台 localStorage.setItem('ycp.exportThreads','4')。
-    const cap = Math.max(1, Math.min(4, Math.floor(cores / 2) - 1)); // 最多 4 个：再多会和编码器抢 CPU
-    const k = Math.max(1, Math.min(Number(threads) || 1, cap));
+    // 渲染线程数：按电脑核数自动定，最多 4 个（再多会和编码器抢 CPU）；2 核 / 4 核的电脑和单核服务器就是 1 个。
+    // 以前多线程会“抽抽”，根子是每个线程各自下字体、3 秒没下完就先用替代字体画，
+    // 现在总线程先把字体下完（浏览器缓存里有了），每个渲染线程也必须等字体全部落地才开画，画出来逐像素一致。
+    const cap = Math.max(1, Math.min(4, Math.floor(cores / 2) - 1));
+    const k = Math.max(1, Math.min(Number(threads) || cap, cap));
+    const form = await import(formUrl);
+    await prepareExportFonts(form, frameData.script, fontCss); // 先在这里下一遍字体，渲染线程再取就是走缓存
     let frameSource = null; let draw = null; let prepare = null;
     if (k >= 2) {
       pool = new RenderPool(k, { formUrl, frameData, width, height, fps, fontCss });
       await pool.start();
       frameSource = pool;
     } else {
-      await registerFonts(fontCss);
-      const form = await import(formUrl);
-      await form.preloadFonts(frameData.script);
+      setDecodeWait(4000);
       draw = (ctx, t) => form.drawFrame(ctx, { ...frameData, t });
       if (form.prepareFrame) prepare = (t) => form.prepareFrame({ ...frameData, t }).catch(() => {});
     }

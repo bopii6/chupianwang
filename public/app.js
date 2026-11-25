@@ -12,9 +12,10 @@ import { planFootage } from './engine/footage.js';
 
 const $ = (s) => document.querySelector(s);
 const FPS = 24; // 与对标样片一致；图文动效 24 帧足够流畅，比 30 帧少 20% 渲染量
-// 导出用几个渲染线程：默认 1。多线程各画各的，个别电脑上成片标题/字幕会逐帧轻微跳动（看着像抽抽），
-// 所以默认单线程求稳。想在控制台试回多线程：localStorage.setItem('ycp.exportThreads','4')
-const EXPORT_THREADS = (() => { try { return Math.max(1, Math.min(4, Number(localStorage.getItem('ycp.exportThreads')) || 1)); } catch { return 1; } })();
+// 导出用几个渲染线程：0 = 按电脑核数自动（最多 4 个，2 核 / 4 核电脑自动就是 1 个）。
+// 以前多线程会让标题字幕“抽抽”，原因是各线程字体没下完就开画，现在导出前强制等字体下完，已修好。
+// 万一个别电脑还有问题，可以在控制台强制单线程：localStorage.setItem('ycp.exportThreads','1')
+const EXPORT_THREADS = (() => { try { return Math.max(0, Math.min(4, Number(localStorage.getItem('ycp.exportThreads')) || 0)); } catch { return 0; } })();
 const IDEAS = ['成人学钢琴晚不晚', '少儿编程有什么用', '科目二怎么一次过', '美甲新手接第一单', '律师第一次咨询问什么', '体检报告怎么看', '志愿填错能改吗', '零基础转行学什么'];
 const VOICES = [
   { id: 'zh-CN-YunxiNeural', name: '云希', desc: '阳光男声 · 适合知识讲解', av: '希' },
@@ -1641,7 +1642,7 @@ async function exportVideo({ skipAccountPrompt = false, saveToWorks = true, jobI
     const file = new File([blob], name, { type: 'video/mp4' });
     if (state.versions?.[state.vi]) { state.versions[state.vi].done = true; renderVerBar(); }
     const nextVi = state.versions ? state.versions.findIndex((v) => !v.done) : -1;
-    const nextAct = nextVi >= 0 ? [{ label: `接着导出 ${'ABC'[nextVi]} 条（${state.form.module.skins[state.versions[nextVi].look]?.name || ''}）`, primary: true, fn: () => { hideOverlay(); useVersion(nextVi); setTimeout(() => exportVideo({ skipAccountPrompt: true }), 300); } }] : [];
+    const nextAct = nextVi >= 0 ? [{ label: `接着导出 ${'ABC'[nextVi]} 条 · ${state.form.module.skins[state.versions[nextVi].look]?.name || ''}`, primary: true, fn: () => { hideOverlay(); useVersion(nextVi); setTimeout(() => exportVideo({ skipAccountPrompt: true }), 300); } }] : [];
     const canShare = matchMedia('(pointer: coarse)').matches && navigator.canShare?.({ files: [file] });
     if (jobId) {
       const up = await fetch('/api/jobs/' + encodeURIComponent(jobId) + '/complete?title=' + encodeURIComponent(state.script?.title || name.replace(/\.mp4$/, '')), {

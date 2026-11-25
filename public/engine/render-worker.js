@@ -1,6 +1,7 @@
 // 渲染子线程：负责“画一帧 → 读像素 → 转成 I420”，多个子线程并行，编码线程按顺序收帧
-import { registerFonts } from './worker-fonts.js';
+import { prepareExportFonts } from './worker-fonts.js';
 import { rgbaToI420 } from './exporter.js';
+import { setDecodeWait } from './footage.js';
 
 let form = null; let frameData = null; let ctx = null; let W = 0; let H = 0; let fps = 24;
 
@@ -9,9 +10,9 @@ self.onmessage = async (e) => {
   if (m.type === 'init') {
     try {
       ({ frameData, width: W, height: H, fps } = m);
-      await registerFonts(m.fontCss);
       form = await import(m.formUrl);
-      await form.preloadFonts(frameData.script);
+      await prepareExportFonts(form, frameData.script, m.fontCss);
+      setDecodeWait(4000); // 导出不赶时间：视频帧解不出来就多等，别拿相邻帧凑数（线程多、电脑忙时会画面一顿一顿）
       ctx = new OffscreenCanvas(W, H).getContext('2d', { alpha: false, willReadFrequently: true });
       self.postMessage({ type: 'ready' });
     } catch (err) {

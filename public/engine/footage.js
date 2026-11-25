@@ -179,6 +179,9 @@ export async function importVideo(file, onProgress) {
 
 // ---------- 解码：按时间取画面 ----------
 const LOOK = 2; // 多喂几帧，解码器才会把目标帧吐出来
+// 等一帧解出来最多等多久：预览 250ms（卡了就先用相邻帧，不拖慢播放）；导出调大，宁可慢一点也要拿到准的那一帧
+let DECODE_WAIT = 250;
+export function setDecodeWait(ms) { DECODE_WAIT = ms; }
 class ClipReader {
   constructor(clip) {
     this.clip = clip; this.data = null; this.dec = null; this.frames = []; this.fed = 0; this.outMax = -1;
@@ -225,7 +228,7 @@ class ClipReader {
     if (!this.dec || this.dec.state === 'closed' || this.dirty || passed || k > this.fed || j < this.fed - LOOK - 6) this.reset(k);
     this.feedTo(j + LOOK);
     const t0 = performance.now();
-    while (this.outMax < j && !this.dirty && performance.now() - t0 < 250) {
+    while (this.outMax < j && !this.dirty && performance.now() - t0 < DECODE_WAIT) {
       await new Promise((r) => { this.wake = r; setTimeout(r, 40); });
     }
     this.wake = null;
