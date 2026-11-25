@@ -14,6 +14,7 @@
 - 服务日志：`server.log`
 - 打不开 AI：`.env` 里 `DEEPSEEK_API_KEY` 没填
 - 没声音 / 配音失败：Python 或 edge-tts 没装好，运行 setup
+- 扫描件 PDF / 图片 / 老版 .doc .ppt 读不出字：这些要“识图”，用的也是 DeepSeek 密钥（没填、填错、余额不足都会失败）；`server.log` 里搜 `[识图]`
 - “用别人的爆款做”卡在下载模型：`.cache/models/web/onnx-community/whisper-base/` 不全，运行 setup
 
 ## 不要动

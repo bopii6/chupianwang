@@ -25,6 +25,7 @@ import { setupReport, reportError } from './lib/report.js';
 import { handleSupportApi, cleanupSupport } from './lib/support.js';
 import { noteTopic, queryTopics, cleanupTopics } from './lib/topics.js';
 import { handleSettings, deepseekKeyOf, pexelsKeyOf } from './lib/settings.js';
+import { handleOcr } from './lib/ocr.js';
 import { APP_ROOT, ENV_FILE, LOG_FILE, WORKS_DIR, CACHE_DIR, MODELS_DIR } from './lib/paths.js';
 
 const ROOT = APP_ROOT; // 程序文件（只读）；客户数据的位置见 lib/paths.js
@@ -94,6 +95,7 @@ const RATE_LIMITS = {
   script: { per10min: Number(process.env.RATE_SCRIPT_10MIN || 6), perDay: Number(process.env.RATE_SCRIPT_DAY || 60), what: '生成' },
   tts: { per10min: Number(process.env.RATE_TTS_10MIN || 40), perDay: 0, what: '配音' },
   upload: { per10min: 0, perDay: Number(process.env.RATE_UPLOAD_DAY || 80), what: '上传视频' },
+  ocr: { per10min: Number(process.env.RATE_OCR_10MIN || 150), perDay: Number(process.env.RATE_OCR_DAY || 800), what: '识图' }, // 扫描件一页算一次
 };
 const rateHits = new Map(); // `${类型}:${账号id}` → [时间戳]
 function overRate(kind, id) {
@@ -580,7 +582,9 @@ function fabricated(text, source) {
 }
 
 async function handleScript(req, res, { key = '', acct = null } = {}) {
-  const { form, input, minutes = 2, account = '', materials = [], reference = '', plan = null, industry = '' } = await readJson(req);
+  const { form, input, minutes: rawMinutes = 2, account = '', materials = [], reference = '', plan = null, industry = '' } = await readJson(req);
+  // 时长最长 5 分钟（首页四档：1 / 2 / 3 / 5，见 public/app.js 的 DUR_LABELS）
+  const minutes = Math.max(0.5, Math.min(5, Number(rawMinutes) || 2));
   // 客户问了什么，先记着：下面几处提前返回（没密钥、模板不对）也要留下他想的题目
   const asked = {
     user: acct ? acct.username : '',
@@ -598,7 +602,7 @@ async function handleScript(req, res, { key = '', acct = null } = {}) {
   if (!fs.existsSync(promptFile)) { askedFail('未知的模板'); return sendJson(res, 400, { error: '未知的形式' }); }
   const system = await fsp.readFile(promptFile, 'utf8');
   const perMin = form === 'series-intro' || form === 'deep-dive' || form === 'sketch-talk' || form === 'footage-mix' ? 14 : form === 'pixel-story' ? 9 : 4.5; // 像素小剧场是短镜头，段数更多
-  const sections = Math.max(4, Math.min(30, Math.round(Number(minutes) * perMin)));
+  const sections = Math.max(4, Math.min(70, Math.round(Number(minutes) * perMin)));
   // 客户上传的资料（PPT / Word / PDF / 网页提取出的文字），总量控制在约 24000 字
   let budget = 24000;
   const docs = (Array.isArray(materials) ? materials : []).slice(0, 6).map((m, i) => {
@@ -610,6 +614,8 @@ async function handleScript(req, res, { key = '', acct = null } = {}) {
 - 先通读资料，挑出最能打动家长/学员、最适合做成短视频的 1 个主题和 3–6 个要点，不要把资料从头到尾复述一遍。
 - 资料里白纸黑字写明的数字、案例、课程名、机构名可以直接用；资料里没有的数字一律不许编。
 - 资料是 PPT 时，“【第N页】”只是页码标记，不要念出来；备注里通常是讲师的讲解思路，可以参考。
+- 资料是 Excel 表格时，“【表格：表名】”下面每行是表格的一行，各列用“ | ”隔开，第一行通常是表头。先看懂每列是什么，再从数据里找最能说明问题的对比、变化、排名（例如入学和结课的分数对比），只引用表里真有的数字，不要把表格一行行念出来。
+- 标着“识图”的页是从图片里识别出来的文字，可能有错别字、断句不对，按意思理解，明显识别错的字不要照抄。
 - 口播要说人话：把书面语、标题腔改写成老师面对面聊天的口吻。
 - ${say ? '客户另外说的话代表他这次最想讲的重点，优先满足。' : '客户没有额外说明，由你根据资料决定讲什么。'}` : '';
   // 复刻对标视频：照原视频的打法写，内容换成客户的行业，不许照抄
@@ -635,7 +641,9 @@ ${ref}` : '';
   const targetChars = Math.round(minutes * (form === 'pixel-story' ? 220 : form === 'sketch-talk' ? 160 : 250));
   const user = `目标时长：约 ${minutes} 分钟（约 ${sections} 段，口播总字数约 ${targetChars} 字）\n账号名：${account || '（未填写）'}\n\n客户说的话：\n${sayLine || (ref ? '（没写，照原视频的打法来）' : '（没写，按资料来）')}${materialRule}${docs.length ? `\n\n${docs.join('\n\n')}` : ''}${remixRule}
 
-【不许编】客户没提供的人数、比例、价格、适合年龄、教龄、头衔荣誉、服务内容（免费试听、答疑、赠送、名额、一对一等）一律不写；不许用 XX、某某 这种占位词，提到机构就说“我们”${account ? `或“${account}”` : ''}。`;
+${minutes > 3 ? `【长视频】这条约 ${minutes} 分钟，比平常长：结构里“主体”那部分多展开几个点（4–7 个），每个点都配具体的例子、场景或做法；开头、收尾的段数不用变多。不要靠重复、绕圈子凑字数。
+
+` : ''}【不许编】客户没提供的人数、比例、价格、适合年龄、教龄、头衔荣誉、服务内容（免费试听、答疑、赠送、名额、一对一等）一律不写；不许用 XX、某某 这种占位词，提到机构就说“我们”${account ? `或“${account}”` : ''}。`;
 
   // 每个形式：每条随机定一个开场画面和几种主打画面，同一句话做两次、换个行业做，出来的样子都不一样
   const LAYOUT_POOLS = {
@@ -678,29 +686,59 @@ ${ref}` : '';
   }
   const messages = [{ role: 'system', content: system }, { role: 'user', content: user + layoutHint }];
   try {
-    let { data, content } = await deepseek(messages, { temperature: 0.8, key, who });
+    const maxTokens = minutes > 3 ? 14000 : minutes > 2 ? 10000 : 8000; // 长稿子的 JSON 很长，给够，免得被截断
+    let { data, content } = await deepseek(messages, { temperature: 0.8, key, who, max_tokens: maxTokens });
     // 自动检查一遍：违法用语（每条都查）、照抄原文（复刻时才查），有问题就带着问题让 AI 重写一次
     // 客户自己给过的文字：这里面出现过的数字、服务，不算 AI 编的
     const source = [say, trade, account, ...(Array.isArray(materials) ? materials : []).map((m) => String(m?.text || ''))].join('\n');
+    // 篇幅：口播实测约 5 字/秒（含换气和段落停顿，2026-11 实测 11 条），5 分钟封顶 ≈ 1400 字
+    // 只管 3 分钟、5 分钟两档（超了就对不上按钮上写的时长）；1、2 分钟档稍长一点没关系，不为它多等一轮
+    const maxChars = minutes >= 3 ? Math.min(1400, Math.round(targetChars * 1.25)) : Infinity;
     const check = (d) => {
       const text = allText(d);
       const chars = (d?.sections || []).flatMap((x) => x?.lines || []).join('').length;
-      return { copied: ref ? copiedPhrases(text, ref).slice(0, 8) : [], illegal: scanRisks(text).filter((x) => x.level === '违法').slice(0, 6), fab: fabricated(text, source).slice(0, 10), chars, short: chars < targetChars * 0.75 };
+      return { copied: ref ? copiedPhrases(text, ref).slice(0, 8) : [], illegal: scanRisks(text).filter((x) => x.level === '违法').slice(0, 6), fab: fabricated(text, source).slice(0, 10), chars, short: chars < targetChars * (minutes > 3 ? 0.85 : 0.75), long: chars > maxChars };
     };
-    // 篇幅明显不够（实测 AI 常常写短，选 3 分钟出来不到 2 分钟），也带着问题让它补一次
-    const score = (x) => x.copied.length * 2 + x.illegal.length * 2 + x.fab.length + (x.short ? 3 : 0);
+    const score = (x) => x.copied.length * 2 + x.illegal.length * 2 + x.fab.length + (x.long ? 3 : 0);
     let c = check(data);
     if (score(c)) {
       const fb = [
         c.copied.length && `这些地方和原视频一模一样，属于照抄：${c.copied.map((x) => `「${x}」`).join('、')}。全部换成你自己的说法。`,
         c.illegal.length && `这些说法违反广告法：${c.illegal.map((x) => `「${x.word}」（${x.reason}）`).join('、')}。改成合规的说法。`,
-        c.short && `篇幅不够：现在口播一共只有 ${c.chars} 字，目标约 ${targetChars} 字（约 ${sections} 段）。补到目标篇幅：多加几段新内容（换角度、举例子、讲做法），不要把每句话拉长注水。`,
+        c.long && (() => { const n = (data.sections || []).length; const cut = Math.max(1, Math.ceil(((c.chars - targetChars) / Math.max(1, c.chars)) * n)); return `太长了：现在口播一共 ${c.chars} 字、${n} 段，最多 ${maxChars} 字（成片不能超过 ${Math.ceil(maxChars / 300)} 分钟）。整段删掉最次要的 ${cut} 段（开头和结尾别删），输出的 sections 只剩 ${n - cut} 段左右；剩下的段落原样保留，不用改写。`; })(),
         c.fab.length && `这些内容客户没提供过，是你编的：${c.fab.map((x) => `「${x.word}」（${x.why}）`).join('、')}。删掉或改成不带具体数字、不承诺具体服务的说法；占位词换成“我们”${account ? `或“${account}”` : ''}。`,
       ].filter(Boolean).join('\n');
-      const again = await deepseek([...messages, { role: 'assistant', content }, { role: 'user', content: `${fb}\n其它保持不变，重新输出完整 JSON。` }], { temperature: 0.7, key, who });
+      const again = await deepseek([...messages, { role: 'assistant', content }, { role: 'user', content: `${fb}\n其它保持不变，重新输出完整 JSON。` }], { temperature: 0.7, key, who, max_tokens: maxTokens });
       const c2 = check(again.data);
-      if (c.short) console.log(`[篇幅] ${form} 目标 ${targetChars} 字，第一版 ${c.chars} 字，补写后 ${c2.chars} 字（问题分 ${score(c)} → ${score(c2)}）`);
-      if (score(c2) <= score(c)) { data = again.data; c = c2; }
+      if (c.long) console.log(`[篇幅] ${form} 上限 ${maxChars} 字，第一版 ${c.chars} 字，删减后 ${c2.chars} 字`);
+      if (score(c2) <= score(c) && Array.isArray(again.data?.sections) && again.data.sections.length) { data = again.data; c = c2; }
+    }
+    // 篇幅明显不够（实测 AI 写到 30 段左右就自己停了，选 5 分钟常常只写出 2 分多钟）：
+    // 不让它整篇重写（重写还是停在差不多长），而是“在结尾前面接着补几段”，只输出新补的段落，拼进去
+    for (let round = 1; c.short && round <= (minutes > 3 ? 3 : 1); round++) {
+      const need = targetChars - c.chars;
+      const n = (data.sections || []).length;
+      const k = Math.max(2, Math.round((need / Math.max(1, c.chars)) * n));
+      try {
+        const more = await deepseek([...messages, { role: 'assistant', content: JSON.stringify(data) }, { role: 'user', content: `篇幅不够：现在口播一共 ${c.chars} 字、${n} 段，目标约 ${targetChars} 字。在最后一段（结尾）前面再补写约 ${need} 字、${k} 段左右的新内容：接着前面的思路往下讲新的点、例子或做法（编号、吊牌接着前面的往下排），不要重复前面讲过的，每段的格式和字段规则和前面完全一样，画面类型和相邻的段不要重复。只输出 JSON：{"sections":[新补的这几段]}` }], { temperature: 0.7, key, who, max_tokens: maxTokens });
+        // 新补的段里有违法用语的，那一段不要（别因为一段把整批都扔了）
+        const add = (Array.isArray(more.data?.sections) ? more.data.sections : []).filter((x) => x && Array.isArray(x.lines) && x.lines.length && !scanRisks(allText({ sections: [x] })).some((r) => r.level === '违法'));
+        if (!add.length) break;
+        const merged = { ...data, sections: [...data.sections.slice(0, -1), ...add, ...data.sections.slice(-1)] };
+        const c2 = check(merged);
+        console.log(`[篇幅] ${form} 目标 ${targetChars} 字，补第 ${round} 次：${c.chars} → ${c2.chars} 字（+${add.length} 段）`);
+        data = merged; c = c2;
+      } catch (e) { console.warn(`[篇幅] 补写失败：${e.message}`); break; }
+    }
+    // 还是超（AI 删的时候常常只删几个字；补写也可能补过头）：自己动手，从结尾前一段往前整段拿掉，直到不超；
+    // 从后往前拿，“第一、第二……”的编号不会断，开头和最后一段（收尾、互动引导）不动
+    if (c.long && Array.isArray(data.sections) && data.sections.length > 4) {
+      const secs = [...data.sections]; const before = c.chars;
+      const len = (x) => (x?.lines || []).join('').length;
+      let total = c.chars;
+      while (total > maxChars && secs.length > 4) total -= len(secs.splice(secs.length - 2, 1)[0]);
+      data = { ...data, sections: secs }; c = check(data);
+      console.log(`[篇幅] ${form} 还是超，自动拿掉结尾前的段落：${before} → ${c.chars} 字（剩 ${secs.length} 段）`);
     }
     // 改完还剩下的，标出来让客户发之前自己核对
     if (acct) {
@@ -906,6 +944,17 @@ http.createServer(async (req, res) => {
     }
     if (pathname === '/api/qr' || pathname.startsWith('/api/relay')) return await handleRelay(req, res, pathname, params, { readJson, sendJson }); // 手机扫码上传
     if (req.method === 'POST' && pathname === '/api/fetch-url') return await handleFetchUrl(req, res);
+    // 扫描件 / 图片 / 老版 Word、PPT 里的字：转给 DeepSeek 官方 OCR（和写文案同一把密钥）
+    if (req.method === 'POST' && pathname === '/api/ocr') {
+      let key = process.env.DEEPSEEK_API_KEY; let who = '';
+      if (HOSTED) {
+        const g = await gate(); if (g.fail) return deny(g.fail);
+        key = aiKeyOf(g.user); who = g.user.username;
+        const limited = overRate('ocr', g.user.id);
+        if (limited) return sendJson(res, 429, { error: limited, code: 'rate' });
+      }
+      return await handleOcr(req, res, { key, sendJson, who });
+    }
     if (pathname.startsWith('/api/copy/')) {
       let user = null;
       if (HOSTED) { const g = await gate(); if (g.fail) return deny(g.fail); user = g.user; } else user = await currentUser(req);

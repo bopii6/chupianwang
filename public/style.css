@@ -156,7 +156,8 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { width: 0 !important; height: 
 .att { display: flex; align-items: center; gap: 8px; max-width: 100%; height: 40px; padding: 0 6px 0 6px; border-radius: 12px; background: var(--surface-2); font-size: 13px; animation: attIn .2s ease-out; }
 @keyframes attIn { from { opacity: 0; transform: translateY(4px); } }
 .att-kind { flex: none; font-size: 11px; font-weight: 700; color: #fff; border-radius: 7px; padding: 4px 6px; line-height: 1; background: #8a8580; }
-.att-kind.k-pptx { background: #d24726; } .att-kind.k-docx { background: #2b579a; } .att-kind.k-pdf { background: #c4302b; } .att-kind.k-link { background: #2f8f5b; }
+.att-kind.k-pptx, .att-kind.k-ppt { background: #d24726; } .att-kind.k-docx, .att-kind.k-doc { background: #2b579a; } .att-kind.k-pdf { background: #c4302b; } .att-kind.k-link { background: #2f8f5b; }
+.att-kind.k-xlsx, .att-kind.k-xlsm, .att-kind.k-xls { background: #1d7a46; } .att-kind.k-png, .att-kind.k-jpg, .att-kind.k-jpeg, .att-kind.k-webp, .att-kind.k-bmp, .att-kind.k-gif { background: #7a5bd6; }
 .att-name { min-width: 0; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); font-weight: 500; }
 .att-meta { flex: none; color: var(--text-3); font-size: 12px; }
 .att-x { flex: none; width: 26px; height: 26px; border: none; border-radius: 8px; background: transparent; color: var(--text-3); font-size: 17px; cursor: pointer; }
@@ -870,12 +871,11 @@ body.ready .seg-thumb { transition: transform .4s var(--ease), width .4s var(--e
 
   /* 底部：第一行 资料 + 时长，第二行 一个整宽的生成按钮 */
   .box-bar { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 10px 8px; padding: 10px 12px calc(12px + env(safe-area-inset-bottom)); }
-  #sayTools { grid-column: 1; }
   .bar-sep { display: none; }
   .tool { height: 36px; padding: 0 9px; }
   .tool span { display: none; }
   .bar-dur { grid-column: 2; justify-self: end; }
-  #sayTools.hidden + .bar-dur { grid-column: 1 / -1; justify-self: start; }
+  .box-bar > .bar-dur:first-child { grid-column: 1 / -1; justify-self: start; }
   .bar-dur > svg { display: none; }
   .seg.dur button { padding: 0 11px; height: 32px; font-size: 13px; }
   .box-bar .go { grid-column: 1 / -1; width: 100%; height: 48px; justify-content: center; margin: 0; }
@@ -1055,7 +1055,7 @@ section.show { position: sticky; top: 60px; height: calc(100vh - 60px); display:
 .box.bar-stuck .box-bar { box-shadow: 0 -14px 30px -18px rgba(20, 18, 14, .25); }
 .bar-sep, .bar-dur > svg { display: none; }
 .bar-dur { justify-self: end; }
-#sayTools.hidden + .bar-dur { grid-column: 1 / -1; justify-self: start; }
+.box-bar > .bar-dur:first-child { grid-column: 1 / -1; justify-self: start; }
 .box-bar .go { grid-column: 1 / -1; width: 100%; height: 54px; margin: 0; justify-content: center; border-radius: 15px; font-size: 16.5px; box-shadow: 0 14px 28px -14px rgba(255, 90, 31, .85); }
 .home .err { text-align: left; margin: 0; padding: 0 0 14px; }
 .home .err:empty { display: none; }
@@ -1371,3 +1371,27 @@ section.show.multi .show-phone { height: min(calc(100vh - 60px - 200px), 720px);
 .lk-auto .lk-shot b { font-size: 22px; line-height: 1; }
 .lk-auto .lk-shot em { font-style: normal; font-size: 11px; font-weight: 700; color: var(--accent); }
 .lk.on .lk-no { display: grid; }
+
+/* ---------- 资料出片入口：输入框里那条“有现成资料？直接传上来就能出片” ---------- */
+.doc-drop { display: flex; align-items: center; gap: 12px; width: 100%; margin: 10px 0 2px; padding: 11px 14px 11px 12px; border: 1.5px dashed rgba(255, 90, 31, .45); border-radius: 14px;
+  background: linear-gradient(100deg, #fff6f0, #fffaf6 60%); color: var(--text); text-align: left; cursor: pointer; transition: border-color .2s, background .2s, transform .2s var(--ease, ease); }
+.doc-drop:hover, .box.drop .doc-drop { border-color: var(--accent); background: linear-gradient(100deg, #ffeee3, #fff6ef 60%); }
+.doc-drop:active { transform: scale(.995); }
+.doc-drop .dd-ico { flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 11px; background: var(--accent); color: #fff; box-shadow: 0 8px 16px -8px rgba(255, 90, 31, .9); }
+.doc-drop .dd-ico svg { width: 20px; height: 20px; }
+.doc-drop:hover .dd-ico svg { animation: ddBob .6s var(--ease, ease); }
+@keyframes ddBob { 40% { transform: translateY(-3px); } }
+.doc-drop .dd-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.doc-drop .dd-txt b { font-size: 15px; font-weight: 700; letter-spacing: .2px; }
+.doc-drop .dd-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 12.5px; color: var(--text-2); }
+.doc-drop .dd-more { display: none; font-size: 14px; font-weight: 600; color: var(--accent); }
+.doc-drop .dd-kinds { flex: none; display: flex; gap: 4px; }
+.doc-drop .dd-kinds i { font-style: normal; font-size: 11px; font-weight: 700; color: #fff; border-radius: 6px; padding: 4px 6px; line-height: 1; }
+.doc-drop .k-pptx { background: #d24726; } .doc-drop .k-docx { background: #2b579a; } .doc-drop .k-xlsx { background: #1d7a46; } .doc-drop .k-pdf { background: #c4302b; }
+/* 已经加了资料：收成一行小字“＋ 再加一份资料” */
+.doc-drop.has { width: auto; margin-top: 8px; padding: 6px 12px 6px 8px; gap: 8px; border-width: 1px; background: transparent; }
+.doc-drop.has .dd-ico { width: 26px; height: 26px; border-radius: 8px; box-shadow: none; }
+.doc-drop.has .dd-ico svg { width: 15px; height: 15px; }
+.doc-drop.has b, .doc-drop.has .dd-sub { display: none; }
+.doc-drop.has .dd-more { display: block; }
+@media (max-width: 760px) { .doc-drop .dd-txt b { font-size: 14px; } }

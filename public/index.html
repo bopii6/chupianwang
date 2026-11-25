@@ -59,6 +59,11 @@
             <div class="say-input">
               <textarea id="input" rows="3" placeholder=""></textarea>
               <div class="attachments hidden" id="attachments"></div>
+              <!-- 资料出片：手上有 PPT / Word / Excel / PDF，不写字直接传就能出片（也可以直接拖进来） -->
+              <button class="doc-drop" id="btnAttach" type="button" title="PPT、Word、Excel、PDF、图片都行，也可以直接拖进来；扫描件会自动识图">
+                <span class="dd-ico"><svg viewBox="0 0 24 24"><path d="M12 15.5V4.5m0 0-4 4m4-4 4 4M5 14.5v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" stroke="currentColor" stroke-width="1.9" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                <span class="dd-txt"><b>有现成资料？直接传上来就能出片</b><span class="dd-sub"><span class="dd-kinds"><i class="k-pptx">PPT</i><i class="k-docx">Word</i><i class="k-xlsx">Excel</i><i class="k-pdf">PDF</i></span>一个字不用写，AI 读完自动写稿、配音、出片</span><span class="dd-more">＋ 再加一份资料</span></span>
+              </button>
             </div>
             <!-- 品类：客户说不出自己算什么行业时，先点一个，下面的例子和出片配色都跟着走 -->
             <div class="cat-row" id="catRow">
@@ -110,13 +115,9 @@
           <div class="looks hidden" id="looksPanel"></div>
         </div>
         <div class="box-bar">
-          <div class="bar-group" id="sayTools">
-            <button class="tool" id="btnAttach" type="button" title="PPT、Word、PDF、TXT 都行，也可以直接拖进来"><svg viewBox="0 0 24 24"><path d="M14.5 4H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5zM14 4v5h5M12 12v5m-2.5-2.5h5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span>加资料</span></button>
-            <span class="bar-sep"></span>
-          </div>
           <div class="bar-dur">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5V12l3 2" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
-            <div class="seg dur" id="minutes"><i class="seg-thumb"></i><button data-v="1" type="button">1 分钟</button><button data-v="2" type="button">2 分钟</button><button data-v="3" type="button">3 分钟</button></div>
+            <div class="seg dur" id="minutes"><i class="seg-thumb"></i><button data-v="1" type="button">1 分钟左右</button><button data-v="2" type="button">2 分钟左右</button><button data-v="3" type="button">3 分钟左右</button><button data-v="5" type="button">4 分钟左右</button></div>
           </div>
           <label class="acct"><span>@</span><input id="account" placeholder="你的账号名" maxlength="16" /></label>
           <button class="go" id="btnGo" type="button" title="也可以按 Ctrl + Enter"><span>生成视频</span><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -127,7 +128,7 @@
     </div>
     <input type="file" id="photoInput" accept="image/*" multiple hidden />
     <input type="file" id="videoInput" accept="video/*" multiple hidden />
-    <input type="file" id="docInput" accept=".pptx,.docx,.pdf,.txt,.md,.ppt,.doc" multiple hidden />
+    <input type="file" id="docInput" accept=".pptx,.ppt,.docx,.doc,.xlsx,.xls,.pdf,.txt,.md,.png,.jpg,.jpeg,.webp,.bmp" multiple hidden />
   </main>
 
   <!-- ③ 看成片 -->

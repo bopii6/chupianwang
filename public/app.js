@@ -325,10 +325,16 @@ function startHover(el) { startHero(formOf(el.dataset.id)); }
 function stopHover(el) { if (!el) return stopHero(); if (heroFor !== state.form) startHero(state.form); }
 
 /** 选模板：记住选择，换示例句、照片区 */
-// 时长按钮：成片时长是 AI 按字数写出来的，做不到正好 1/2/3 分钟，按实测范围给一个大概的说法
-// 实测（2026-11，每档 12 条）：选 1 → 40–70 秒；选 2 → 75–130 秒；选 3 → 130–175 秒
-// 手绘图解每句 ≤16 字、节奏快，最长只能到 1 分半左右
-const DUR_LABELS = { default: ['1 分钟内', '1–2 分钟', '2–3 分钟'], 'sketch-talk': ['1 分钟内', '1 分钟出头', '1 分半左右'] };
+// 时长按钮：成片时长是 AI 按字数写出来的，做不到正好几分钟，按实测范围给一个大概的说法（最长不超过 5 分钟）
+// 实测（2026-11-25，真配音 + 真时间轴，6 个模板共 55 条）：口播约 5 字/秒（含换气和段落停顿）
+//   选 1 → 55–75 秒；选 2 → 100–125 秒；选 3 → 2 分 40–3 分 15；选 5 → 3 分 40–4 分 35（服务端 1400 字封顶，到不了 5 分钟）
+//   像素小剧场：38 秒 / 70 秒 / 1 分 52 / 3 分 30–4 分 20；手绘图解每句 ≤16 字、节奏快：43 秒 / 55 秒 / 1 分 40–2 分 / 2 分 40–3 分
+// 改了提示词或篇幅规则要重测：在首页控制台对每个模板、每档调 /api/script，再用 engine/timeline.js 的 synthesize + buildTimeline 算时长
+const DUR_LABELS = {
+  default: ['1 分钟左右', '2 分钟左右', '3 分钟左右', '4 分钟左右'],
+  'pixel-story': ['1 分钟内', '1 分钟出头', '2 分钟左右', '4 分钟左右'],
+  'sketch-talk': ['1 分钟内', '1 分钟左右', '1 分半左右', '近 3 分钟'],
+};
 function renderDurLabels() {
   const labels = DUR_LABELS[state.form?.id] || DUR_LABELS.default;
   $('#minutes').querySelectorAll('button').forEach((b, i) => { b.textContent = labels[i]; });
@@ -670,8 +676,6 @@ function setMode(m) {
   moveTabInd();
   $('#paneSay').classList.toggle('hidden', m !== 'say');
   $('#paneVideo').classList.toggle('hidden', m !== 'video');
-  $('#sayTools').classList.toggle('hidden', m !== 'say');
-  syncAttach();
   $('#tplHint').textContent = '';
   $('#createErr').textContent = aiReady ? '' : $('#createErr').textContent;
   renderIdeas(); updateGo();
@@ -679,10 +683,10 @@ function setMode(m) {
   if (m === 'video') loadLib();
 }
 $('#modeTabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b && b.dataset.mode !== state.mode) setMode(b.dataset.mode); });
-/** “加资料”是给纯文字形式补 PPT/Word 的；实拍混剪靠照片和视频就够，底下这块按钮就不显示了，省得挤 */
+/** 资料入口（输入框里那条“有现成资料？直接传上来就能出片”）所有模板都显示：资料管“讲什么”，模板管“怎么拍”。
+ *  实拍混剪也一样：资料给稿子，画面还是用客户自己的照片和视频。加了资料后它收成一行“＋ 再加一份资料”。 */
 function syncAttach() {
-  const show = state.mode === 'say' && photoKind() !== 'footage';
-  $('#sayTools').classList.toggle('hidden', !show);
+  $('#btnAttach').classList.toggle('has', state.attachments.length > 0);
 }
 function moveTabInd() {
   const on = $('#modeTabs button.on'); if (!on) return;
@@ -784,7 +788,7 @@ $('#btnSample').addEventListener('click', async () => {
 let docsMod = null;
 const loadDocs = () => (docsMod ||= import('./engine/docs.js'));
 const fmtChars = (n) => (n >= 10000 ? (n / 10000).toFixed(1) + ' 万字' : n + ' 字');
-const KIND_LABEL = { pptx: 'PPT', docx: 'Word', pdf: 'PDF', txt: 'TXT', md: 'TXT', link: '链接' };
+const KIND_LABEL = { pptx: 'PPT', ppt: 'PPT', docx: 'Word', doc: 'Word', xlsx: 'Excel', xlsm: 'Excel', xls: 'Excel', pdf: 'PDF', txt: 'TXT', md: 'TXT', csv: 'TXT', png: '图片', jpg: '图片', jpeg: '图片', webp: '图片', bmp: '图片', gif: '图片', link: '链接' };
 function renderAttachments() {
   const box = $('#attachments');
   box.classList.toggle('hidden', !state.attachments.length);
@@ -792,23 +796,26 @@ function renderAttachments() {
     <div class="att ${a.loading ? 'loading' : ''}" title="${esc(a.url || a.name)}">
       <span class="att-kind k-${a.kind}">${KIND_LABEL[a.kind] || '资料'}</span>
       <span class="att-name">${esc(a.name)}</span>
-      <span class="att-meta">${a.loading ? '正在读取…' : `${a.meta} · ${fmtChars(a.chars)}`}</span>
+      <span class="att-meta">${a.loading ? esc(a.progress || '正在读取…') : `${a.meta} · ${fmtChars(a.chars)}`}</span>
       ${a.loading ? '<i class="att-spin"></i>' : `<button class="att-x" data-i="${i}" aria-label="移除">×</button>`}
     </div>`).join('');
   $('#input').placeholder = state.attachments.length
-    ? '想重点讲哪部分？不写也行，AI 会从资料里挑最能获客的内容'
+    ? '不用写字，直接点「生成视频」就行。想重点讲哪部分，也可以在这里补一句'
     : INPUT_PLACEHOLDER;
+  syncAttach();
   updateGo();
   if (!state.attachments.length && !ghost.timer) ghostStart(1500);
 }
 async function addMaterial(job, label, kind) {
-  if (state.attachments.filter((a) => !a.loading).length >= 6) { $('#createErr').textContent = '最多添加 6 份资料'; return; }
+  if (state.attachments.length >= 6) { $('#createErr').textContent = '最多添加 6 份资料'; return; }
   const ph = { name: label, kind, loading: true };
   state.attachments.push(ph); renderAttachments();
   $('#createErr').textContent = '';
   try {
-    const r = await job();
+    // 扫描件要识图，一页页报进度（“正在识图 3/12 页”）
+    const r = await job((msg) => { ph.progress = msg; renderAttachments(); });
     Object.assign(ph, r, { loading: false });
+    if (r.warn) $('#createErr').textContent = r.warn;
   } catch (err) {
     state.attachments.splice(state.attachments.indexOf(ph), 1);
     $('#createErr').textContent = err.message || '这份资料读不出来';
@@ -820,7 +827,7 @@ function addFiles(files) {
   if (vid) { setMode('video'); pickRemixFile(vid); }
   for (const f of files.filter((x) => !isVideoFile(x))) {
     const ext = (f.name.split('.').pop() || '').toLowerCase();
-    addMaterial(async () => (await loadDocs()).extractFile(f), f.name, ext);
+    addMaterial(async (onProgress) => (await loadDocs()).extractFile(f, { onProgress }), f.name, ext);
   }
 }
 $('#btnAttach').addEventListener('click', () => $('#docInput').click());
@@ -2111,7 +2118,7 @@ function applyQueryForm(formName) {
   const job = q.get('job')
   if (!topic && !formName && !job && !auto) return
 
-  if (['1', '2', '3'].includes(mins)) { prefs.minutes = Number(mins); setSeg('#minutes', mins) }
+  if (['1', '2', '3', '5'].includes(mins)) { prefs.minutes = Number(mins); setSeg('#minutes', mins) }
   if (account) { prefs.account = account; const el = $('#account'); if (el) el.value = account }
 
   const apply = () => {

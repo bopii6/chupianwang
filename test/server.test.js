@@ -132,3 +132,14 @@ test('安全响应头 + 坏请求体回 400 而不是 500', async () => {
   const weird = await req('GET', '/%E0%A4%A');
   assert.ok(weird.status < 500, `乱码路径不该 500，实际 ${weird.status}`);
 });
+
+test('识图接口：别的网站不能调；没传文件、没密钥都给一句看得懂的话（不会真去请求 DeepSeek）', async () => {
+  const cross = await req('POST', '/api/ocr', { headers: { Origin: 'https://evil.example', 'Content-Type': 'application/octet-stream' }, body: 'x' });
+  assert.equal(cross.status, 403);
+  const empty = await req('POST', '/api/ocr', { headers: { ...sameOrigin, 'Content-Type': 'application/octet-stream', 'Content-Length': '0' } });
+  assert.equal(empty.status, 400);
+  assert.match(empty.json.error, /没收到文件/);
+  const noKey = await req('POST', '/api/ocr', { headers: { ...sameOrigin, 'Content-Type': 'application/octet-stream', 'X-File-Name': encodeURIComponent('扫描件.png') }, body: 'fake-image-bytes' });
+  assert.equal(noKey.status, 400);
+  assert.equal(noKey.json.code, 'no-key');
+});
