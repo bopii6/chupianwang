@@ -77,6 +77,35 @@ npm test
 
 `test/ai-json.test.js` 会起一个**假的 DeepSeek**（本地端口，靠 `DEEPSEEK_BASE_URL` 指过去），专门验证“AI 没按格式交稿时程序会不会自己重写”。这个变量只在测试里用，正规部署不用填。
 
+## 发布到线上域名（getcut.cn）
+
+双击 `发布到域名.bat`，或对 Claude 说“发布到域名”（= `node scripts/deploy.mjs`）。平时 **20~40 秒**。
+
+脚本做的事，按顺序：
+
+1. 比对“线上记录的上次提交号 → 本地 HEAD”，**只传改过的文件**（一般是几百 KB，不是整包 27MB）
+2. 传到服务器 `/opt/deploy-<提交号>.tgz`
+3. 在服务器上把代码解到 `/opt/cpw-preflight`，**跑整套测试**（Node 18）；没过就停在这一步，**线上一点不动**
+4. 备份当前线上代码到 `/opt/chupianwang-code-bak-<时间>.tgz`
+5. 覆盖 `/opt/chupianwang`、`systemctl restart chupianwang`、查 `/api/status` 和首页
+6. 从公网 `https://getcut.cn/api/status` 再验一遍版本号
+
+- `--check` 只看会发什么、线上现在是什么版本，不动线上
+- `--full` 强制全量上传（第一次发布、或目录结构大改时）
+- `--no-test` 跳过服务器上的测试（赶时间用，有风险）
+- `--rollback` 退回上一次发布前的代码（用最近的备份包，并清掉提交号记录）
+
+线上环境（火山引擎 ECS）：`systemd` 服务 `chupianwang`，目录 `/opt/chupianwang`，Node + Caddy 反代到 `127.0.0.1:5173`。客户数据 `data/`、`works/`、`topic-log/` 不在发布包里，发布和回滚都不会碰。
+
+发布配置放 `.env`（客户电脑不用填）：
+
+```
+CPW_SERVER=root@115.190.113.128
+CPW_SSH_KEY=~/.ssh/videogen_ecs
+```
+
+服务器会掐掉连得太快的 SSH 连接（`kex_exchange_identification`），脚本自带 15 秒后退重试，不用管。
+
 ## AI 交稿格式（`lib/ai-json.js`）
 
 DeepSeek 要求按 JSON 交稿（`response_format: json_object`），但实测偶尔会失手：裹上 ``` 代码块、前后多说一句“好的，这是文案”、字符串里带没转义的换行，或者写着写着到了 `max_tokens` 上限、最后的 `}` 没出来。

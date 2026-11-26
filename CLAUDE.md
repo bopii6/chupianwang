@@ -7,6 +7,7 @@
 - “关掉出片王”：`node scripts/open.mjs --stop`
 - “更新出片王”：运行 `更新出片王.bat`（拉新版 + 补装依赖 + 重启；新版启动失败会自动退回上一版）
 - “退回上一版”：`node scripts/update.mjs --rollback`
+- “发布到域名 / 发到线上 / 发布到 getcut.cn”：运行 `发布到域名.bat`（= `node scripts/deploy.mjs`，20~40 秒）。只传改过的文件、先在服务器跑整套测试再上线、失败不动线上；看会发什么用 `--check`，退回去用 `--rollback`。服务器信息在 `.env` 的 `CPW_SERVER` / `CPW_SSH_KEY`。**不要**再用手工 scp 整包的老办法
 - 客户说出了问题：让他点页面右下角的版本号 →「复制诊断信息」，发到微信 bopii2024（页面上也写着）
 - 第一次装 / 缺东西：`node scripts/setup.mjs`（npm 依赖、Python 的 edge-tts、听写模型、.env，可反复运行）
 
