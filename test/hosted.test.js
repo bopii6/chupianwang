@@ -64,6 +64,12 @@ test('公网版标记 + 没登录不能看作品', async () => {
   assert.equal(api.json.hosted, true);
 });
 
+test('公网版不许外站把页面嵌进 iframe', async () => {
+  const home = await req('GET', '/');
+  assert.equal(home.headers['x-frame-options'], 'SAMEORIGIN');
+  assert.equal(home.headers['content-security-policy'], undefined);
+});
+
 test('管理员登录、开号、普通客户进不了后台', async () => {
   const bad = await req('POST', '/api/auth/login', { body: { username: 'admin', password: 'nope' } });
   assert.equal(bad.status, 401);

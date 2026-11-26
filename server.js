@@ -854,7 +854,13 @@ http.createServer(async (req, res) => {
   res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
   // 基本的安全头：不许别的网站把页面嵌进去（防点击劫持）、不许浏览器乱猜文件类型、跳到外站时不带完整地址
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  // 本机版要能在 DSH 的左侧面板里嵌着用（iframe）：只放行本机地址（任意端口）来嵌；
+  // 公网版（哪怕反代后面绑的是 127.0.0.1）照旧只认自己，外站一律不许嵌。
+  if (LOCAL_ONLY && !HOSTED) {
+    res.setHeader('Content-Security-Policy', "frame-ancestors 'self' http://127.0.0.1:* http://localhost:*");
+  } else {
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  }
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   const why = rejectReason(req);
   if (why) { res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end(why); }

@@ -126,7 +126,10 @@ test('写文案拒绝未知的形式（不能读别的文件）', async () => {
 test('安全响应头 + 坏请求体回 400 而不是 500', async () => {
   const home = await req('GET', '/');
   assert.equal(home.headers['x-content-type-options'], 'nosniff');
-  assert.equal(home.headers['x-frame-options'], 'SAMEORIGIN');
+  // 本机版改用 CSP：只放行本机地址（任意端口）把页面嵌进 iframe，DSH 插件面板要用；
+  // 不放 X-Frame-Options。公网版仍由 X-Frame-Options: SAMEORIGIN 兜住（见 hosted.test.js）。
+  assert.equal(home.headers['x-frame-options'], undefined);
+  assert.match(home.headers['content-security-policy'] || '', /frame-ancestors 'self' http:\/\/127\.0\.0\.1:\*/);
   const bad = await req('POST', '/api/tts', { headers: sameOrigin, body: '{不是json' });
   assert.equal(bad.status, 400);
   const weird = await req('GET', '/%E0%A4%A');
