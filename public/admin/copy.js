@@ -176,11 +176,13 @@ async function analyzeText(t, extraNote = '', force = false) {
 // 视频号链接 → 下载 → 浏览器转写 → 拆解
 async function fromLink(u) {
   $('err').replaceChildren();
+  clearVideoBar();
   busy(true, '正在下载视频…');
   try {
     const r = await api('/api/copy/link', { json: { url: u } });
-    busy(true, '下载好了，正在转文字…');
     const blob = await (await fetch(r.videoUrl)).blob();
+    showVideoBar(blob, r.title);   // 先把「存到我的电脑」给出来，别等转文字
+    busy(true, '下载好了，正在转文字…');
     const file = new File([blob], 'link.mp4', { type: 'video/mp4' });
     const asr = await (await loadAsr()).transcribe(file, { base: '/models/asr/', model: await pickAsrModel() });
     if (!asr.text) throw new Error('没听出人声，这条可能只有音乐');
@@ -191,6 +193,43 @@ async function fromLink(u) {
   } catch (e) {
     $('err').textContent = '链接拆解失败：' + e.message;
   } finally { busy(false); }
+}
+
+// 上面那步下下来的视频只活在浏览器内存里，刷新就没了。
+// 这里给一个明确的出口：点一下就落成电脑里的 mp4，文件名用视频标题 + 日期。
+let lastVideo = null;
+function clearVideoBar() {
+  lastVideo = null;
+  const bar = $('dlBar');
+  if (bar) bar.remove();
+}
+function showVideoBar(blob, title) {
+  lastVideo = { blob, title: String(title || '').trim() };
+  let bar = $('dlBar');
+  if (!bar) {
+    bar = h('div', { class: 'cl-dlbar', id: 'dlBar' });
+    $('result').before(bar);
+  }
+  const shown = lastVideo.title.length > 26 ? lastVideo.title.slice(0, 26) + '…' : lastVideo.title;
+  bar.replaceChildren(
+    h('span', { class: 'cl-dlbar-txt' }, `视频已就绪${shown ? '：' + shown : ''}`),
+    h('button', { class: 'cl-dlbar-btn', type: 'button', onclick: saveVideo }, '⬇ 存到我的电脑'),
+  );
+}
+function saveVideo() {
+  if (!lastVideo?.blob) return;
+  const d = new Date();
+  const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+  const base = (lastVideo.title || '视频号视频')
+    .replace(/[\\/:*?"<>|\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40) || '视频号视频';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(lastVideo.blob);
+  a.download = `${base}_${stamp}.mp4`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+  toast('已开始下载，可以在浏览器的下载列表里找到');
 }
 
 // 视频 / 音频 → 转写 → 拆解
@@ -205,6 +244,7 @@ async function fromVideo(file) {
   if (!/^(video|audio)\//.test(file.type) && !/\.(mp4|mov|m4v|webm|mkv|avi|flv|mp3|m4a|aac|wav|ogg|opus|amr)$/i.test(file.name)) { toast('只支持视频或音频文件'); return; }
   if (textEl.value.trim() && !confirm('输入框里已经有文字了，用视频转出来的文字替换它吗？')) return;
   $('err').replaceChildren();
+  clearVideoBar();
   const t0 = Date.now();
   busy(true, '正在转文字…');
   const timer = setInterval(() => busy(true, `转文字 ${Math.round((Date.now() - t0) / 1000)} 秒，大约是视频时长的 2/3`), 1000);

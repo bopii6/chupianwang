@@ -119,3 +119,9 @@ body.cl { min-height: 100vh; }
 .cl-make { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-top: 24px; padding: 13px 16px; border-radius: 14px; background: var(--accent); color: #fff; text-decoration: none; font-size: 15px; font-weight: 800; transition: filter .15s, transform .15s; }
 .cl-make:hover { filter: brightness(1.06); transform: translateY(-1px); }
 .cl-make-sub { font-size: 12px; font-weight: 500; opacity: .85; }
+
+/* 链接转存之后：把视频落到自己电脑上（只在这一步出现，不打扰其它流程） */
+.cl-dlbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 16px 0 0; padding: 12px 14px; border-radius: 12px; background: #f6f5f2; border: 1px solid rgba(0,0,0,.06); }
+.cl-dlbar-txt { flex: 1; min-width: 0; font-size: 13.5px; color: #6b675f; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cl-dlbar-btn { flex: none; padding: 8px 14px; border-radius: 10px; border: 1px solid rgba(0,0,0,.12); background: #fff; font-size: 13.5px; font-weight: 700; color: inherit; cursor: pointer; transition: border-color .15s, color .15s; }
+.cl-dlbar-btn:hover { border-color: var(--accent); color: var(--accent); }
