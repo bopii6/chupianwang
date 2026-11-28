@@ -188,6 +188,23 @@ function asrProgress(label) {
   };
 }
 
+// 服务端转写：视频已经在服务器磁盘上，抽音轨转文字，客户不用下 78MB 模型。
+// 服务器那边不可用就返回空，调用方自动退回浏览器本地转写。
+async function serverTranscribe(u, onNote) {
+  const { id } = await api('/api/copy/transcribe', { json: { url: u } });
+  const t0 = Date.now();
+  for (;;) {
+    await new Promise((r) => setTimeout(r, 2000));
+    const s = await api('/api/copy/transcribe?id=' + encodeURIComponent(id));
+    if (s.status === 'done') return s.text || '';
+    if (s.status === 'error') throw new Error(s.error || '转写失败');
+    const secs = Math.round((Date.now() - t0) / 1000);
+    if (s.phase === 'audio') onNote?.(`正在抽音轨… ${secs} 秒`);
+    else if (s.phase === 'load') onNote?.(`正在加载转写模型… ${secs} 秒`);
+    else onNote?.(`服务器正在转文字… ${secs} 秒${s.done ? `（已出 ${s.done} 段）` : ''}`);
+  }
+}
+
 // 视频号链接 → 下载 → 浏览器转写 → 拆解
 async function fromLink(u) {
   $('err').replaceChildren();
@@ -198,14 +215,30 @@ async function fromLink(u) {
     const blob = await (await fetch(r.videoUrl)).blob();
     showVideoBar(blob, r.title);   // 先把「存到我的电脑」给出来，别等转文字
     busy(true, '下载好了，正在转文字…');
-    const file = new File([blob], 'link.mp4', { type: 'video/mp4' });
-    const asr = await (await loadAsr()).transcribe(file, {
-      base: '/models/asr/', model: await pickAsrModel(), onProgress: asrProgress('正在转文字'),
-    });
-    if (!asr.text) throw new Error('没听出人声，这条可能只有音乐');
-    textEl.value = asr.text;
+
+    let spoken = '';
+    if (META.asrServer) {
+      try {
+        busy(true, '服务器正在转文字…');
+        spoken = await serverTranscribe(u, (m) => busy(true, m));
+        if (!spoken) throw new Error('没听出人声，这条可能只有音乐');
+      } catch (e) {
+        console.warn('服务端转写没成，改用浏览器本地：', e.message);
+        spoken = '';
+        $('err').textContent = '';
+      }
+    }
+    if (!spoken) {
+      const file = new File([blob], 'link.mp4', { type: 'video/mp4' });
+      const asr = await (await loadAsr()).transcribe(file, {
+        base: '/models/asr/', model: await pickAsrModel(), onProgress: asrProgress('正在转文字'),
+      });
+      spoken = asr.text || '';
+      if (!spoken) throw new Error('没听出人声，这条可能只有音乐');
+    }
+    textEl.value = spoken;
     busy(true, 'AI 正在拆解（约 20 秒）');
-    await analyzeText(asr.text, r.title ? `来源：${r.title}\n${u}` : u);
+    await analyzeText(spoken, r.title ? `来源：${r.title}\n${u}` : u);
     textEl.value = '';
   } catch (e) {
     $('err').textContent = '链接拆解失败：' + e.message;
