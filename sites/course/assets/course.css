@@ -1,5 +1,6 @@
 :root {
-  --paper: #f3eee4;
+  --paper: #f5f1e8;
+  --accent: #c4452f;
   --ink: #161310;
   --muted: #5c564e;
   --rule: #b7aea0;
@@ -368,3 +369,9 @@ html.present .where-title { font-size: 1.18rem; }
   .page { max-width: none; padding: 0; }
   a { text-decoration: none; }
 }
+
+/* 2026-11 改版：讲稿页和课程站新样式对齐（配色、强调色） */
+h2.cue { color: var(--accent); border-bottom-color: var(--rule); }
+.outcome { border-left: 3px solid var(--accent); border-bottom: 0; padding: 10px 14px; background: #fffdf8; border-radius: 0 10px 10px 0; margin-bottom: 12px; }
+.go a { color: var(--accent); }
+.where-course a { color: var(--accent); }

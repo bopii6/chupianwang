@@ -1,79 +1,138 @@
 <!DOCTYPE html>
-<html lang="zh-Hans">
+<html lang="zh-CN">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>付费课目录</title>
-  <meta name="description" content="五门先上架的付费课。先选一门，点进去就能按目录讲。">
-  <meta name="robots" content="noindex, nofollow">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20fill%3D%22%23f3eee4%22/%3E%3Crect%20x%3D%221.2%22%20y%3D%221.2%22%20width%3D%2229.6%22%20height%3D%2229.6%22%20fill%3D%22none%22%20stroke%3D%22%23161310%22%20stroke-width%3D%222%22/%3E%3Crect%20x%3D%227%22%20y%3D%229%22%20width%3D%2217%22%20height%3D%222%22%20fill%3D%22%23161310%22/%3E%3Crect%20x%3D%227%22%20y%3D%2215%22%20width%3D%2217%22%20height%3D%222%22%20fill%3D%22%23161310%22/%3E%3Crect%20x%3D%227%22%20y%3D%2221%22%20width%3D%2211%22%20height%3D%222%22%20fill%3D%22%23161310%22/%3E%3C/svg%3E">
-  <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAXUlEQVR42mP8/O4JAy0BCwMDg7KqDo1Mv3v7ChMDjQELsm1UNBceKjT3wagFA28BC/40QGqqHzlBRMVMN5qKRlPRaCqiJBURGYyjqWi0yhxSkUyjFirNfcBI6+Y7ALXNHPN9cs5sAAAAAElFTkSuQmCC">
-  <link rel="stylesheet" href="assets/course.css">
-  <script>
-    try {
-      if (localStorage.getItem("course-site-teach-mode") === "1") {
-        document.documentElement.classList.add("present");
-      }
-    } catch (e) {}
-  </script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f5f1e8">
+<title>AI 实战课 · 课程目录</title>
+<meta name="description" content="拿你正在发愁的一件真事，学会让 AI 替你干完。每一讲交一样东西。">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20viewBox%3D%220%200%2048%2048%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20rx%3D%2212%22%20fill%3D%22%231a1612%22%2F%3E%3Crect%20x%3D%2211%22%20y%3D%2211%22%20width%3D%2211.5%22%20height%3D%2211.5%22%20rx%3D%222.5%22%20fill%3D%22%23c4452f%22%2F%3E%3Crect%20x%3D%2225.5%22%20y%3D%2211%22%20width%3D%2211.5%22%20height%3D%2211.5%22%20rx%3D%222.5%22%20fill%3D%22%23e8d5a3%22%2F%3E%3Crect%20x%3D%2211%22%20y%3D%2225.5%22%20width%3D%2211.5%22%20height%3D%2211.5%22%20rx%3D%222.5%22%20fill%3D%22%23e8d5a3%22%2F%3E%3Crect%20x%3D%2225.5%22%20y%3D%2225.5%22%20width%3D%2211.5%22%20height%3D%2211.5%22%20rx%3D%222.5%22%20fill%3D%22%232f6f5e%22%2F%3E%3C%2Fsvg%3E">
+<link rel="stylesheet" href="assets/site.css">
 </head>
-<body data-index="index.html">
-  <a class="skip" href="#main">跳到正文</a>
-  <header class="where">
-    <div class="where-inner">
-      <p class="where-course"><a href="index.html">付费课目录</a></p>
-      <p class="where-lesson"></p>
-      <p class="where-title">先选一门课，按目录讲</p>
-      <p class="where-nav"><a href="index.html">目录</a><span>·</span><button type="button" data-toggle aria-pressed="false">讲解模式</button></p>
+<body>
+<a class="skip" href="#main">跳到正文</a>
+<header class="bar">
+  <div class="wrap bar__in">
+    <a class="brand" href="https://course.getcut.cn"><svg viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="12" fill="#1a1612"/><rect x="11" y="11" width="11.5" height="11.5" rx="2.5" fill="#c4452f"/><rect x="25.5" y="11" width="11.5" height="11.5" rx="2.5" fill="#e8d5a3"/><rect x="11" y="25.5" width="11.5" height="11.5" rx="2.5" fill="#e8d5a3"/><rect x="25.5" y="25.5" width="11.5" height="11.5" rx="2.5" fill="#2f6f5e"/></svg><span>王总 AI 实战<small>· 课程</small></span></a>
+    <nav class="switch" aria-label="站点切换"><a href="https://course.getcut.cn" aria-current="page">课程</a><a href="https://bot.getcut.cn">课件</a><a href="https://lab.getcut.cn">实验</a><a class="ext" href="https://getcut.cn">出片王 ↗</a></nav>
+  </div>
+</header>
+<main id="main">
+
+<section class="wrap hero">
+  <span class="kicker">AI 实战课</span>
+  <h1>拿你正在发愁的一件真事，<em>学会让 AI 替你干完。</em></h1>
+  <p class="hero__lede">不卖一堆教程。每门课都按“听完多出一样能用的东西”来设计：每一讲交一样东西，整门课交一条你以后还能自己改、自己跑的流程。</p>
+  <div class="hero__cta">
+    <a class="btn btn--ink" href="#pick">帮我选一门 <span class="arrow">↓</span></a>
+    <a class="btn btn--ghost" href="heike/">先看主推课：硬核AI私教</a>
+  </div>
+  <div class="stats">
+    <div><b>5</b>门课</div>
+    <div><b>34</b>讲</div>
+    <div><b>每讲</b>都有交付物</div>
+    <div><b>0</b>收入承诺</div>
+  </div>
+</section>
+
+<section class="wrap section" id="pick">
+  <div class="section__head"><h2>你现在卡在哪？</h2><p>点最像你的那句话，直接去那门课。</p></div>
+  <div class="pick">
+    <a href="heike/"><span class="pick__q">我有一件具体的事，想让 AI 帮我做通</span><span class="pick__a">→ <b>硬核AI私教</b></span><span class="pick__go">去看 <span class="arrow">→</span></span></a>
+    <a href="grok-deliver/"><span class="pick__q">Grok Bot 装了，但不知道拿它干什么</span><span class="pick__a">→ <b>Grok Bot 实战交付课</b></span><span class="pick__go">去看 <span class="arrow">→</span></span></a>
+    <a href="grok-workflow/"><span class="pick__q">想让 AI 每天自己跑，不用我每次从头说</span><span class="pick__a">→ <b>Grok Bot 工作流系统课</b></span><span class="pick__go">去看 <span class="arrow">→</span></span></a>
+    <a href="content/"><span class="pick__q">每天都要发内容，总靠灵感硬憋</span><span class="pick__a">→ <b>一人公司内容工作流课</b></span><span class="pick__go">去看 <span class="arrow">→</span></span></a>
+    <a href="video/"><span class="pick__q">想做口播视频，但卡在配音、画面、过审</span><span class="pick__a">→ <b>AI 口播与视频工作流课</b></span><span class="pick__go">去看 <span class="arrow">→</span></span></a>
+  </div>
+</section>
+
+<section class="wrap section" id="flagship">
+  <div class="section__head"><h2>主推课</h2><p>不知道从哪门开始，就从这门开始。</p></div>
+  <article class="feature">
+    <div class="feature__main">
+      <div class="feature__tags"><span class="tag tag--dark">主推</span><span class="tag tag--dark">共 10 讲</span><span class="tag tag--dark">Grok Bot</span><span class="tag tag--dark">Gemini</span><span class="tag tag--dark">Claude</span></div>
+      <h3>硬核AI私教</h3>
+      <p class="feature__lede">不卖一堆教程。用你正在发愁的一件真事，把工作流打通。以后这件事，你自己会改，自己会验。</p>
+      <p class="feature__deliver"><b>学完你手里多出</b>一件你正在发愁的真事，流程打通；以后这件事你自己会改、自己会验。</p>
+      <div class="feature__buy">
+        <span class="feature__price"><small>¥</small>899</span>
+        <a class="btn btn--light" href="heike/">看完整目录 <span class="arrow">→</span></a>
+      </div>
     </div>
-  </header>
-  <main class="page poster" id="main">
-    <p class="kicker">付费课</p>
-    <h1>课程目录</h1>
-    <p class="lead">先选一门课。点进去就是那门课的目录，再点一讲就能顺着讲。</p>
-    <p class="lead">每讲都会写清：听完你多出什么，下一步做什么。</p>
-    <ul class="site-list">
-      <li>
-        <a href="heike/index.html">
-          <p class="course-name">硬核AI私教</p>
-          <p class="course-line">不卖一堆教程。用你正在发愁的一件真事，把工作流打通。以后你自己会改。</p>
-          <p class="course-price">课程价　¥899</p>
-        </a>
-      </li>
-      <li>
-        <a href="grok-deliver/index.html">
-          <p class="course-name">Grok Bot 实战交付课</p>
-          <p class="course-line">把 Grok Bot 装好，接到常用工具，用一件自己的真事完成第一次交付。</p>
-          <p class="course-price">付费课，定价待定</p>
-        </a>
-      </li>
-      <li>
-        <a href="grok-workflow/index.html">
-          <p class="course-name">Grok Bot 工作流系统课</p>
-          <p class="course-line">把一个会聊天的助手，养成能每天自己跑的流程。活要拆开，额度也要撑得住。</p>
-          <p class="course-price">付费课，定价待定</p>
-        </a>
-      </li>
-      <li>
-        <a href="content/index.html">
-          <p class="course-name">一人公司内容工作流课</p>
-          <p class="course-line">把选题、写稿、过审、分发收成一条能每天发的流水线，少靠灵感，多靠步骤。</p>
-          <p class="course-price">付费课，定价待定</p>
-        </a>
-      </li>
-      <li>
-        <a href="video/index.html">
-          <p class="course-name">AI 口播与视频工作流课</p>
-          <p class="course-line">从稿子、配音或数字人、画面到发布，交出一条你每周能出片的流程。不教成人短剧。</p>
-          <p class="course-price">付费课，定价待定</p>
-        </a>
-      </li>
-    </ul>
-    <p class="buy-note" style="margin-top:28px">直播间或网站购买。本页不放收款码。</p>
-    <footer class="home-foot">
-      <p>课里用到的例子都来自公开帖。帖子里的收入、销量数字是作者自己说的，未另作核实，不当承诺。</p>
-    </footer>
-  </main>
-  <script src="assets/course.js"></script>
+    <aside class="feature__side">
+      <h4>这门课里你会做的事</h4>
+      <ol class="mini-toc">
+        <li><span>03</span>先写下你正在发愁的一件真事</li>
+        <li><span>04</span>看着例子，写下这件事怎么做</li>
+        <li><span>05</span>半天能打通的工作流是什么样</li>
+        <li><span>07</span>怎么跟 AI 说：要什么、给什么、怎样算完</li>
+        <li><span>09</span>自己改一处，再跑一遍</li>
+      </ol>
+    </aside>
+  </article>
+</section>
+
+<section class="wrap section">
+  <div class="section__head"><h2>其他课程</h2><p>按你手上的活挑。每门 6 讲，听完都要交出一样东西。</p></div>
+  <div class="grid grid--2">
+    <a class="card" href="grok-deliver/">
+      <div class="card__top"><span class="card__no">02</span><span class="tag">定价待定</span></div>
+      <h3>Grok Bot 实战交付课</h3>
+      <p class="card__lede">把 Grok Bot 装好，接到你常用的工具上。再用一件自己正在发愁的真事，完成第一次交付。</p>
+      <p class="card__deliver"><b>交出来的是</b>第一次用自己的真事，把 Grok Bot 的流程跑通。</p>
+      <div class="chips"><span class="tag">Grok Bot</span><span class="tag">邮箱</span><span class="tag">日历</span><span class="tag">微信</span></div>
+      <div class="card__foot"><span class="card__meta">共 6 讲</span><span class="card__go">看目录 <span class="arrow">→</span></span></div>
+    </a>
+    <a class="card" href="grok-workflow/">
+      <div class="card__top"><span class="card__no">03</span><span class="tag">定价待定</span></div>
+      <h3>Grok Bot 工作流系统课</h3>
+      <p class="card__lede">把一个会聊天的助手，养成能每天自己跑的流程。活要拆开。额度也要撑得住。</p>
+      <p class="card__deliver"><b>交出来的是</b>一条你每天还能再跑的流程。</p>
+      <div class="chips"><span class="tag">Grok Bot</span><span class="tag">内容或运营流水线</span><span class="tag">定时任务</span></div>
+      <div class="card__foot"><span class="card__meta">共 6 讲</span><span class="card__go">看目录 <span class="arrow">→</span></span></div>
+    </a>
+    <a class="card" href="content/">
+      <div class="card__top"><span class="card__no">04</span><span class="tag">定价待定</span></div>
+      <h3>一人公司内容工作流课</h3>
+      <p class="card__lede">把选题、写稿、过审、分发，收成一条能每天发的流水线。少靠灵感，多靠步骤。</p>
+      <p class="card__deliver"><b>交出来的是</b>一条这周还能真实发出内容的流水线。</p>
+      <div class="chips"><span class="tag">选题与写稿</span><span class="tag">过审清单</span><span class="tag">图文或切片分发</span></div>
+      <div class="card__foot"><span class="card__meta">共 6 讲</span><span class="card__go">看目录 <span class="arrow">→</span></span></div>
+    </a>
+    <a class="card" href="video/">
+      <div class="card__top"><span class="card__no">05</span><span class="tag">定价待定</span></div>
+      <h3>AI 口播与视频工作流课</h3>
+      <p class="card__lede">从稿子、配音或数字人、画面到发布，交出一条你每周能出片的流程。不教成人短剧，也不承诺播放量。</p>
+      <p class="card__deliver"><b>交出来的是</b>一支用自己选题做完的成片，以及以后每周还能再出片的流程。</p>
+      <div class="chips"><span class="tag">口播稿</span><span class="tag">配音或数字人</span><span class="tag">画面与字幕</span></div>
+      <div class="card__foot"><span class="card__meta">共 6 讲</span><span class="card__go">看目录 <span class="arrow">→</span></span></div>
+    </a>
+  </div>
+</section>
+
+<section class="wrap section">
+  <div class="section__head"><h2>这几门课的规矩</h2></div>
+  <div class="rules">
+    <div class="rule"><span class="rule__n">1</span><h3>用你自己的真事</h3><p>不拿假例子练手。开课先写下你正在发愁的一件事，整门课都围着它做。</p></div>
+    <div class="rule"><span class="rule__n">2</span><h3>每一讲都要交东西</h3><p>每讲开头写清：听完你多出什么，下一步做什么。没交出来，就不算听完。</p></div>
+    <div class="rule"><span class="rule__n">3</span><h3>不承诺你能赚多少</h3><p>课只管把流程做通、让你以后自己会改。收入、涨粉、播放量，一概不承诺。</p></div>
+  </div>
+</section>
+
+<section class="wrap section">
+  <div class="howbuy">
+    <div><h3>怎么买</h3><p>在直播间或网站购买。本页不放收款码。</p></div>
+    <a class="btn btn--ghost" href="#pick">再看看选哪门 <span class="arrow">↑</span></a>
+  </div>
+</section>
+</main>
+<footer class="foot">
+  <div class="wrap foot__in">
+    <div><p>课里用到的例子都来自公开帖。帖子里的收入、销量数字是作者自己说的，未另作核实，不当承诺。</p><p>直播间或网站购买，本页不放收款码。</p></div>
+    <nav aria-label="站点入口"><a href="https://course.getcut.cn" aria-current="page">课程</a><a href="https://bot.getcut.cn">课件</a><a href="https://lab.getcut.cn">实验</a><a href="https://getcut.cn">出片王</a></nav>
+  </div>
+</footer>
+<script>(function(){if(!/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return;var m={"https://course.getcut.cn":"/course/","https://bot.getcut.cn":"/bot/","https://lab.getcut.cn":"/lab/"};document.querySelectorAll("a[href^='https://']").forEach(function(a){for(var k in m){var h=a.getAttribute("href");if(h===k||h.indexOf(k+"/")===0){a.setAttribute("href",m[k]+h.slice(k.length).replace(/^\//,""));}}});})();</script>
 </body>
 </html>

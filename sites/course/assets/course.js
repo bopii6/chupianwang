@@ -54,7 +54,7 @@
     { label: "出片王", href: "https://getcut.cn" },
     { label: "课程", href: "https://course.getcut.cn", current: true },
     { label: "课件", href: "https://bot.getcut.cn" },
-    { label: "橱窗", href: "https://lab.getcut.cn" }
+    { label: "实验", href: "https://lab.getcut.cn" }
   ];
   function injectSites() {
     if (document.querySelector("nav.sites")) return;

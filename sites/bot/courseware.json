@@ -1,0 +1,14 @@
+[
+  {
+    "slug": "grok-bot",
+    "title": "Grok Bot 完整课件",
+    "cover": "Grok Bot\n从装好到自己会用",
+    "series": "AI 助手",
+    "color": "teal",
+    "desc": "从分清它和 X 里的 Grok 开始，到装好、交代任务、接上邮箱日历，再让它按时自动做。依据官方入门指南整理。",
+    "parts": "6 课 + 练习",
+    "level": "零基础",
+    "updated": "2026-11-28",
+    "course": "grok-deliver"
+  }
+]

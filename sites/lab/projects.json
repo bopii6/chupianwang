@@ -1,0 +1,157 @@
+[
+  {
+    "name": "动感岛",
+    "kind": "play",
+    "kindLabel": "可玩演示",
+    "meta": "/donggan/",
+    "media": "<img src=\"donggan/docs/images/home.jpg\" alt=\"动感岛首页：站起来，玩起来\" width=\"960\" height=\"540\" style=\"object-position:top\">",
+    "desc": [
+      "用身体玩的感统小游戏。孩子对着电脑摄像头跳、拍、定住，就能玩打地鼠、木头人、墙来了、水果忍者、跳大绳和节奏跳跳。画面只在本机识别，不上传。"
+    ],
+    "notes": [
+      "摄像头要在 HTTPS 下才能用（本机用 localhost 预览即可）。没有摄像头也可以用鼠标试玩。"
+    ],
+    "actions": [
+      {
+        "style": "ink",
+        "href": "donggan/",
+        "label": "打开动感岛"
+      },
+      {
+        "style": "ghost",
+        "href": "donggan/check.html",
+        "label": "摄像头自检"
+      }
+    ]
+  },
+  {
+    "name": "出片王",
+    "kind": "live",
+    "kindLabel": "线上成品",
+    "meta": "外链 · 不在此站重部署",
+    "media": "<svg class=\"card__art\" viewBox=\"0 0 400 225\" xmlns=\"http://www.w3.org/2000/svg\" aria-hidden=\"true\">\r\n  <rect width=\"400\" height=\"225\" fill=\"#1a1612\"/>\r\n  <rect x=\"150\" y=\"28\" width=\"100\" height=\"170\" rx=\"18\" fill=\"#2a2420\" stroke=\"#e8d5a3\" stroke-width=\"3\"/>\r\n  <rect x=\"160\" y=\"48\" width=\"80\" height=\"130\" rx=\"6\" fill=\"#c4452f\"/>\r\n  <path d=\"M188 96v36l28-18z\" fill=\"#fffdf8\"/>\r\n</svg>",
+    "desc": [
+      "教培老师的视频获客工具。用已经验证能火、能获客的视频套路，说一句话或直接上传资料，就可以出片。主站就是 getcut.cn。"
+    ],
+    "notes": [],
+    "actions": [
+      {
+        "style": "ink",
+        "href": "https://getcut.cn",
+        "label": "打开 getcut.cn"
+      }
+    ]
+  },
+  {
+    "name": "火影人物关系图谱",
+    "kind": "live",
+    "kindLabel": "线上成品",
+    "meta": "外链 · 不重新托管",
+    "media": "<svg class=\"card__art\" viewBox=\"0 0 400 225\" xmlns=\"http://www.w3.org/2000/svg\" aria-hidden=\"true\">\r\n  <rect width=\"400\" height=\"225\" fill=\"#14181f\"/>\r\n  <circle cx=\"200\" cy=\"112\" r=\"46\" fill=\"none\" stroke=\"#f0b429\" stroke-width=\"3\"/>\r\n  <circle cx=\"120\" cy=\"70\" r=\"22\" fill=\"#2b3340\"/>\r\n  <circle cx=\"286\" cy=\"78\" r=\"18\" fill=\"#2b3340\"/>\r\n  <circle cx=\"108\" cy=\"160\" r=\"16\" fill=\"#2b3340\"/>\r\n  <circle cx=\"300\" cy=\"158\" r=\"20\" fill=\"#2b3340\"/>\r\n  <path d=\"M142 80L178 100M258 90L222 102M124 148L174 126M282 148L222 124\" stroke=\"#8aa0b8\" stroke-width=\"2\"/>\r\n  <circle cx=\"200\" cy=\"112\" r=\"10\" fill=\"#f0b429\"/>\r\n</svg>",
+    "desc": [
+      "火影忍者人物关系的可视化图谱，已发布在独立站点，这里只做跳转，不再挂一份。"
+    ],
+    "notes": [
+      "人物头像来自 AniList，权利属于原作者与集英社。"
+    ],
+    "actions": [
+      {
+        "style": "ink",
+        "href": "https://kyuubi.pages.dev/",
+        "label": "打开图谱"
+      }
+    ]
+  },
+  {
+    "name": "LearnLoop",
+    "kind": "intro",
+    "kindLabel": "介绍卡",
+    "meta": "不在此站运行进程",
+    "media": "<svg class=\"card__art\" viewBox=\"0 0 400 225\" xmlns=\"http://www.w3.org/2000/svg\" aria-hidden=\"true\">\r\n  <rect width=\"400\" height=\"225\" fill=\"#1b2830\"/>\r\n  <rect x=\"40\" y=\"36\" width=\"320\" height=\"153\" rx=\"8\" fill=\"#24343e\"/>\r\n  <rect x=\"58\" y=\"54\" width=\"140\" height=\"12\" rx=\"3\" fill=\"#d9c59a\"/>\r\n  <rect x=\"58\" y=\"78\" width=\"220\" height=\"8\" rx=\"3\" fill=\"#5d7380\"/>\r\n  <rect x=\"58\" y=\"96\" width=\"190\" height=\"8\" rx=\"3\" fill=\"#5d7380\"/>\r\n  <circle cx=\"300\" cy=\"120\" r=\"36\" fill=\"none\" stroke=\"#7eb8c9\" stroke-width=\"6\"/>\r\n  <path d=\"M300 120l18-10\" stroke=\"#f3efe6\" stroke-width=\"4\" stroke-linecap=\"round\"/>\r\n</svg>",
+    "desc": [
+      "学习智能体：输入要学的任务，检索资料、生成课程，再在白板课堂上边讲边画边语音，课中可随时打断提问。"
+    ],
+    "notes": [
+      "曾部署在 agent.hellojoy.top；2026-11-28 14:57（亚洲/上海）访问时返回 504，当前不作为可演示地址。"
+    ],
+    "actions": [
+      {
+        "style": "ghost",
+        "href": "learnloop/",
+        "label": "看介绍"
+      }
+    ]
+  },
+  {
+    "name": "出海视频工厂",
+    "kind": "intro",
+    "kindLabel": "介绍卡",
+    "meta": "Flask + ffmpeg / Whisper",
+    "media": "<svg class=\"card__art\" viewBox=\"0 0 400 225\" xmlns=\"http://www.w3.org/2000/svg\" aria-hidden=\"true\">\r\n  <rect width=\"400\" height=\"225\" fill=\"#10222b\"/>\r\n  <rect x=\"70\" y=\"50\" width=\"160\" height=\"110\" rx=\"8\" fill=\"#1c3a46\"/>\r\n  <rect x=\"190\" y=\"70\" width=\"140\" height=\"110\" rx=\"8\" fill=\"#2a5a4a\"/>\r\n  <path d=\"M150 105h40l20 20\" fill=\"none\" stroke=\"#e8d5a3\" stroke-width=\"4\" stroke-linecap=\"round\"/>\r\n  <text x=\"210\" y=\"130\" fill=\"#f3efe6\" font-size=\"22\" font-family=\"system-ui,sans-serif\">Aa → 文</text>\r\n</svg>",
+    "desc": [
+      "面向外贸场景的视频翻译与加工。本地跑 Flask 服务，调用 ffmpeg 和 Whisper，支持大文件上传。不适合把转码进程堆到这台服务器上，这里只放介绍。"
+    ],
+    "notes": [],
+    "actions": [
+      {
+        "style": "ghost",
+        "href": "chuhai/",
+        "label": "看介绍"
+      }
+    ]
+  },
+  {
+    "name": "视频剪辑台",
+    "kind": "intro",
+    "kindLabel": "介绍卡",
+    "meta": "Redis / Celery / Whisper",
+    "media": "<svg class=\"card__art\" viewBox=\"0 0 400 225\" xmlns=\"http://www.w3.org/2000/svg\" aria-hidden=\"true\">\r\n  <rect width=\"400\" height=\"225\" fill=\"#17141c\"/>\r\n  <rect x=\"30\" y=\"150\" width=\"40\" height=\"36\" fill=\"#c4452f\"/>\r\n  <rect x=\"76\" y=\"120\" width=\"40\" height=\"66\" fill=\"#6b6458\"/>\r\n  <rect x=\"122\" y=\"88\" width=\"40\" height=\"98\" fill=\"#e8d5a3\"/>\r\n  <rect x=\"168\" y=\"130\" width=\"40\" height=\"56\" fill=\"#2f6f5e\"/>\r\n  <rect x=\"214\" y=\"100\" width=\"40\" height=\"86\" fill=\"#6b6458\"/>\r\n  <rect x=\"260\" y=\"70\" width=\"40\" height=\"116\" fill=\"#c4452f\"/>\r\n  <rect x=\"306\" y=\"140\" width=\"40\" height=\"46\" fill=\"#e8d5a3\"/>\r\n  <path d=\"M30 70h340\" stroke=\"#3a3540\" stroke-width=\"2\"/>\r\n</svg>",
+    "desc": [
+      "本地视频剪辑工具，支持气口检测、重复片段检测、Whisper 自动字幕和背景音乐混音。前端 Vue，后端 FastAPI，长任务走 Redis 和 Celery。"
+    ],
+    "notes": [],
+    "actions": [
+      {
+        "style": "ghost",
+        "href": "jianji/",
+        "label": "看介绍"
+      }
+    ]
+  },
+  {
+    "name": "麦田",
+    "kind": "intro",
+    "kindLabel": "介绍卡",
+    "meta": "开源 · 仅 macOS",
+    "media": "<svg class=\"card__art\" viewBox=\"0 0 400 225\" xmlns=\"http://www.w3.org/2000/svg\" aria-hidden=\"true\">\r\n  <rect width=\"400\" height=\"225\" fill=\"#1c2616\"/>\r\n  <path d=\"M0 170c40-30 80-10 120-28s80 4 120-20 80 0 160-24v127H0z\" fill=\"#3f6b2f\"/>\r\n  <path d=\"M0 196c50-16 90 6 140-10s90-4 140 8 80-10 120-2v33H0z\" fill=\"#2f4f22\"/>\r\n  <circle cx=\"300\" cy=\"54\" r=\"22\" fill=\"#f0c84a\"/>\r\n  <rect x=\"188\" y=\"86\" width=\"10\" height=\"70\" fill=\"#7a5230\"/>\r\n  <path d=\"M193 86c-28-4-38-28-30-48M193 96c28-8 40-26 26-46\" fill=\"none\" stroke=\"#7dbd4a\" stroke-width=\"8\" stroke-linecap=\"round\"/>\r\n</svg>",
+    "desc": [
+      "给多平台博主用的开源工作台：一期内容分发到多个平台、到点填写发布、再采集播放和粉丝数据。王总在本地研究使用，上游是 CzzzzzzJ（麦当）的开源项目，只支持 macOS。"
+    ],
+    "notes": [],
+    "actions": [
+      {
+        "style": "ghost",
+        "href": "maitian/",
+        "label": "看介绍"
+      }
+    ]
+  },
+  {
+    "name": "编程学习规划师",
+    "kind": "intro",
+    "kindLabel": "介绍卡",
+    "meta": "本地小工具，暂不挂演示",
+    "media": "<svg class=\"card__art\" viewBox=\"0 0 400 225\" xmlns=\"http://www.w3.org/2000/svg\" aria-hidden=\"true\">\r\n  <rect width=\"400\" height=\"225\" fill=\"#231e18\"/>\r\n  <rect x=\"70\" y=\"28\" width=\"260\" height=\"170\" rx=\"10\" fill=\"#fffdf8\"/>\r\n  <rect x=\"90\" y=\"50\" width=\"120\" height=\"10\" rx=\"3\" fill=\"#1a1612\"/>\r\n  <rect x=\"90\" y=\"74\" width=\"200\" height=\"7\" rx=\"3\" fill=\"#ddd4c4\"/>\r\n  <rect x=\"90\" y=\"96\" width=\"180\" height=\"7\" rx=\"3\" fill=\"#ddd4c4\"/>\r\n  <rect x=\"90\" y=\"128\" width=\"14\" height=\"14\" rx=\"3\" fill=\"#2f6f5e\"/>\r\n  <rect x=\"90\" y=\"152\" width=\"14\" height=\"14\" rx=\"3\" fill=\"#c4452f\"/>\r\n  <rect x=\"114\" y=\"130\" width=\"150\" height=\"8\" rx=\"3\" fill=\"#6b6458\"/>\r\n  <rect x=\"114\" y=\"154\" width=\"130\" height=\"8\" rx=\"3\" fill=\"#6b6458\"/>\r\n</svg>",
+    "desc": [
+      "根据想学的技术、现有水平和每天可投入的时间，生成一份个性化编程学习计划。源码在本地 todo-cli 目录，完成度还不稳定，这里先只放介绍。"
+    ],
+    "notes": [],
+    "actions": [
+      {
+        "style": "ghost",
+        "href": "planner/",
+        "label": "看介绍"
+      }
+    ]
+  }
+]
