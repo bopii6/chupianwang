@@ -173,6 +173,21 @@ async function analyzeText(t, extraNote = '', force = false) {
   } finally { busy(false); }
 }
 
+// 转写进度：第一次用要先把听写模型下下来（约 78MB），不显示进度客户会以为死机
+function asrProgress(label) {
+  return (p) => {
+    if (p.stage === 'download') {
+      const pct = p.total ? Math.round((p.loaded / p.total) * 100) : 0;
+      busy(true, `正在准备听写模型 ${pct}%（第一次用要下载约 78MB，之后就快了）`);
+    } else if (p.stage === 'decode') {
+      busy(true, '正在解码音轨…');
+    } else if (p.stage === 'listen') {
+      const pct = p.total ? Math.round((p.done / p.total) * 100) : 0;
+      busy(true, `${label} ${pct}%（第 ${p.done}/${p.total} 段）`);
+    }
+  };
+}
+
 // 视频号链接 → 下载 → 浏览器转写 → 拆解
 async function fromLink(u) {
   $('err').replaceChildren();
@@ -184,7 +199,9 @@ async function fromLink(u) {
     showVideoBar(blob, r.title);   // 先把「存到我的电脑」给出来，别等转文字
     busy(true, '下载好了，正在转文字…');
     const file = new File([blob], 'link.mp4', { type: 'video/mp4' });
-    const asr = await (await loadAsr()).transcribe(file, { base: '/models/asr/', model: await pickAsrModel() });
+    const asr = await (await loadAsr()).transcribe(file, {
+      base: '/models/asr/', model: await pickAsrModel(), onProgress: asrProgress('正在转文字'),
+    });
     if (!asr.text) throw new Error('没听出人声，这条可能只有音乐');
     textEl.value = asr.text;
     busy(true, 'AI 正在拆解（约 20 秒）');
@@ -249,7 +266,9 @@ async function fromVideo(file) {
   busy(true, '正在转文字…');
   const timer = setInterval(() => busy(true, `转文字 ${Math.round((Date.now() - t0) / 1000)} 秒，大约是视频时长的 2/3`), 1000);
   try {
-    const asr = await (await loadAsr()).transcribe(file, { base: '/models/asr/', model: await pickAsrModel() });
+    const asr = await (await loadAsr()).transcribe(file, {
+      base: '/models/asr/', model: await pickAsrModel(), onProgress: asrProgress('正在转文字'),
+    });
     if (!asr.text) throw new Error('没听出人声，这条可能只有音乐');
     textEl.value = asr.text;
     await analyzeText(asr.text);
