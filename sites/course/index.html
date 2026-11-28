@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>付费课目录</title>
+  <meta name="description" content="五门先上架的付费课。先选一门，点进去就能按目录讲。">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20fill%3D%22%23f3eee4%22/%3E%3Crect%20x%3D%221.2%22%20y%3D%221.2%22%20width%3D%2229.6%22%20height%3D%2229.6%22%20fill%3D%22none%22%20stroke%3D%22%23161310%22%20stroke-width%3D%222%22/%3E%3Crect%20x%3D%227%22%20y%3D%229%22%20width%3D%2217%22%20height%3D%222%22%20fill%3D%22%23161310%22/%3E%3Crect%20x%3D%227%22%20y%3D%2215%22%20width%3D%2217%22%20height%3D%222%22%20fill%3D%22%23161310%22/%3E%3Crect%20x%3D%227%22%20y%3D%2221%22%20width%3D%2211%22%20height%3D%222%22%20fill%3D%22%23161310%22/%3E%3C/svg%3E">
+  <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAXUlEQVR42mP8/O4JAy0BCwMDg7KqDo1Mv3v7ChMDjQELsm1UNBceKjT3wagFA28BC/40QGqqHzlBRMVMN5qKRlPRaCqiJBURGYyjqWi0yhxSkUyjFirNfcBI6+Y7ALXNHPN9cs5sAAAAAElFTkSuQmCC">
+  <link rel="stylesheet" href="assets/course.css">
+  <script>
+    try {
+      if (localStorage.getItem("course-site-teach-mode") === "1") {
+        document.documentElement.classList.add("present");
+      }
+    } catch (e) {}
+  </script>
+</head>
+<body data-index="index.html">
+  <a class="skip" href="#main">跳到正文</a>
+  <header class="where">
+    <div class="where-inner">
+      <p class="where-course"><a href="index.html">付费课目录</a></p>
+      <p class="where-lesson"></p>
+      <p class="where-title">先选一门课，按目录讲</p>
+      <p class="where-nav"><a href="index.html">目录</a><span>·</span><button type="button" data-toggle aria-pressed="false">讲解模式</button></p>
+    </div>
+  </header>
+  <main class="page poster" id="main">
+    <p class="kicker">付费课</p>
+    <h1>课程目录</h1>
+    <p class="lead">先选一门课。点进去就是那门课的目录，再点一讲就能顺着讲。</p>
+    <p class="lead">每讲都会写清：听完你多出什么，下一步做什么。</p>
+    <ul class="site-list">
+      <li>
+        <a href="heike/index.html">
+          <p class="course-name">硬核AI私教</p>
+          <p class="course-line">不卖一堆教程。用你正在发愁的一件真事，把工作流打通。以后你自己会改。</p>
+          <p class="course-price">课程价　¥899</p>
+        </a>
+      </li>
+      <li>
+        <a href="grok-deliver/index.html">
+          <p class="course-name">Grok Bot 实战交付课</p>
+          <p class="course-line">把 Grok Bot 装好，接到常用工具，用一件自己的真事完成第一次交付。</p>
+          <p class="course-price">付费课，定价待定</p>
+        </a>
+      </li>
+      <li>
+        <a href="grok-workflow/index.html">
+          <p class="course-name">Grok Bot 工作流系统课</p>
+          <p class="course-line">把一个会聊天的助手，养成能每天自己跑的流程。活要拆开，额度也要撑得住。</p>
+          <p class="course-price">付费课，定价待定</p>
+        </a>
+      </li>
+      <li>
+        <a href="content/index.html">
+          <p class="course-name">一人公司内容工作流课</p>
+          <p class="course-line">把选题、写稿、过审、分发收成一条能每天发的流水线，少靠灵感，多靠步骤。</p>
+          <p class="course-price">付费课，定价待定</p>
+        </a>
+      </li>
+      <li>
+        <a href="video/index.html">
+          <p class="course-name">AI 口播与视频工作流课</p>
+          <p class="course-line">从稿子、配音或数字人、画面到发布，交出一条你每周能出片的流程。不教成人短剧。</p>
+          <p class="course-price">付费课，定价待定</p>
+        </a>
+      </li>
+    </ul>
+    <p class="buy-note" style="margin-top:28px">直播间或网站购买。本页不放收款码。</p>
+    <footer class="home-foot">
+      <p>课里用到的例子都来自公开帖。帖子里的收入、销量数字是作者自己说的，未另作核实，不当承诺。</p>
+    </footer>
+  </main>
+  <script src="assets/course.js"></script>
+</body>
+</html>

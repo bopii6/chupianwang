@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f3efe6">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20rx%3D%2212%22%20fill%3D%22%231a1612%22%2F%3E%3Crect%20x%3D%228.5%22%20y%3D%228.5%22%20width%3D%2231%22%20height%3D%2231%22%20rx%3D%225%22%20fill%3D%22none%22%20stroke%3D%22%23f0e6d2%22%20stroke-width%3D%222%22%2F%3E%3Crect%20x%3D%2211%22%20y%3D%2211%22%20width%3D%2211.5%22%20height%3D%2211.5%22%20rx%3D%222%22%20fill%3D%22%23c4452f%22%2F%3E%3Crect%20x%3D%2225.5%22%20y%3D%2211%22%20width%3D%2211.5%22%20height%3D%2211.5%22%20rx%3D%222%22%20fill%3D%22%23e8d5a3%22%2F%3E%3Crect%20x%3D%2211%22%20y%3D%2225.5%22%20width%3D%2211.5%22%20height%3D%2211.5%22%20rx%3D%222%22%20fill%3D%22%23e8d5a3%22%2F%3E%3Crect%20x%3D%2225.5%22%20y%3D%2225.5%22%20width%3D%2211.5%22%20height%3D%2211.5%22%20rx%3D%222%22%20fill%3D%22%232f6f5e%22%2F%3E%3C%2Fsvg%3E" type="image/svg+xml">
+<link rel="stylesheet" href="lab.css">
+
+<title>王总的项目橱窗 · lab.getcut.cn</title>
+<meta name="description" content="王总做过的 AI 项目橱窗：动感岛、出片王、火影人物关系图谱，以及若干本地实验的介绍。">
+</head>
+<body>
+<header class="top wrap">
+  <a class="brand" href="./">
+    <svg class="brand__mark" viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="12" fill="#1a1612"/><rect x="8.5" y="8.5" width="31" height="31" rx="5" fill="none" stroke="#f0e6d2" stroke-width="2"/><rect x="11" y="11" width="11.5" height="11.5" rx="2" fill="#c4452f"/><rect x="25.5" y="11" width="11.5" height="11.5" rx="2" fill="#e8d5a3"/><rect x="11" y="25.5" width="11.5" height="11.5" rx="2" fill="#e8d5a3"/><rect x="25.5" y="25.5" width="11.5" height="11.5" rx="2" fill="#2f6f5e"/></svg>
+    <span class="brand__name">王总的项目橱窗<span class="brand__sub">lab.getcut.cn</span></span>
+  </a>
+  <nav aria-label="页面导航">
+    <a href="#projects">项目</a><a href="#about">说明</a>
+  </nav>
+</header>
+
+<main>
+  <section class="hero wrap">
+    <div class="hero__kicker"><i></i>个人项目橱窗 · 不是公司产品站</div>
+    <h1>做过的 AI 项目，<br><em>点进去就能看。</em></h1>
+    <p class="hero__lede">这里集中放王总自己做过、正在做的项目。能动的直接打开演示或线上成品；需要本机进程、模型或特定系统的，先写成介绍，避免把渲染服务都堆到同一台服务器上。</p>
+  </section>
+
+  <div class="wrap filters" aria-hidden="true">
+    <span class="chip">可玩演示 1</span>
+    <span class="chip">线上成品 2</span>
+    <span class="chip">介绍卡 5</span>
+  </div>
+
+  <section id="projects" class="wrap grid">
+
+    <article class="card">
+      <div class="card__media">
+        <img src="donggan/docs/images/home.jpg" alt="动感岛首页：站起来，玩起来" width="960" height="540" style="object-position:top">
+      </div>
+      <div class="card__body">
+        <div class="card__meta"><span class="tag tag--play">可玩演示</span><span class="card__legal">/donggan/</span></div>
+        <h2>动感岛</h2>
+        <p>用身体玩的感统小游戏。孩子对着电脑摄像头跳、拍、定住，就能玩打地鼠、木头人、墙来了、水果忍者、跳大绳和节奏跳跳。画面只在本机识别，不上传。</p>
+        <p class="card__legal">摄像头要在 HTTPS 下才能用（本机用 localhost 预览即可）。没有摄像头也可以用鼠标试玩。</p>
+        <div class="card__actions">
+          <a class="btn btn--ink" href="donggan/">打开动感岛</a>
+          <a class="btn btn--ghost" href="donggan/check.html">摄像头自检</a>
+        </div>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card__media"><svg class="card__art" viewBox="0 0 400 225" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <rect width="400" height="225" fill="#1a1612"/>
+  <rect x="150" y="28" width="100" height="170" rx="18" fill="#2a2420" stroke="#e8d5a3" stroke-width="3"/>
+  <rect x="160" y="48" width="80" height="130" rx="6" fill="#c4452f"/>
+  <path d="M188 96v36l28-18z" fill="#fffdf8"/>
+</svg></div>
+      <div class="card__body">
+        <div class="card__meta"><span class="tag tag--live">线上成品</span><span class="card__legal">外链 · 不在此站重部署</span></div>
+        <h2>出片王</h2>
+        <p>教培老师的视频获客工具。用已经验证能火、能获客的视频套路，说一句话或直接上传资料，就可以出片。主站就是 getcut.cn。</p>
+        <div class="card__actions">
+          <a class="btn btn--ink" href="https://getcut.cn" target="_blank" rel="noopener">打开 getcut.cn</a>
+        </div>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card__media"><svg class="card__art" viewBox="0 0 400 225" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <rect width="400" height="225" fill="#14181f"/>
+  <circle cx="200" cy="112" r="46" fill="none" stroke="#f0b429" stroke-width="3"/>
+  <circle cx="120" cy="70" r="22" fill="#2b3340"/>
+  <circle cx="286" cy="78" r="18" fill="#2b3340"/>
+  <circle cx="108" cy="160" r="16" fill="#2b3340"/>
+  <circle cx="300" cy="158" r="20" fill="#2b3340"/>
+  <path d="M142 80L178 100M258 90L222 102M124 148L174 126M282 148L222 124" stroke="#8aa0b8" stroke-width="2"/>
+  <circle cx="200" cy="112" r="10" fill="#f0b429"/>
+</svg></div>
+      <div class="card__body">
+        <div class="card__meta"><span class="tag tag--live">线上成品</span><span class="card__legal">外链 · 不重新托管</span></div>
+        <h2>火影人物关系图谱</h2>
+        <p>火影忍者人物关系的可视化图谱，已发布在独立站点，这里只做跳转，不再挂一份。</p>
+        <p class="card__legal">人物头像来自 AniList，权利属于原作者与集英社。</p>
+        <div class="card__actions">
+          <a class="btn btn--ink" href="https://kyuubi.pages.dev/" target="_blank" rel="noopener">打开图谱</a>
+        </div>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card__media"><svg class="card__art" viewBox="0 0 400 225" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <rect width="400" height="225" fill="#1b2830"/>
+  <rect x="40" y="36" width="320" height="153" rx="8" fill="#24343e"/>
+  <rect x="58" y="54" width="140" height="12" rx="3" fill="#d9c59a"/>
+  <rect x="58" y="78" width="220" height="8" rx="3" fill="#5d7380"/>
+  <rect x="58" y="96" width="190" height="8" rx="3" fill="#5d7380"/>
+  <circle cx="300" cy="120" r="36" fill="none" stroke="#7eb8c9" stroke-width="6"/>
+  <path d="M300 120l18-10" stroke="#f3efe6" stroke-width="4" stroke-linecap="round"/>
+</svg></div>
+      <div class="card__body">
+        <div class="card__meta"><span class="tag tag--intro">介绍卡</span><span class="card__legal">不在此站运行进程</span></div>
+        <h2>LearnLoop</h2>
+        <p>学习智能体：输入要学的任务，检索资料、生成课程，再在白板课堂上边讲边画边语音，课中可随时打断提问。</p>
+        <p class="card__legal">曾部署在 agent.hellojoy.top；2026-11-28 14:57（亚洲/上海）访问时返回 504，当前不作为可演示地址。</p>
+        <div class="card__actions">
+          <a class="btn btn--ghost" href="learnloop/">看介绍</a>
+        </div>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card__media"><svg class="card__art" viewBox="0 0 400 225" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <rect width="400" height="225" fill="#10222b"/>
+  <rect x="70" y="50" width="160" height="110" rx="8" fill="#1c3a46"/>
+  <rect x="190" y="70" width="140" height="110" rx="8" fill="#2a5a4a"/>
+  <path d="M150 105h40l20 20" fill="none" stroke="#e8d5a3" stroke-width="4" stroke-linecap="round"/>
+  <text x="210" y="130" fill="#f3efe6" font-size="22" font-family="system-ui,sans-serif">Aa → 文</text>
+</svg></div>
+      <div class="card__body">
+        <div class="card__meta"><span class="tag tag--intro">介绍卡</span><span class="card__legal">Flask + ffmpeg / Whisper</span></div>
+        <h2>出海视频工厂</h2>
+        <p>面向外贸场景的视频翻译与加工。本地跑 Flask 服务，调用 ffmpeg 和 Whisper，支持大文件上传。不适合把转码进程堆到橱窗服务器上，这里只放介绍。</p>
+        <div class="card__actions">
+          <a class="btn btn--ghost" href="chuhai/">看介绍</a>
+        </div>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card__media"><svg class="card__art" viewBox="0 0 400 225" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <rect width="400" height="225" fill="#17141c"/>
+  <rect x="30" y="150" width="40" height="36" fill="#c4452f"/>
+  <rect x="76" y="120" width="40" height="66" fill="#6b6458"/>
+  <rect x="122" y="88" width="40" height="98" fill="#e8d5a3"/>
+  <rect x="168" y="130" width="40" height="56" fill="#2f6f5e"/>
+  <rect x="214" y="100" width="40" height="86" fill="#6b6458"/>
+  <rect x="260" y="70" width="40" height="116" fill="#c4452f"/>
+  <rect x="306" y="140" width="40" height="46" fill="#e8d5a3"/>
+  <path d="M30 70h340" stroke="#3a3540" stroke-width="2"/>
+</svg></div>
+      <div class="card__body">
+        <div class="card__meta"><span class="tag tag--intro">介绍卡</span><span class="card__legal">Redis / Celery / Whisper</span></div>
+        <h2>视频剪辑台</h2>
+        <p>本地视频剪辑工具，支持气口检测、重复片段检测、Whisper 自动字幕和背景音乐混音。前端 Vue，后端 FastAPI，长任务走 Redis 和 Celery。</p>
+        <div class="card__actions">
+          <a class="btn btn--ghost" href="jianji/">看介绍</a>
+        </div>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card__media"><svg class="card__art" viewBox="0 0 400 225" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <rect width="400" height="225" fill="#1c2616"/>
+  <path d="M0 170c40-30 80-10 120-28s80 4 120-20 80 0 160-24v127H0z" fill="#3f6b2f"/>
+  <path d="M0 196c50-16 90 6 140-10s90-4 140 8 80-10 120-2v33H0z" fill="#2f4f22"/>
+  <circle cx="300" cy="54" r="22" fill="#f0c84a"/>
+  <rect x="188" y="86" width="10" height="70" fill="#7a5230"/>
+  <path d="M193 86c-28-4-38-28-30-48M193 96c28-8 40-26 26-46" fill="none" stroke="#7dbd4a" stroke-width="8" stroke-linecap="round"/>
+</svg></div>
+      <div class="card__body">
+        <div class="card__meta"><span class="tag tag--intro">介绍卡</span><span class="card__legal">开源 · 仅 macOS</span></div>
+        <h2>麦田</h2>
+        <p>给多平台博主用的开源工作台：一期内容分发到多个平台、到点填写发布、再采集播放和粉丝数据。王总在本地研究使用，上游是 CzzzzzzJ（麦当）的开源项目，只支持 macOS。</p>
+        <div class="card__actions">
+          <a class="btn btn--ghost" href="maitian/">看介绍</a>
+        </div>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card__media"><svg class="card__art" viewBox="0 0 400 225" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <rect width="400" height="225" fill="#231e18"/>
+  <rect x="70" y="28" width="260" height="170" rx="10" fill="#fffdf8"/>
+  <rect x="90" y="50" width="120" height="10" rx="3" fill="#1a1612"/>
+  <rect x="90" y="74" width="200" height="7" rx="3" fill="#ddd4c4"/>
+  <rect x="90" y="96" width="180" height="7" rx="3" fill="#ddd4c4"/>
+  <rect x="90" y="128" width="14" height="14" rx="3" fill="#2f6f5e"/>
+  <rect x="90" y="152" width="14" height="14" rx="3" fill="#c4452f"/>
+  <rect x="114" y="130" width="150" height="8" rx="3" fill="#6b6458"/>
+  <rect x="114" y="154" width="130" height="8" rx="3" fill="#6b6458"/>
+</svg></div>
+      <div class="card__body">
+        <div class="card__meta"><span class="tag tag--intro">介绍卡</span><span class="card__legal">本地小工具，暂不挂演示</span></div>
+        <h2>编程学习规划师</h2>
+        <p>根据想学的技术、现有水平和每天可投入的时间，生成一份个性化编程学习计划。源码在本地 todo-cli 目录，完成度还不稳定，橱窗里先只放介绍。</p>
+        <div class="card__actions">
+          <a class="btn btn--ghost" href="planner/">看介绍</a>
+        </div>
+      </div>
+    </article>
+
+  </section>
+
+  <section id="about" class="wrap article" style="padding-top:0;">
+    <h2>关于这个橱窗</h2>
+    <p>这个橱窗就在 <b>lab.getcut.cn</b>。一个项目走一条路径：首页是列表，动感岛在 <a href="donggan/">/donggan/</a>（中文路径 <a href="动感岛/">/动感岛/</a> 会转到同一处）。</p>
+    <p>同一台服务器适合放橱窗首页和少数静态项目。需要模型、渲染、队列或常驻浏览器登录态的项目，只在这里介绍，避免全部堆上去。</p>
+  </section>
+</main>
+<footer class="foot">
+  <div class="wrap foot__inner">
+    <div>
+      <div>这是王总自己的项目橱窗，用来罗列做过的 AI 项目。不是公司官网，也不代表上游开源项目的官方站点。</div>
+      <div>备案信息只放在主站 <a href="https://getcut.cn">getcut.cn</a>，本橱窗页不加 ICP 号。</div>
+    </div>
+    <nav class="sites" aria-label="站点入口">
+      <a href="https://getcut.cn">出片王</a>
+      <span class="sites-sep" aria-hidden="true">·</span>
+      <a href="https://course.getcut.cn">课程</a>
+      <span class="sites-sep" aria-hidden="true">·</span>
+      <a href="https://bot.getcut.cn">课件</a>
+      <span class="sites-sep" aria-hidden="true">·</span>
+      <span aria-current="page">橱窗</span>
+    </nav>
+  </div>
+</footer>
+
+</body>
+</html>

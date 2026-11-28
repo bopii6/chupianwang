@@ -1426,6 +1426,22 @@ section.show.multi .show-phone { height: min(calc(100vh - 60px - 200px), 720px);
 
 .icp-foot a:hover { text-decoration: underline; }
 
+.icp-foot .icp-sites { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.icp-foot .icp-sites a,
+.icp-foot .icp-sites .icp-site { pointer-events: auto; color: inherit; text-decoration: none; }
+.icp-foot .icp-sites a:hover { text-decoration: underline; }
+.icp-foot .icp-site.is-current { color: var(--text-2, #444); font-weight: 600; cursor: default; }
+.icp-foot .icp-dot { opacity: .45; margin: 0 2px; pointer-events: none; }
+.icp-foot .icp-sep { opacity: .45; margin: 0 6px; pointer-events: none; }
+.icp-foot .icp-beian { pointer-events: auto; white-space: nowrap; }
+@media (max-width: 760px) {
+  :root { --icp-h: 34px; }
+  .icp-foot { flex-wrap: wrap; align-content: center; row-gap: 3px; }
+  .icp-foot .icp-sites { gap: 3px; }
+  .icp-foot .icp-sep { margin: 0 4px; }
+}
+
+
 .box-bar { bottom: calc(var(--icp-h) + var(--icp-safe)) !important; }
 #gallery { padding-bottom: calc(var(--icp-h) + var(--icp-safe)) !important; }
 #studio { height: calc(100vh - 64px - var(--icp-h) - var(--icp-safe)) !important; }
